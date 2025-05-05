@@ -1,11 +1,11 @@
 import React from 'react';
-import { BookOpen, AlignLeft, Volume2, GraduationCap, Clock, LibraryBig, Plane, Calendar } from 'lucide-react';
+import { BookOpen, Clock, LibraryBig, Plane } from 'lucide-react';
 
-interface VocabularyLandingProps {
+interface WordBankProps {
   setWordBankSubTab: (tab: string) => void;
 }
 
-const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab }) => {
+const WordBank: React.FC<WordBankProps> = ({ setWordBankSubTab }) => {
   const mainOption = {
     id: 'flashcards',
     label: 'Flashcards',
@@ -32,22 +32,12 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
       description: '100 phrases',
       icon: <Plane size={24} className="text-emerald-600" />,
     },
-    {
-      id: 'daily words',
-      label: 'Daily Words',
-      description: 'Learn daily vocabulary',
-      icon: <Calendar size={24} className="text-emerald-600" />,
-    },
   ];
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
-        Vocabulary
-      </h2>
-      <p className="text-gray-600 dark:text-gray-400 mb-6">
-        Build your Levantine Arabic vocabulary
-      </p>
+      <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">Vocabulary</h2>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">Build your Levantine Arabic vocabulary</p>
 
       {/* Main Focus: Flashcards */}
       <div
@@ -60,19 +50,13 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
             {mainOption.icon}
           </div>
         </div>
-        <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
-          {mainOption.label}
-        </h3>
-        <p className="text-sm text-center text-gray-600 dark:text-gray-300">
-          {mainOption.description}
-        </p>
+        <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">{mainOption.label}</h3>
+        <p className="text-sm text-center text-gray-600 dark:text-gray-300">{mainOption.description}</p>
       </div>
 
       {/* Supplementary Tools Section */}
-      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-        Supplementary Tools
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Supplementary Tools</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {supplementaryOptions.map((option) => (
           <div
             key={option.id}
@@ -84,12 +68,8 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
                 {option.icon}
               </div>
             </div>
-            <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
-              {option.label}
-            </h3>
-            <p className="text-sm text-center text-gray-600 dark:text-gray-300">
-              {option.description}
-            </p>
+            <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">{option.label}</h3>
+            <p className="text-sm text-center text-gray-600 dark:text-gray-300">{option.description}</p>
           </div>
         ))}
       </div>
@@ -97,4 +77,7 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
   );
 };
 
-export default VocabularyLanding;
+export default WordBank;
+
+
+
