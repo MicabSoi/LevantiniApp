@@ -1,0 +1,52 @@
+{
+  "servers": [
+    {
+      "id": "github.com/modelcontextprotocol/servers/tree/main/src/github",
+      "name": "github.com/modelcontextprotocol/servers/tree/main/src/github",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "AIzaSyBWp8Rof-sn3ag-vwTH4Z4baQw4Q0X3GJU"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    {
+      "id": "github.com/supabase-community/supabase-mcp",
+      "name": "github.com/supabase-community/supabase-mcp",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "C:\\Program Files\\nodejs\\npx.cmd",
+        "-y",
+        "@supabase/mcp-server-supabase@latest"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_ed30aa964d498d790206b4175b15f611e53e236f"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    {
+      "id": "filesystem",
+      "name": "filesystem",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "./supabase-mcp-server"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    {
+      "id": "git",
+      "name": "Git Tools",
+      "command": "node C:/Users/michs/OneDrive/Documents/Cline/MCP/git-mcp-server/src/git/dist/index.js",
+      "transport": "stdio"
+    }
+  ]
+}
