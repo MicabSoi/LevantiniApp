@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import FlashcardForm from './FlashcardForm';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 
 // Define types for flashcards and decks
 interface Flashcard {
@@ -22,6 +22,18 @@ interface Flashcard {
   image_url?: string;
   audio_url?: string;
   tags?: string[];
+  // Add other fields from the 'cards' table if needed for display
+  type?: string;
+  layout?: any; // Use a more specific type if possible
+  metadata?: any; // Use a more specific type if possible
+  review_stats_id?: string; // Assuming this is a string UUID
+  fields?: { // Add fields property based on the nested structure in reviews
+    english: string;
+    arabic: string;
+    transliteration?: string;
+    clozeText?: string;
+    imageUrl?: string;
+  };
 }
 
 interface Deck {
@@ -33,6 +45,21 @@ interface Deck {
   archived: boolean;
   created_at: string;
   cards?: Flashcard[];
+}
+
+// Define type for cards fetched from the 'reviews' table
+interface DueCard {
+  id: string; // review id
+  card: Flashcard; // Nested card object
+  last_review_date: string;
+  next_review_date: string;
+  interval: number;
+  ease_factor: number;
+  repetition_count: number;
+  reviews_count: number;
+  quality_history: number[];
+  streak?: number;
+  avg_response_time?: number;
 }
 
 // Icons based on deck type
@@ -96,15 +123,65 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   // Load flashcards for the selected deck
   const loadDeckData = async (deckId: string) => {
     setError(null); // Clear previous errors
-    const { data, error } = await supabase
-      .from('flashcards')
-      .select('*')
-      .eq('deck_id', deckId);
-    if (error) {
-      console.error('Error loading flashcards:', error);
-      setError('Failed to load flashcards for this deck.'); // Set error state
+    const params = new URLSearchParams(window.location.search);
+    const isStudySession = params.has('decks'); // Check if 'decks' parameter exists
+
+    if (isStudySession) {
+      // Fetch from 'reviews' table for study session
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(
+          `
+          id,
+          last_review_date,
+          next_review_date,
+          interval,
+          ease_factor,
+          repetition_count,
+          reviews_count,
+          quality_history,
+          card:cards!reviews_card_fk (
+            id,
+            fields,
+            audio_url,
+            english,
+            arabic,
+            transliteration,
+            image_url,
+            tags,
+            type,
+            layout,
+            metadata,
+            review_stats_id
+          )
+        `
+        )
+        .eq('card.deck_id', deckId)
+        .lte('next_review_date', new Date().toISOString()) // Filter for cards due for review
+        .order('next_review_date', { ascending: true });
+
+      if (error) {
+        console.error('Error loading review flashcards:', error);
+        setError('Failed to load review flashcards for this deck.'); // Set error state
+        setDeckCards([]); // Clear cards on error
+      } else {
+        // Extract the nested card objects and cast to Flashcard[]
+        const reviewCards = (data || []).map(review => review.card).filter(card => card !== null) as Flashcard[];
+        setDeckCards(reviewCards);
+      }
     } else {
-      setDeckCards(data as Flashcard[]);
+      // Fetch from 'cards' table for normal deck view
+      const { data, error } = await supabase
+        .from('cards') // Use 'cards' table as identified by MCP tool
+        .select('*')
+        .eq('deck_id', deckId);
+      if (error) {
+        console.error('Error loading flashcards:', error);
+        setError('Failed to load flashcards for this deck.'); // Set error state
+        setDeckCards([]); // Clear cards on error
+      } else {
+        setDeckCards(data as Flashcard[]);
+      }
     }
   };
 
