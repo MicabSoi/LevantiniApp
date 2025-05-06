@@ -1,11 +1,11 @@
 import React from 'react';
 import { BookOpen, Clock, LibraryBig, Plane } from 'lucide-react';
 
-interface WordBankProps {
+interface VocabularyLandingProps {
   setWordBankSubTab: (tab: string) => void;
 }
 
-const WordBank: React.FC<WordBankProps> = ({ setWordBankSubTab }) => {
+const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab }) => {
   const mainOption = {
     id: 'flashcards',
     label: 'Flashcards',
@@ -77,7 +77,4 @@ const WordBank: React.FC<WordBankProps> = ({ setWordBankSubTab }) => {
   );
 };
 
-export default WordBank;
-
-
-
+export default VocabularyLanding;

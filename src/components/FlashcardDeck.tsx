@@ -296,6 +296,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   onChange={(e) => setNewDeckName(e.target.value)}
                   className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
                   required // Make name required
+                  placeholder="e.g. Arabic Verbs"
                 />
               </div>
               <div className="mb-2">
@@ -307,6 +308,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   value={newDeckDescription}
                   onChange={(e) => setNewDeckDescription(e.target.value)}
                   className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
+                  placeholder="e.g. Common verbs and their conjugations"
                 />
               </div>
               <div className="flex space-x-2">
@@ -423,6 +425,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                         new Audio(card.audio_url!).play();
                       }}
                       className="absolute top-2 right-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
+                      aria-label="Play audio"
                     >
                       <Volume2 size={16} />
                     </button>

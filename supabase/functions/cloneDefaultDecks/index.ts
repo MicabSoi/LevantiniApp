@@ -19,10 +19,17 @@ Deno.serve(async (req) => {
       throw new Error('User data not provided');
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error('Supabase URL or Service Role Key not provided in environment variables.');
+    }
+
     // Initialize Supabase client with environment variables
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      supabaseServiceRoleKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -120,5 +127,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-

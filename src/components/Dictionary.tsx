@@ -82,7 +82,7 @@ const Dictionary: React.FC<DictionaryProps> = ({
     <div className="p-4">
       <button
         onClick={() => {
-          setActiveTab('wordbank');
+          setActiveTab('vocabulary');
           setWordBankSubTab('add words');
         }}
         className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
@@ -132,6 +132,7 @@ const Dictionary: React.FC<DictionaryProps> = ({
                   <button
                     onClick={() => toggleFavorite(item.id)}
                     className="p-1"
+                    aria-label={favorites.includes(item.id) ? 'Remove from favorites' : 'Add to favorites'}
                   >
                     <Star
                       size={20}
@@ -164,6 +165,3 @@ const Dictionary: React.FC<DictionaryProps> = ({
 };
 
 export default Dictionary;
-
-
-

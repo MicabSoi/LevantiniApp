@@ -8,14 +8,12 @@ import LessonDetailPage from './LessonDetailPage';
 interface LessonsTopicsProps {
   selectedTopic: string | null;
   setSelectedTopic: (topic: string | null) => void;
-  setSelectedLesson: (lesson: any) => void;
   setSubTab: (tab: string) => void;
 }
 
 const LessonsTopics: React.FC<LessonsTopicsProps> = ({
   selectedTopic,
   setSelectedTopic,
-  setSelectedLesson,
   setSubTab,
 }) => {
   const [topics, setTopics] = useState<any[]>([]);
@@ -61,7 +59,6 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
         setLoading(true);
         setError(null);
         try {
-          const topicMeta = topics.find((t) => t.id === selectedTopic);
           const level = parseInt(selectedTopic ?? '', 10);
           const lessonsData = await fetchLessonsByLevel(level);
 
@@ -193,6 +190,3 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
 };
 
 export default LessonsTopics;
-
-
-

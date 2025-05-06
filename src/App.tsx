@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Home,
-  BookOpen,
   LibraryBig,
   GraduationCap,
   Languages,
@@ -15,13 +14,13 @@ import FlashcardDetail from './components/FlashcardDetail';
 import StudySession from './components/StudySession';
 
 // Main components
-import WordBank from './components/WordBank.tsx';
 import FlashcardDeck from './components/FlashcardDeck';
 import Settings from './components/Settings';
 import Profile from './components/Profile';
 import Progress from './components/Progress';
 
 // Feature components
+import VocabularyLanding from './components/VocabularyLanding';
 
 import Dictionary from './components/Dictionary';
 import Alphabet from './components/Alphabet';
@@ -29,7 +28,6 @@ import Pronunciation from './components/Pronunciation';
 import Grammar from './components/Grammar';
 import HomePage from './components/HomePage';
 import Translate from './components/Translate';
-import Lessons from './components/Lessons';
 import Comprehension from './components/Comprehension';
 import FluencyLanding from './components/FluencyLanding';
 import FindTutor from './components/FindTutor';
@@ -38,7 +36,6 @@ import LessonsTopics from './components/LessonsTopics';
 import { AudioProvider } from './context/AudioContext';
 import StudySelection from './components/StudySelection';
 import ReviewCalendar from './components/ReviewCalendar'; // Import ReviewCalendar
-import VocabularyLanding from './components/VocabularyLanding'; // Import VocabularyLanding
 
 // Context for learned words
 import { LearnedWordsProvider } from './context/LearnedWordsContext';
@@ -47,11 +44,9 @@ function App() {
   const { user, loading } = useSupabase();
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [selectedLesson, setSelectedLesson] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [subTab, setSubTab] = useState('landing');
   const [homeSubTab, setHomeSubTab] = useState('dashboard');
-  const [showLessons, setShowLessons] = useState(false);
   const [wordBankSubTab, setWordBankSubTab] = useState('landing'); // Set initial sub-tab to landing
   const [communitySubTab, setCommunitySubTab] = useState('forums');
   const [userLevel] = useState(12); // This would come from your user context/state management
@@ -60,8 +55,6 @@ function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
-
-  const [learnReset, setLearnReset] = useState(0);
 
   useEffect(() => {
     const checkScrollable = (element: HTMLElement) => {
@@ -132,6 +125,8 @@ function App() {
                   });
                 }}
                 className="px-4 py-2 rounded-full bg-emerald-700 dark:bg-dark-200 hover:bg-emerald-800 dark:hover:bg-dark-300 transition-colors"
+                aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
                 {isDarkMode ? 'Light Mode' : 'Dark Mode'}
               </button>
@@ -150,6 +145,7 @@ function App() {
                     setHomeSubTab('profile');
                   }}
                   className="w-8 h-8 bg-emerald-700 dark:bg-dark-200 rounded-full flex items-center justify-center hover:bg-emerald-800 dark:hover:bg-dark-300 transition-colors"
+                  title="View Profile"
                 >
                   <User size={18} />
                 </button>
@@ -213,7 +209,6 @@ function App() {
                           <LessonsTopics
                             selectedTopic={selectedTopic}
                             setSelectedTopic={setSelectedTopic}
-                            setSelectedLesson={setSelectedLesson}
                             setSubTab={setSubTab}
                           />
                         )}
@@ -239,8 +234,7 @@ function App() {
                           <div>Recently Learned Content Here</div> // Placeholder for Recently Learned content
                         )}
                         {wordBankSubTab === 'add words' && (
-                          <WordBank
-                            setActiveTab={setActiveTab}
+                          <VocabularyLanding
                             setWordBankSubTab={setWordBankSubTab}
                           />
                         )}

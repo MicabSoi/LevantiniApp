@@ -6,7 +6,7 @@ import { AlertCircle } from 'lucide-react'; // ✅ Import AlertCircle
 
 interface DueCard {
   id: string; // review id
-  card: {
+  card: { // This should be a single card object, not an array
     id: string;
     fields: {
       english: string;
@@ -15,7 +15,17 @@ interface DueCard {
       clozeText?: string;
       imageUrl?: string;
     };
-    audio_url?: string | null; // Added audio_url based on the query in logs
+    audio_url?: string | null;
+    // Include other fields fetched in the select query for type accuracy
+    english: string;
+    arabic: string;
+    transliteration?: string;
+    image_url?: string;
+    tags?: string[];
+    type?: string;
+    layout?: string;
+    metadata?: any; // Use a more specific type if possible
+    review_stats_id?: string; // Assuming this is a string UUID
   };
   last_review_date: string;
   next_review_date: string;
@@ -75,7 +85,16 @@ const StudySession: React.FC = () => {
           card:cards!reviews_card_fk (
             id,
             fields,
-            audio_url
+            audio_url,
+            english,
+            arabic,
+            transliteration,
+            image_url,
+            tags,
+            type,
+            layout,
+            metadata,
+            review_stats_id
           )
         `
         )
@@ -94,8 +113,9 @@ const StudySession: React.FC = () => {
       } else {
         console.log('Successfully fetched due cards:', data); // Debug log
         // Filter out any potential null cards just in case
+        // Cast to unknown first to satisfy TypeScript
         setDueCards(
-          (data || []).filter((card) => card.card !== null) as DueCard[]
+          (data || []).filter((review: any) => review.card !== null) as unknown as DueCard[]
         );
         if (data && data.length > 0) {
           setCurrent(0); // Reset to the first card if cards are loaded
@@ -193,6 +213,23 @@ const StudySession: React.FC = () => {
     }
   };
 
+  // Add a useEffect for hotkey listeners
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      const key = event.key;
+      if (['0', '1', '2', '3'].includes(key)) {
+        const quality = parseInt(key, 10);
+        onQualitySelect(quality);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [onQualitySelect]); // Depend on onQualitySelect
+
   // Render loading, error, or content
   if (loading) {
     return (
@@ -274,7 +311,8 @@ const StudySession: React.FC = () => {
         const validCards = (data || []).filter(
           (review) => review.card !== null
         );
-        setDueCards(validCards as DueCard[]);
+        // Cast to unknown first to satisfy TypeScript
+        setDueCards(validCards as unknown as DueCard[]);
         if (validCards.length > 0) {
           setCurrent(0); // Start session with the first card
         } else {
