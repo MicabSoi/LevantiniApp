@@ -4,7 +4,6 @@ import { Volume2 } from 'lucide-react';
 import Quiz from './Quiz';
 import { motion } from 'framer-motion';
 import { useAudio } from '../context/AudioContext'; // ✅ Import shared audio data
-import AlphabetSongLesson from './AlphabetSongLesson';
 
 interface LessonDetailProps {
   lessonId: string;
@@ -132,7 +131,7 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
           const { data: letterData, error: letterError } = await supabase
             .from('alphabet')
             .select(
-              'letter, name, transliteration, pronunciation_description, forms, examples, additional_info, song_url'
+              'letter, name, transliteration, pronunciation_description, forms, examples, additional_info, audio_url'
             )
             .in('letter', lettersToFetch);
 
@@ -157,15 +156,22 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
   const { audioData } = useAudio();
 
   const playAudio = (letter: string) => {
-    // Find the audio file for this letter from the constructed list
-    const audioFile = constructedAudioFiles.find(
-      (file) => file.letter === letter
-    );
-    if (!audioFile || !audioFile.url) {
-      console.warn(`No audio found for letter: ${letter}`);
+    // Find the letter object to get the audio_url
+    const letterData = letters.find(l => l.letter === letter);
+
+    if (!letterData || !letterData.audio_url) {
+      console.warn(`No audio_url found for letter: ${letter}`);
       return;
     }
-    const audio = new Audio(audioFile.url);
+
+    // Construct the full audio URL using the base public storage URL, the bucket name, and the audio_url from the database
+    const baseUrl = 'https://mnfxcqpwvsprsrxmaxxt.supabase.co/storage/v1/object/public/';
+    const bucketPath = 'audio/'; // Assuming the bucket is named 'audio'
+    const audioUrl = `${baseUrl}${bucketPath}${letterData.audio_url}`;
+
+    console.log(`Attempting to play audio from URL: ${audioUrl}`);
+
+    const audio = new Audio(audioUrl);
     audio.crossOrigin = 'anonymous';
     audio
       .play()
@@ -280,14 +286,6 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
       />
     );
   }
-  // Create an array that maps each letter to its audio file URL with logging
-  const constructedAudioFiles = letters.map((l) => {
-    console.log(`Using audio URL for ${l.letter}: ${l.song_url}`);
-    return { letter: l.letter, url: l.song_url };
-  });
-
-  // This will print the complete list in the console
-  console.log('constructedAudioFiles:', constructedAudioFiles);
   return (
     <div className="p-4">
       {/* Go Back Button */}
@@ -305,16 +303,6 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
       </p>
       {/* For lesson 9, include the Alphabet Song component */}
 
-      {lesson.order_num === 9 && (
-        <div className="mb-6">
-          {console.log('Audio data available:', audioData)}
-          {console.log('Letters being mapped:', letters)}
-          <AlphabetSongLesson
-            letters={letters.map((l) => l.letter)}
-            audioFiles={constructedAudioFiles}
-          />
-        </div>
-      )}
 
       {/* Display Letter Cards */}
       {letters.length > 0 && (
@@ -422,6 +410,3 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
 };
 
 export default LessonDetailPage;
-
-
-
