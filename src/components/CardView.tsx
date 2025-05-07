@@ -87,13 +87,13 @@ const CardView: React.FC<CardViewProps> = ({ card, onQualitySelect }) => {
     }
   };
 
-  const renderFront = () => (
+const renderFront = () => (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
       <p className="text-2xl font-bold text-center text-gray-900 dark:text-white">
-        {card.fields.english}
+        {card.fields?.english || 'No English text'} {/* Add defensive check and fallback */}
       </p>
       {/* Add image rendering here if card type is 'image' */}
-      {/* {card.type === 'image' && card.fields.imageUrl && (
+      {/* {card.type === 'image' && card.fields?.imageUrl && (
         <img src={card.fields.imageUrl} alt="Flashcard front" className="mt-4 max-h-40 object-contain" />
       )} */}
     </div>
@@ -101,27 +101,31 @@ const CardView: React.FC<CardViewProps> = ({ card, onQualitySelect }) => {
 
   const renderBack = () => (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-50 dark:bg-dark-200 rounded-t-lg">
-      {card.fields.arabic && (
+      {card.fields?.arabic ? ( // Add defensive check
         <p
           dir="rtl"
           className="text-3xl font-bold text-center text-gray-900 dark:text-white"
         >
           {card.fields.arabic}
         </p>
+      ) : (
+        <p className="text-xl text-gray-600 dark:text-gray-400 text-center">
+          No Arabic text
+        </p>
       )}
-      {card.fields.transliteration && (
+      {card.fields?.transliteration && ( // Add defensive check
         <p className="text-lg text-gray-600 dark:text-gray-400 text-center mt-2">
           ({card.fields.transliteration})
         </p>
       )}
       {/* Add cloze text rendering here if card type is 'cloze' */}
-      {/* {card.type === 'cloze' && (
+      {/* {card.type === 'cloze' && card.fields?.clozeText && (
          <p className="text-xl font-bold text-center text-gray-900 dark:text-white mt-4">
            {card.fields.clozeText} // Render with blanks filled? Or originally with blanks? Depends on layout logic.
          </p>
       )} */}
       {/* Add image rendering here if card type is 'image' */}
-      {/* {card.type === 'image' && card.fields.imageUrl && (
+      {/* {card.type === 'image' && card.fields?.imageUrl && (
         <img src={card.fields.imageUrl} alt="Flashcard back" className="mt-4 max-h-40 object-contain" />
       )} */}
 

@@ -150,21 +150,117 @@ const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSuccess, onCanc
         audioUrl = publicUrl;
       }
       
-const { error: insertError } = await supabase
-  .from('flashcards')
+const { data: newCardData, error: insertError } = await supabase
+  .from('cards')
   .insert({
     deck_id: deckId,
-    english: english,       // Changed from "English" to "english"
-    arabic: arabic,         // Changed from "Arabic" to "arabic"
+    english: english,
+    arabic: arabic,
     transliteration: transliteration,
     image_url: imageUrl,
     audio_url: audioUrl,
-    tags: tags              // Assuming tags is stored as a text[] column
-  });
+    tags: tags,
+    fields: { // Populate the fields JSONB column
+      english: english,
+      arabic: arabic,
+      transliteration: transliteration,
+      imageUrl: imageUrl, // Use imageUrl key as expected by CardView
+      // Add other fields like clozeText if applicable in the future
+    },
+    // review_stats_id will be linked after creating the review entry
+  })
+  .select('id') // Select the ID of the newly created card
+  .single();
 
-        
       if (insertError) throw insertError;
-      
+
+      const newCardId = newCardData.id;
+
+      // Create a corresponding entry in the 'reviews' table
+      const { error: reviewInsertError } = await supabase
+        .from('reviews')
+        .insert({
+          card_id: newCardId,
+          // Set initial review statistics to make it due for review
+          last_review_date: new Date().toISOString(), // Set to now
+          next_review_date: new Date().toISOString(), // Set to now
+          interval: 0,
+          ease_factor: 2.5,
+          repetition_count: 0,
+          streak: 0,
+          reviews_count: 0,
+          quality_history: [],
+        });
+
+      if (reviewInsertError) throw reviewInsertError;
+
+      // Optionally, update the card with the review_stats_id if needed,
+      // but the foreign key is on the reviews table, so linking from reviews to cards is sufficient.
+      // If the cards table had a foreign key to reviews, we would need to update the card here.
+      // Based on the schema, the foreign key is from reviews.card_id to cards.id,
+      // and cards.review_stats_id to reviews.id. This means we need to get the ID of the new review entry
+      // and update the card's review_stats_id.
+
+      // Let's re-examine the schema: cards.review_stats_id -> reviews.id
+      // This means we need to insert into reviews first, get the review ID, then insert into cards with that ID.
+      // My current approach is inserting into cards first, then reviews. This is incorrect based on the foreign key.
+
+      // Let's revise the plan:
+      // 1. Insert a new row into the 'reviews' table with initial stats. Get the ID of this new review row.
+      // 2. Insert a new row into the 'cards' table, including the deck_id and the review_stats_id obtained in step 1.
+
+      // Let's rewrite the try block in handleSubmit.
+
+      // Re-reading the schema again:
+      // cards table has review_stats_id -> reviews.id
+      // reviews table has card_id -> cards.id
+      // This is a circular dependency, which is unusual.
+      // Typically, one table would own the relationship.
+      // Let's assume the primary relationship is reviews.card_id -> cards.id.
+      // This means a review entry belongs to a card.
+      // The cards.review_stats_id -> reviews.id suggests a card *references* its review stats.
+      // This implies we need to create the card first, then the review entry linked to the card,
+      // and then potentially update the card with the review entry's ID.
+
+      // Let's stick to the original plan of inserting the card first, then the review.
+      // We need to get the ID of the newly created card to link the review entry.
+      // The current code already does this with `.select('id').single()`.
+
+      // After inserting the review entry, we need to update the card with the `review_stats_id`.
+      // The `reviews` table schema shows `id` as the primary key.
+
+      const { data: newReviewData, error: reviewError } = await supabase
+        .from('reviews')
+        .insert({
+          card_id: newCardId,
+          last_review_date: new Date().toISOString(),
+          next_review_date: new Date().toISOString(),
+          interval: 0,
+          ease_factor: 2.5,
+          repetition_count: 0,
+          streak: 0,
+          reviews_count: 0,
+          quality_history: [],
+        })
+        .select('id') // Select the ID of the newly created review entry
+        .single();
+
+      if (reviewError) throw reviewError;
+
+      if (!newReviewData) {
+        throw new Error('Failed to retrieve new review data');
+      }
+
+      const newReviewId = newReviewData.id;
+
+      // Update the card with the review_stats_id
+      const { error: updateCardError } = await supabase
+        .from('cards')
+        .update({ review_stats_id: newReviewId })
+        .eq('id', newCardId);
+
+      if (updateCardError) throw updateCardError;
+
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create flashcard');
@@ -183,16 +279,17 @@ const { error: insertError } = await supabase
       
       {/* English Word */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="english-word" className="block text-sm font-medium mb-1">
           English Word *
         </label>
         <input
+          id="english-word"
           type="text"
           value={english}
           onChange={(e) => setEnglish(e.target.value)}
           className={`w-full p-2 border rounded-lg dark:bg-dark-200 ${
-            validationErrors.english 
-              ? 'border-red-500 dark:border-red-800' 
+            validationErrors.english
+              ? 'border-red-500 dark:border-red-800'
               : 'border-gray-300 dark:border-gray-600'
           }`}
         />
@@ -205,17 +302,18 @@ const { error: insertError } = await supabase
 
       {/* Arabic Word */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="arabic-word" className="block text-sm font-medium mb-1">
           Arabic Word
         </label>
         <input
+          id="arabic-word"
           type="text"
           value={arabic}
           onChange={(e) => setArabic(e.target.value)}
           dir="rtl"
           className={`w-full p-2 border rounded-lg dark:bg-dark-200 ${
-            validationErrors.translation 
-              ? 'border-red-500 dark:border-red-800' 
+            validationErrors.translation
+              ? 'border-red-500 dark:border-red-800'
               : 'border-gray-300 dark:border-gray-600'
           }`}
         />
@@ -223,16 +321,17 @@ const { error: insertError } = await supabase
 
       {/* Transliteration */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="transliteration" className="block text-sm font-medium mb-1">
           Transliteration
         </label>
         <input
+          id="transliteration"
           type="text"
           value={transliteration}
           onChange={(e) => setTransliteration(e.target.value)}
           className={`w-full p-2 border rounded-lg dark:bg-dark-200 ${
-            validationErrors.translation 
-              ? 'border-red-500 dark:border-red-800' 
+            validationErrors.translation
+              ? 'border-red-500 dark:border-red-800'
               : 'border-gray-300 dark:border-gray-600'
           }`}
         />
@@ -245,7 +344,7 @@ const { error: insertError } = await supabase
 
       {/* Image Upload */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="image-upload" className="block text-sm font-medium mb-1">
           Image
         </label>
         <div className="flex items-center space-x-4">
@@ -267,6 +366,7 @@ const { error: insertError } = await supabase
           </button>
         </div>
         <input
+          id="image-upload"
           ref={fileInputRef}
           type="file"
           accept="image/*"
@@ -288,6 +388,7 @@ const { error: insertError } = await supabase
                 setImagePreview(null);
               }}
               className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+              aria-label="Remove image"
             >
               <X size={14} />
             </button>
@@ -297,7 +398,7 @@ const { error: insertError } = await supabase
 
       {/* Audio Upload/Recording */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="audio-upload" className="block text-sm font-medium mb-1">
           Audio
         </label>
         <div className="flex items-center space-x-4">
@@ -327,6 +428,7 @@ const { error: insertError } = await supabase
           </button>
         </div>
         <input
+          id="audio-upload"
           ref={audioInputRef}
           type="file"
           accept="audio/*"
@@ -342,6 +444,7 @@ const { error: insertError } = await supabase
               type="button"
               onClick={() => setAudioFile(null)}
               className="ml-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+              aria-label="Remove audio"
             >
               <X size={14} />
             </button>
@@ -351,10 +454,11 @@ const { error: insertError } = await supabase
 
       {/* Tags */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="tags-input" className="block text-sm font-medium mb-1">
           Tags
         </label>
         <input
+          id="tags-input"
           type="text"
           value={tagInput}
           onChange={(e) => setTagInput(e.target.value)}
@@ -374,6 +478,7 @@ const { error: insertError } = await supabase
                   type="button"
                   onClick={() => removeTag(tag)}
                   className="ml-1 hover:text-emerald-600"
+                  aria-label={`Remove tag ${tag}`}
                 >
                   <X size={14} />
                 </button>
@@ -412,5 +517,3 @@ const { error: insertError } = await supabase
 };
 
 export default FlashcardForm;
-
-

@@ -54,4 +54,4 @@ export interface Letter {
   audio_url?: string;
 }
 
-
+export type { Letter as AlphabetLetter }; // Export Letter as AlphabetLetter for compatibility

@@ -85,16 +85,7 @@ const StudySession: React.FC = () => {
           card:cards!reviews_card_fk (
             id,
             fields,
-            audio_url,
-            english,
-            arabic,
-            transliteration,
-            image_url,
-            tags,
-            type,
-            layout,
-            metadata,
-            review_stats_id
+            audio_url
           )
         `
         )
