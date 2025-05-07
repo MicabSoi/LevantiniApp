@@ -17,7 +17,7 @@ export function useFlashcards(deckId: string | null) {
     async function fetchFlashcards() {
       try {
         const { data, error } = await supabase
-          .from('flashcards')
+          .from('cards')
           .select('*')
           .eq('deck_id', deckId)
           .order('created_at', { ascending: true });
@@ -37,7 +37,7 @@ export function useFlashcards(deckId: string | null) {
   const addFlashcard = async (flashcard: Omit<Flashcard, 'id'>) => {
     try {
       const { data, error } = await supabase
-        .from('flashcards')
+        .from('cards')
         .insert(flashcard)
         .select()
         .single();
@@ -54,7 +54,7 @@ export function useFlashcards(deckId: string | null) {
   const updateFlashcard = async (id: string, updates: Partial<Flashcard>) => {
     try {
       const { error } = await supabase
-        .from('flashcards')
+        .from('cards')
         .update(updates)
         .eq('id', id);
 
@@ -72,7 +72,7 @@ export function useFlashcards(deckId: string | null) {
   const deleteFlashcard = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('flashcards')
+        .from('cards')
         .delete()
         .eq('id', id);
 
@@ -94,5 +94,3 @@ export function useFlashcards(deckId: string | null) {
     deleteFlashcard,
   };
 }
-
-

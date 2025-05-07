@@ -25,7 +25,7 @@ const FlashcardDetail: React.FC = () => {
     const fetchFlashcard = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from('flashcards')
+        .from('cards')
         .select('*')
         .eq('id', id)
         .single();
@@ -127,6 +127,3 @@ const FlashcardDetail: React.FC = () => {
 };
 
 export default FlashcardDetail;
-
-
-
