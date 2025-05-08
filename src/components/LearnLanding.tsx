@@ -65,7 +65,7 @@ const LearnLanding: React.FC<LearnLandingProps> = ({ setSubTab }) => {
 
       {/* Supplementary Materials Section */}
       <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-        Supplementary Materials
+        Materials
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
         {supplementaryOptions.map((option) => (

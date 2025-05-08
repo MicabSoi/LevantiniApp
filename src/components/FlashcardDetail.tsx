@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Volume2 } from 'lucide-react'; // Added Volume2
 import { useNavigate } from 'react-router-dom';
 
 interface Flashcard {
@@ -12,38 +12,65 @@ interface Flashcard {
   image_url?: string;
   audio_url?: string;
   tags?: string[];
+  deck_id: string; // Assuming cards table has deck_id
+}
+
+interface Deck {
+  id: string;
+  name: string;
+  description: string;
+  emoji?: string;
 }
 
 const FlashcardDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const [flashcard, setFlashcard] = useState<Flashcard | null>(null);
+  const { id: deckId } = useParams<{ id: string }>(); // Get deckId from URL
+  const [deck, setDeck] = useState<Deck | null>(null); // State for deck details
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]); // State for flashcards
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchFlashcard = async () => {
+    const fetchDeckAndFlashcards = async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      setError(null); // Clear previous errors
+
+      // Fetch deck details
+      const { data: deckData, error: deckError } = await supabase
+        .from('decks')
+        .select('*')
+        .eq('id', deckId)
+        .single();
+
+      if (deckError) {
+        setError(deckError.message);
+        setLoading(false);
+        return;
+      }
+      setDeck(deckData as Deck);
+
+      // Fetch flashcards for the deck
+      const { data: flashcardsData, error: flashcardsError } = await supabase
         .from('cards')
         .select('*')
-        .eq('id', id)
-        .single();
-      if (error) {
-        setError(error.message);
+        .eq('deck_id', deckId);
+
+      if (flashcardsError) {
+        setError(flashcardsError.message);
       } else {
-        setFlashcard(data as Flashcard);
+        setFlashcards(flashcardsData as Flashcard[]);
       }
+
       setLoading(false);
     };
 
-    if (id) fetchFlashcard();
-  }, [id]);
+    if (deckId) fetchDeckAndFlashcards();
+  }, [deckId]);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center py-10">
-        <Loader2 size={40} />
+        <Loader2 size={40} className="animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -52,76 +79,95 @@ const FlashcardDetail: React.FC = () => {
     return <div className="text-red-600 p-4">{error}</div>;
   }
 
-  if (!flashcard) {
+  if (!deck) {
     return (
-      <div className="p-4 text-gray-900 dark:text-white">
-        Flashcard not found.
-      </div>
+      <div className="p-4 text-gray-900 dark:text-white">Deck not found.</div>
     );
   }
 
   return (
     <div className="p-4 text-gray-900 dark:text-white">
       <button
-        onClick={() => navigate('/')} // or navigate('/flashcards') if your decks page is at a different route
+        onClick={() => navigate('/')} // Navigate back to the main decks list
         className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
       >
-        ← Back to Deck
+        ← Back to Flashcard Decks
       </button>
 
-      <div className="max-w-2xl mx-auto bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 overflow-hidden">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold mb-4">{flashcard.english}</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        {deck.emoji} {deck.name}
+      </h1>
+      <p className="text-gray-600 dark:text-gray-300 mb-8">
+        {deck.description}
+      </p>
 
-          {flashcard.image_url && (
-            <div className="mb-6">
-              <img
-                crossOrigin="anonymous"
-                src={flashcard.image_url}
-                alt="Flashcard"
-                className="w-full rounded-lg"
-              />
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div className="bg-gray-50 dark:bg-dark-100 p-4 rounded-lg">
-              <h2 className="font-bold text-lg mb-2">Arabic</h2>
-              <p className="text-2xl">{flashcard.arabic}</p>
-            </div>
-
-            {flashcard.transliteration && (
-              <div className="bg-gray-50 dark:bg-dark-100 p-4 rounded-lg">
-                <h2 className="font-bold text-lg mb-2">Transliteration</h2>
-                <p className="text-lg">{flashcard.transliteration}</p>
-              </div>
-            )}
-
-            {flashcard.audio_url && (
-              <div className="bg-gray-50 dark:bg-dark-100 p-4 rounded-lg">
-                <h2 className="font-bold text-lg mb-2">Pronunciation</h2>
-                <audio controls className="w-full">
-                  <source src={flashcard.audio_url} />
-                  Your browser does not support the audio element.
-                </audio>
-              </div>
-            )}
-
-            {flashcard.tags && flashcard.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {flashcard.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 rounded-full text-sm"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+      {flashcards.length === 0 ? (
+        <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+          No flashcards in this deck yet.
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {flashcards.map((card) => (
+            <div
+              key={card.id}
+              className="relative p-4 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer"
+              onClick={() => navigate(`/flashcard/${deckId}/${card.id}`)}
+            >
+              <div className="flex">
+                {/* Display card image thumbnail if available */}
+                {card.image_url ? (
+                  <img
+                    crossOrigin="anonymous" // Add crossOrigin for images from external sources
+                    src={card.image_url}
+                    alt="Thumbnail"
+                    className="object-cover rounded-md h-16 w-16 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-md h-16 w-16">
+                    <span className="text-gray-400 dark:text-gray-500 text-sm text-center">
+                      No Image
+                    </span>
+                  </div>
+                )}
+                <div className="ml-4 flex flex-col justify-center flex-grow">
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
+                    {card.english}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                    {card.arabic}
+                  </p>
+                  {card.transliteration && (
+                    <p className="text-sm italic text-gray-500 dark:text-gray-400 truncate">
+                      {card.transliteration}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {/* Display tags if available */}
+              {card.tags && card.tags.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Tags: {card.tags.join(', ')}
+                  </p>
+                </div>
+              )}
+              {/* Audio Play Button */}
+              {card.audio_url && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    new Audio(card.audio_url!).play();
+                  }}
+                  className="absolute top-2 right-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
+                  aria-label="Play audio"
+                >
+                  <Volume2 size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

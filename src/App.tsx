@@ -11,6 +11,7 @@ import { useSupabase } from './context/SupabaseContext';
 import Auth from './components/Auth';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import FlashcardDetail from './components/FlashcardDetail';
+import SingleFlashcardView from './components/SingleFlashcardView'; // Import SingleFlashcardView
 import StudySession from './components/StudySession';
 
 // Main components
@@ -157,6 +158,7 @@ function App() {
           <main className="container mx-auto p-4 max-w-4xl mt-14 flex-grow">
             <Routes>
               <Route path="/flashcard/:id" element={<FlashcardDetail />} />
+              <Route path="/flashcard/:deckId/:cardId" element={<SingleFlashcardView />} />
               <Route path="/schedule" element={<ReviewCalendar />} />
               <Route path="/study" element={<StudySelection />} />
               <Route path="/study/run" element={<StudySession />} />
@@ -356,7 +358,7 @@ function App() {
                     setHomeSubTab('dashboard');
                   }}
                 >
-                  <button className="w-24 py-3 flex flex-col items-center">
+                  <button className="w-20 py-3 flex flex-col items-center">
                     <Home size={22} />
                     <span className="text-xs mt-1">Home</span>
                   </button>
@@ -374,7 +376,7 @@ function App() {
                     setSelectedTopic(null);
                   }}
                 >
-                  <button className="w-24 py-3 flex flex-col items-center">
+                  <button className="w-20 py-3 flex flex-col items-center">
                     <GraduationCap size={22} />
                     <span className="text-xs mt-1">Learn</span>
                   </button>
@@ -392,7 +394,7 @@ function App() {
                     setWordBankSubTab('add words');
                   }}
                 >
-                  <button className="w-24 py-3 flex flex-col items-center">
+                  <button className="w-20 py-3 flex flex-col items-center">
                     <LibraryBig size={22} />
                     <span className="text-xs mt-1">Vocabulary</span>
                   </button>
@@ -409,7 +411,7 @@ function App() {
                     setSubTab('landing');
                   }}
                 >
-                  <button className="w-24 py-3 flex flex-col items-center">
+                  <button className="w-20 py-3 flex flex-col items-center">
                     <Languages size={22} />
                     <span className="text-xs mt-1">Fluency</span>
                   </button>
