@@ -8,10 +8,13 @@ import {
   Plus,
   Volume2,
   Loader2,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import FlashcardForm from './FlashcardForm';
 import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
+import { CreateDeckModal } from './CreateDeckModal'; // Import CreateDeckModal as a named import
 
 // Define types for flashcards and decks
 interface Flashcard {
@@ -109,6 +112,9 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [editedDeckDescription, setEditedDeckDescription] = useState('');
   const [editedDeckEmoji, setEditedDeckEmoji] = useState('');
 
+  // State for Create New Flashcard Modal
+  const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
+  const [currentDeckIdForFlashcard, setCurrentDeckIdForFlashcard] = useState<string | null>(null);
 
   // Load user's decks from Supabase
   const loadUserDecks = async () => {
@@ -227,6 +233,32 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     }
   };
 
+  // Handler for creating a new flashcard in a specific deck
+  const handleCreateFlashcardInDeck = (deckId: string) => {
+    setCurrentDeckIdForFlashcard(deckId);
+    setIsCreatingFlashcard(true);
+  };
+
+  // Handler for closing the flashcard form modal
+  const handleCloseFlashcardForm = () => {
+    setIsCreatingFlashcard(false);
+    setCurrentDeckIdForFlashcard(null);
+    loadUserDecks(); // Refresh decks to show new flashcard count (optional, could optimize later)
+  };
+
+  // Handler for selecting a deck (e.g., to view its cards)
+  const handleSelectDeck = (deckId: string) => {
+    // Navigate to a route that shows the cards for this deck
+    navigate(`/decks/${deckId}`);
+  };
+
+  // Handler for closing the new deck modal
+  const handleCloseNewDeckModal = () => {
+    setIsCreatingNewDeck(false);
+    setNewDeckName('');
+    setNewDeckDescription('');
+    setError(null); // Clear error when canceling
+  };
 
   return (
     <div className="p-4">
@@ -296,9 +328,22 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 {deck.description}
               </p>
               <div className="flex justify-end mt-4">
+                {/* ADDED: Add New Flashcard Button */}
+                <button
+                  className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 mr-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent navigating to deck detail
+                    handleCreateFlashcardInDeck(deck.id);
+                  }}
+                  title="Add New Flashcard"
+                >
+                  <Plus size={18} />
+                </button>
+                {/* END ADDED */}
+
                 {/* Edit Button */}
                 <button
-                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-600 mr-2"
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 mr-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent navigating to deck detail
                     setDeckToEdit(deck);
@@ -308,23 +353,43 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                     setShowEditModal(true);
                   }}
                 >
-                  Edit
+                  <Edit2 size={18} />
                 </button>
                 {/* Delete Button */}
                 <button
-                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600"
+                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent navigating to deck detail
                     setDeckToDelete(deck);
                     setShowDeleteConfirm(true);
                   }}
                 >
-                  Delete
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Create New Deck Modal */}
+      {isCreatingNewDeck && (
+        <CreateDeckModal
+          onClose={handleCloseNewDeckModal}
+          onSubmit={handleSaveNewDeck}
+        />
+      )}
+
+      {/* Create New Flashcard Modal */}
+      {isCreatingFlashcard && currentDeckIdForFlashcard && (
+        <FlashcardForm
+          deckId={currentDeckIdForFlashcard}
+          onClose={handleCloseFlashcardForm}
+          onSubmit={() => {
+            // Handle flashcard submission logic here (already done within FlashcardForm)
+            handleCloseFlashcardForm(); // Close modal after submission
+          }}
+        />
       )}
 
       {/* Delete Confirmation Modal */}
@@ -370,7 +435,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 id="editedDeckName"
                 value={editedDeckName}
                 onChange={(e) => setEditedDeckName(e.target.value)}
-                className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
+                className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
                 required
                 placeholder="e.g. Arabic Verbs"
               />
@@ -384,7 +449,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 id="editedDeckDescription"
                 value={editedDeckDescription}
                 onChange={(e) => setEditedDeckDescription(e.target.value)}
-                className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
+                className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
                 placeholder="e.g. Common verbs and their conjugations"
               />
             </div>
@@ -397,7 +462,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 id="editedDeckEmoji"
                 value={editedDeckEmoji}
                 onChange={(e) => setEditedDeckEmoji(e.target.value)}
-                className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
+                className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
                 placeholder="e.g. 📚"
               />
             </div>
@@ -421,60 +486,6 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 Save Changes
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* Form for creating a new deck (shown when isCreatingNewDeck is true) */}
-      {isCreatingNewDeck && (
-        <div className="mb-4 p-4 border rounded-md mt-4 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
-          <h3 className="font-bold mb-2 text-gray-900 dark:text-gray-100">
-            New Deck
-          </h3>
-          <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-300">
-              Name
-            </label>
-            <input
-              type="text"
-              value={newDeckName}
-              onChange={(e) => setNewDeckName(e.target.value)}
-              className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
-              required // Make name required
-              placeholder="e.g. Arabic Verbs"
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-300">
-              Description
-            </label>
-            <input
-              type="text"
-              value={newDeckDescription}
-              onChange={(e) => setNewDeckDescription(e.target.value)}
-              className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
-              placeholder="e.g. Common verbs and their conjugations"
-            />
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={handleSaveNewDeck}
-              className="bg-emerald-500 text-white px-4 py-2 rounded-md hover:bg-emerald-600"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setIsCreatingNewDeck(false);
-                setNewDeckName('');
-                setNewDeckDescription('');
-                setError(null); // Clear error when canceling
-              }}
-              className="bg-gray-300 dark:bg-gray-700 text-black dark:text-white px-4 py-2 rounded-md hover:bg-gray-400 dark:hover:bg-gray-600"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       )}

@@ -8,9 +8,10 @@ import { useNavigate } from 'react-router-dom'; // Make sure useNavigate is impo
 interface DeckListProps {
   onSelectDeck: (deckId: string) => void;
   onCreateDeck: () => void;
+  onCreateFlashcardInDeck: (deckId: string) => void;
 }
 
-const DeckList: React.FC<DeckListProps> = ({ onSelectDeck, onCreateDeck }) => {
+const DeckList: React.FC<DeckListProps> = ({ onSelectDeck, onCreateDeck, onCreateFlashcardInDeck }) => {
   const { user } = useSupabase();
   const { decks, loading, error, archiveDeck } = useDecks(user);
   const navigate = useNavigate(); // Initialize the navigate function
@@ -85,6 +86,13 @@ const DeckList: React.FC<DeckListProps> = ({ onSelectDeck, onCreateDeck }) => {
                     title="View Deck"
                   >
                     <BookOpen size={18} />
+                  </button>
+                  <button
+                    onClick={() => onCreateFlashcardInDeck(deck.id)}
+                    className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                    title="Create New Flashcard"
+                  >
+                    <Plus size={18} />
                   </button>
                   <button
                     onClick={() => {

@@ -8,7 +8,7 @@ interface CreateDeckModalProps {
 
 const EMOJI_OPTIONS = ['📚', '✏️', '🎯', '🌟', '💡', '🔤', '📝', '🎨', '🎵', '🌍'];
 
-const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSubmit }) => {
+export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSubmit }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState('📚');
@@ -103,4 +103,4 @@ const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSubmit }) 
   );
 }
 
-
+
