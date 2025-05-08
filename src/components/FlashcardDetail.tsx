@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2, Volume2, Edit2, Trash2 } from 'lucide-react'; // Added Edit2 and Trash2
+import { Loader2, Volume2, Edit2, Trash2, XCircle } from 'lucide-react'; // Added Edit2, Trash2, and XCircle
 import { useNavigate } from 'react-router-dom';
 import FlashcardForm from './FlashcardForm'; // Import FlashcardForm
 import { Plus } from 'lucide-react'; // Import Plus icon
@@ -44,6 +44,9 @@ const FlashcardDetail: React.FC = () => {
   // State for Create New Flashcard Modal
   const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
 
+  // ADDED: State for search term
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Fetch deck details and flashcards
   const fetchDeckAndFlashcards = async () => {
     setLoading(true);
@@ -81,6 +84,14 @@ const FlashcardDetail: React.FC = () => {
   useEffect(() => {
     if (deckId) fetchDeckAndFlashcards();
   }, [deckId]);
+
+  // ADDED: Filter flashcards based on search term
+  const filteredFlashcards = flashcards.filter(card =>
+    card.english.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    card.arabic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (card.transliteration && card.transliteration.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (card.tags && card.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+  );
 
   // Handler to open edit modal and set data
   const handleEditFlashcardClick = (card: Flashcard) => {
@@ -214,28 +225,50 @@ const FlashcardDetail: React.FC = () => {
         {deck.description}
       </p>
 
+      {/* Search Bar for Flashcards with Clear Button */}
+      <div className="relative mb-4">
+        <input
+          type="text"
+          placeholder="Search flashcards..."
+          className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700 pr-10" // Added pr-10 for padding
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        {searchTerm && (
+          <button
+            className="absolute inset-y-0 right-0 flex items-center pr-3 focus:outline-none"
+            onClick={() => setSearchTerm('')}
+            aria-label="Clear search"
+          >
+            <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
+          </button>
+        )}
+      </div>
+      {/* END Search Bar for Flashcards with Clear Button */}
+
       {/* Button to add new flashcard */}
       {deckId && (
         <button
           onClick={handleCreateFlashcardClick}
-          className="mb-4 w-full p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center justify-center"
+          className="mb-4 w-full p-5 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center justify-center"
         >
-          <Plus size={20} className="mr-2" />
+          <Plus size={24} className="mr-2" />
           Add New Flashcard
         </button>
       )}
 
-      {flashcards.length === 0 ? (
+      {/* Display list of flashcards */}
+      {filteredFlashcards.length === 0 ? (
         <div className="text-center text-gray-500 dark:text-gray-400 py-8">
           No flashcards in this deck yet.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {flashcards.map((card) => (
+          {filteredFlashcards.map((card) => (
             <div
               key={card.id}
-              className="relative p-4 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-              onClick={() => navigate(`/flashcard/${deckId}/${card.id}`)} // Keep navigation on card click
+              className="relative p-6 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer"
+              onClick={() => navigate(`/flashcard/${deckId}/${card.id}`)}
             >
               {/* Edit and Delete Buttons */}
               <div className="absolute top-2 right-2 flex space-x-2 z-10">
@@ -244,20 +277,20 @@ const FlashcardDetail: React.FC = () => {
                     e.stopPropagation(); // Prevent card click navigation
                     handleEditFlashcardClick(card);
                   }}
-                  className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-2 rounded-md"
                   title="Edit Flashcard"
                 >
-                  <Edit2 size={16} />
+                  <Edit2 size={20} />
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent card click navigation
                     handleDeleteFlashcardClick(card);
                   }}
-                  className="text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-2 rounded-md"
                   title="Delete Flashcard"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={20} />
                 </button>
               </div>
 

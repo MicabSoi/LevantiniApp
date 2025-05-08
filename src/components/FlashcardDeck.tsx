@@ -10,6 +10,7 @@ import {
   Loader2,
   Edit2,
   Trash2,
+  XCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import FlashcardForm from './FlashcardForm';
@@ -19,6 +20,7 @@ import { CreateDeckModal } from './CreateDeckModal'; // Import CreateDeckModal a
 // Define types for flashcards and decks
 interface Flashcard {
   id: string;
+  deck_id: string;
   english: string;
   arabic: string;
   transliteration?: string;
@@ -100,6 +102,8 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [newDeckDescription, setNewDeckDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loadingDecks, setLoadingDecks] = useState(true); // Added loading state for decks
+  const [allFlashcards, setAllFlashcards] = useState<Flashcard[]>([]); // ADDED: State for all flashcards
+  const [loadingFlashcards, setLoadingFlashcards] = useState(false); // ADDED: State for loading flashcards
 
   const navigate = useNavigate();
 
@@ -116,6 +120,9 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
   const [currentDeckIdForFlashcard, setCurrentDeckIdForFlashcard] = useState<string | null>(null);
 
+  // ADDED: State for search term
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Load user's decks from Supabase
   const loadUserDecks = async () => {
     setLoadingDecks(true); // Start loading
@@ -125,9 +132,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       .order('created_at', { ascending: true });
     if (error) {
       console.error('Error loading decks:', error);
-      setError('Failed to load decks.'); // Set error state
+      setError(error.message);
     } else {
       setDecks(data as Deck[]);
+      // ADDED: Log fetched data
+      console.log('Fetched deck data:', data);
     }
     setLoadingDecks(false); // End loading
   };
@@ -135,6 +144,61 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   useEffect(() => {
     loadUserDecks();
   }, []);
+
+  // ADDED: Effect to load all flashcards after decks are loaded
+  useEffect(() => {
+    const loadAllFlashcards = async () => {
+      setLoadingFlashcards(true);
+      const { data, error } = await supabase
+        .from('cards') // Assuming flashcards are stored in a 'cards' table
+        .select('*'); // Fetch all flashcards
+
+      if (error) {
+        console.error('Error loading all flashcards:', error);
+        // Decide how to handle error, maybe show a message or just log
+      } else {
+        setAllFlashcards(data as Flashcard[]);
+        console.log('Fetched all flashcards:', data);
+      }
+      setLoadingFlashcards(false);
+    };
+
+    // Load flashcards only after decks are loaded initially
+    if (!loadingDecks && decks.length > 0) {
+       loadAllFlashcards();
+    } else if (!loadingDecks && decks.length === 0) {
+       // Handle case where there are no decks, maybe no flashcards either
+       setLoadingFlashcards(false);
+    }
+
+  }, [loadingDecks, decks]); // Depend on loadingDecks and decks state
+
+  // ADDED: Log decks after loading
+  useEffect(() => {
+    console.log('Loaded decks:', decks);
+  }, [decks]);
+
+  // ADDED: Filter decks based on search term (This will be updated)
+  const filteredDecks = decks.filter(deck =>
+    deck.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    deck.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // ADDED: Filter flashcards based on search term
+  const filteredFlashcards = allFlashcards.filter((card) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      card.english.toLowerCase().includes(term) ||
+      card.arabic.toLowerCase().includes(term) ||
+      (card.transliteration &&
+        card.transliteration.toLowerCase().includes(term)) ||
+      (card.tags && card.tags.join(' ').toLowerCase().includes(term)) ||
+      // Also include searching by deck name or description if the card has a deck_id
+      (card.deck_id && decks.some(deck => deck.id === card.deck_id &&
+         (deck.name.toLowerCase().includes(term) || deck.description.toLowerCase().includes(term))
+      ))
+    );
+  });
 
   // Function to handle saving a new deck
   const handleSaveNewDeck = async () => {
@@ -275,6 +339,27 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
       <h2 className="text-xl font-bold mb-6">Flashcard Decks</h2>
 
+      {/* Search Bar with Clear Button */}
+      <div className="relative mb-4">
+        <input
+          type="text"
+          placeholder="Search flashcards..."
+          className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700 pr-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        {searchTerm && (
+          <button
+            className="absolute inset-y-0 right-0 flex items-center pr-3 focus:outline-none"
+            onClick={() => setSearchTerm('')}
+            aria-label="Clear search"
+          >
+            <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
+          </button>
+        )}
+      </div>
+      {/* END Search Bar with Clear Button */}
+
       {error && (
         <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-md">
           {error}
@@ -300,76 +385,123 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
         Create New Deck
       </button>
 
-      {/* Display list of decks */}
-      {loadingDecks ? ( // Show loading indicator
-        <div className="flex items-center justify-center py-8">
-          {/* This is where Loader2 is used */}
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        </div>
-      ) : decks.length === 0 ? (
-        <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-          No decks yet. Create your first deck!
-        </div>
+      {/* Display list of decks OR filtered flashcards based on search term */}
+      {searchTerm ? (
+        // Display filtered flashcards if search term is present
+        loadingFlashcards ? (
+           <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          </div>
+        ) : filteredFlashcards.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredFlashcards
+              .sort((a, b) => a.english.localeCompare(b.english))
+              .map((card) => (
+              <div
+                key={card.id}
+                className="relative p-4 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all cursor-pointer"
+                 // Navigate to the single flashcard view, passing deckId and cardId
+                onClick={() => navigate(`/decks/${card.deck_id}/flashcard/${card.id}`)}
+              >
+                {/* Display flashcard front (english) and back (arabic) */}
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">{card.english}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{card.arabic}</p>
+                {card.transliteration && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">{card.transliteration}</p>
+                )}
+                {/* Optional: Display tags or other relevant info */}
+                {card.tags && card.tags.length > 0 && (
+                  <div className="mt-2">
+                    {card.tags.map(tag => (
+                      <span key={tag} className="inline-block bg-gray-200 dark:bg-gray-700 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-300 mr-2">{tag}</span>
+                    ))}
+                  </div>
+                )}
+                 {/* Display the name of the deck the card belongs to */}
+                 {card.deck_id && (
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Deck: {decks.find(deck => deck.id === card.deck_id)?.name || 'Unknown Deck'}
+                    </div>
+                 )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+            No flashcards match your search.
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {decks.map((deck) => (
-            <div
-              key={deck.id}
-              className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center mb-3" onClick={() => navigate(`/flashcard/${deck.id}`)}>
-                {getDeckIcon(deck.id)}{' '}
-                {/* Using helper function for icon */}
-                <h3 className="text-lg font-bold ml-2 text-gray-800 dark:text-white">
-                  {deck.name}
-                </h3>
-              </div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm" onClick={() => navigate(`/flashcard/${deck.id}`)}>
-                {deck.description}
-              </p>
-              <div className="flex justify-end mt-4">
-                {/* ADDED: Add New Flashcard Button */}
-                <button
-                  className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 mr-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent navigating to deck detail
-                    handleCreateFlashcardInDeck(deck.id);
-                  }}
-                  title="Add New Flashcard"
-                >
-                  <Plus size={18} />
-                </button>
-                {/* END ADDED */}
+        // Display filtered decks if no search term
+        loadingDecks ? ( // Show loading indicator for decks
+           <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          </div>
+        ) : filteredDecks.length === 0 ? (
+          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+            No decks yet. Create your first deck!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDecks.map((deck) => (
+              <div
+                key={deck.id}
+                className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center mb-3" onClick={() => navigate(`/flashcard/${deck.id}`)}>
+                  {getDeckIcon(deck.id)}{' '}
+                  {/* Using helper function for icon */}
+                  <h3 className="text-lg font-bold ml-2 text-gray-800 dark:text-white">
+                    {deck.name}
+                  </h3>
+                </div>
+                <p className="text-gray-600 dark:text-gray-300 text-sm" onClick={() => navigate(`/flashcard/${deck.id}`)}>
+                  {deck.description}
+                </p>
+                <div className="flex justify-end mt-4">
+                  {/* ADDED: Add New Flashcard Button */}
+                  <button
+                    className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 mr-2 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent navigating to deck detail
+                      handleCreateFlashcardInDeck(deck.id);
+                    }}
+                    title="Add New Flashcard"
+                  >
+                    <Plus size={24} />
+                  </button>
+                  {/* END ADDED */}
 
-                {/* Edit Button */}
-                <button
-                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 mr-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent navigating to deck detail
-                    setDeckToEdit(deck);
-                    setEditedDeckName(deck.name);
-                    setEditedDeckDescription(deck.description);
-                    setEditedDeckEmoji(deck.emoji || '');
-                    setShowEditModal(true);
-                  }}
-                >
-                  <Edit2 size={18} />
-                </button>
-                {/* Delete Button */}
-                <button
-                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent navigating to deck detail
-                    setDeckToDelete(deck);
-                    setShowDeleteConfirm(true);
-                  }}
-                >
-                  <Trash2 size={18} />
-                </button>
+                  {/* Edit Button */}
+                  <button
+                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 mr-2 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent navigating to deck detail
+                      setDeckToEdit(deck);
+                      setEditedDeckName(deck.name);
+                      setEditedDeckDescription(deck.description);
+                      setEditedDeckEmoji(deck.emoji || '');
+                      setShowEditModal(true);
+                    }}
+                  >
+                    <Edit2 size={24} />
+                  </button>
+                  {/* Delete Button */}
+                  <button
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent navigating to deck detail
+                      setDeckToDelete(deck);
+                      setShowDeleteConfirm(true);
+                    }}
+                  >
+                    <Trash2 size={24} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* Create New Deck Modal */}
@@ -455,7 +587,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
             </div>
              <div className="mb-4">
               <label htmlFor="editedDeckEmoji" className="block text-sm font-medium text-gray-900 dark:text-gray-300">
-                Emoji
+                Icon
               </label>
               <input
                 type="text"
