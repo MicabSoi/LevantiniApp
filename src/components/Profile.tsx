@@ -35,7 +35,7 @@ const Profile = () => {
                 <span>{userProfile.country}</span>
               </div>
               <div className="flex items-center mt-2">
-                <Star size={16} className="text-yellow-400 mr-1" />
+                <Star size={16} className="text-emerald-400 mr-1" />
                 <span className="font-medium">Level {userProfile.level}</span>
               </div>
             </div>
@@ -92,4 +92,4 @@ const Profile = () => {
 
 export default Profile;
 
-
+

@@ -127,7 +127,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               // Change label from 'Quality' to 'Review Rating'
               let hotkeyName = key.replace(/([A-Z])/g, ' $1').trim();
               if (hotkeyName.startsWith('quality')) {
-                hotkeyName = hotkeyName.replace('quality', 'Review Rating');
+                // Extract the number, increment it, and replace 'qualityX' with 'Review Rating Y'
+                const qualityMatch = hotkeyName.match(/^quality(\d+)$/);
+                if (qualityMatch && qualityMatch[1]) {
+                  const qualityNumber = parseInt(qualityMatch[1], 10) + 1;
+                  hotkeyName = `Review Rating ${qualityNumber}`;
+                } else {
+                   // Fallback if regex doesn't match as expected
+                   hotkeyName = hotkeyName.replace('quality', 'Review Rating');
+                }
               }
               // Show 'spacebar' if the value is a space character
               const displayValue = hotkeySettings[key as keyof HotkeySettings] === ' '

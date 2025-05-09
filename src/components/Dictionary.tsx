@@ -136,11 +136,11 @@ const Dictionary: React.FC<DictionaryProps> = ({
                   >
                     <Star
                       size={20}
-                      className={
+                      className={`cursor-pointer ${
                         favorites.includes(item.id)
-                          ? 'fill-yellow-400 text-yellow-400'
-                          : 'text-gray-300'
-                      }
+                          ? 'fill-emerald-400 text-emerald-400'
+                          : 'text-gray-400'
+                      }`}
                     />
                   </button>
                   <button

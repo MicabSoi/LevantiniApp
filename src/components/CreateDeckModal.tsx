@@ -74,7 +74,7 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
                   }
                 }}
                 placeholder="Enter your own icon (emoji or character)"
-                className={`w-32 p-2 border rounded-lg text-base text-center bg-white dark:bg-dark-300 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 ${usingCustom ? 'border-emerald-500' : 'border-gray-300 dark:border-dark-100'}`}
+                className={`w-32 p-2 border rounded-lg text-base text-center bg-white dark:bg-dark-300 text-gray-900 dark:text-white focus:outline-none focus:border-black dark:focus:border-white ${usingCustom ? 'border-emerald-500' : 'border-gray-300 dark:border-dark-100'}`}
                 onFocus={() => setUsingCustom(true)}
               />
               <button
@@ -105,7 +105,7 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full p-2 border border-gray-300 dark:border-dark-100 dark:bg-dark-300 rounded-lg"
+              className="w-full p-2 border border-gray-300 dark:border-dark-100 dark:bg-dark-300 rounded-lg focus:outline-none focus:border-black dark:focus:border-white"
               placeholder="Enter deck name"
               required
             />
@@ -118,7 +118,7 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-2 border border-gray-300 dark:border-dark-100 dark:bg-dark-300 rounded-lg"
+              className="w-full p-2 border border-gray-300 dark:border-dark-100 dark:bg-dark-300 rounded-lg focus:outline-none focus:border-black dark:focus:border-white"
               placeholder="Enter deck description"
               rows={3}
               required

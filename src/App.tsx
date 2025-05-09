@@ -6,6 +6,7 @@ import {
   Languages,
   User,
   Star,
+  Lightbulb,
 } from 'lucide-react';
 import { useSupabase } from './context/SupabaseContext';
 import Auth from './components/Auth';
@@ -130,10 +131,10 @@ function App() {
         {/* Wrap everything inside this */}
         <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-dark-300">
           {/* Sticky Header */}
-          <header className="fixed top-0 left-0 right-0 z-50 bg-emerald-600 dark:bg-dark-100 text-white px-4 py-2 shadow-md dark:shadow-black/20">
+          <header className="fixed top-0 left-0 right-0 z-50 bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-1 sm:px-4 sm:py-2 shadow-md dark:shadow-black/20">
             <div className="container mx-auto max-w-4xl flex justify-between items-center">
               {/* Left: Title */}
-              <h1 className="text-2xl font-bold">Levantini</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">Levantini</h1>
 
               {/* Center: Dark Mode Toggle */}
               <button
@@ -144,30 +145,32 @@ function App() {
                     return newMode;
                   });
                 }}
-                className="px-4 py-2 rounded-full bg-emerald-700 dark:bg-dark-200 hover:bg-emerald-800 dark:hover:bg-dark-300 transition-colors"
+                className="p-2 rounded-full bg-emerald-700 dark:bg-emerald-800 hover:bg-emerald-800 dark:hover:bg-emerald-900 transition-colors"
                 aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
-                {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                {isDarkMode ? (
+                  <Lightbulb size={18} className="text-emerald-400 fill-current" />
+                ) : (
+                  <Lightbulb size={18} className="text-gray-300" />
+                )}
               </button>
 
               {/* Right: User Info */}
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center bg-emerald-700 dark:bg-dark-200 px-3 py-1 rounded-full">
-                  <span className="text-yellow-400 font-bold mr-1">
-                    Lvl {userLevel}
-                  </span>
-                  <Star size={16} className="text-yellow-400" />
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className="flex items-center bg-emerald-700 dark:bg-emerald-800 px-2 py-0.5 rounded-full text-xs sm:text-sm">
+                  <span className="text-yellow-400 font-bold mr-1">Lvl {userLevel}</span>
+                  <Star size={14} className="text-yellow-400" />
                 </div>
                 <button
                   onClick={() => {
                     setActiveTab('home');
                     setHomeSubTab('profile');
                   }}
-                  className="w-8 h-8 bg-emerald-700 dark:bg-dark-200 rounded-full flex items-center justify-center hover:bg-emerald-800 dark:hover:bg-dark-300 transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 bg-emerald-700 dark:bg-emerald-800 rounded-full flex items-center justify-center hover:bg-emerald-800 dark:hover:bg-emerald-900 transition-colors"
                   title="View Profile"
                 >
-                  <User size={18} />
+                  <User size={15} />
                 </button>
               </div>
             </div>
@@ -186,31 +189,69 @@ function App() {
                 element={
                   <div className="bg-white dark:bg-dark-200 rounded-lg shadow-md mb-20 dark:text-gray-100 dark:shadow-black/10">
                     {activeTab === 'home' && (
-                      <div>
-                        <div className="relative">
-                          <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-dark-100 overflow-x-auto whitespace-nowrap pb-2 scrollbar-hide smooth-scroll scroll-bounce scroll-fade">
-                            {[
-                              'dashboard',
-                              'settings',
-                              'profile',
-                              'progress',
-                            ].map((tab) => (
-                              <button
-                                key={tab}
-                                onClick={() => setHomeSubTab(tab)}
-                                className={`px-4 py-2 ${
-                                  homeSubTab === tab
-                                    ? 'text-emerald-600 border-b-2 border-emerald-600'
-                                    : 'text-gray-600 dark:text-gray-400'
-                                }`}
-                                aria-label={`Switch to ${tab.charAt(0).toUpperCase() + tab.slice(1)} tab`} // Added aria-label for accessibility
-                              >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                              </button>
-                            ))}
+                      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4">
+                        {/* Welcome and Quick Stats */}
+                        <div className="w-full flex flex-col items-center mb-8">
+                          <h2 className="text-2xl font-bold mb-2 text-emerald-700 dark:text-emerald-300 text-center">Progress</h2>
+                          <div className="flex flex-wrap justify-center gap-4 mt-2">
+                            <div className="flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                              <Star size={18} className="text-emerald-600 mr-2" />
+                              <span className="font-semibold text-emerald-800 dark:text-emerald-200">Level {userLevel}</span>
+                            </div>
+                            <div className="flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                              <span className="font-semibold text-emerald-700 dark:text-emerald-200 mr-2">🔥</span>
+                              <span className="font-semibold text-emerald-700 dark:text-emerald-200">Streak: 5 days</span>
+                            </div>
+                            {/* Add more quick stats as needed */}
                           </div>
                         </div>
-                        <div className="p-4">
+
+                        {/* Grid of Home Options */}
+                        <div className="w-full max-w-md grid grid-cols-2 gap-4 mb-8">
+                          {[
+                            {
+                              id: 'dashboard',
+                              label: 'Dashboard',
+                              description: 'Your learning overview',
+                              icon: <Home size={28} className="text-emerald-600 mb-2 mx-auto" />,
+                            },
+                            {
+                              id: 'progress',
+                              label: 'Progress',
+                              description: 'Track your achievements and stats',
+                              icon: <Star size={28} className="text-emerald-600 mb-2 mx-auto" />,
+                            },
+                            {
+                              id: 'profile',
+                              label: 'Profile',
+                              description: 'Manage your personal information',
+                              icon: <User size={28} className="text-emerald-600 mb-2 mx-auto" />,
+                            },
+                            {
+                              id: 'settings',
+                              label: 'Settings',
+                              description: 'Configure app settings',
+                              icon: <GraduationCap size={28} className="text-emerald-600 mb-2 mx-auto" />,
+                            },
+                          ].map((option) => (
+                            <div
+                              key={option.id}
+                              onClick={() => setHomeSubTab(option.id)}
+                              className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 flex flex-col items-center text-center"
+                            >
+                              {option.icon}
+                              <h3 className="font-bold mb-1 text-gray-800 dark:text-gray-100">
+                                {option.label}
+                              </h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {option.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Render content based on selected sub-tab */}
+                        <div className="w-full">
                           {homeSubTab === 'dashboard' && (
                             <HomePage setActiveTab={setActiveTab} />
                           )}
@@ -257,8 +298,8 @@ function App() {
                         {wordBankSubTab === 'add words' && (
                           <VocabularyLanding setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
-                        {wordBankSubTab === 'flashcards' && (
-                          <FlashcardDeck setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
+                        {(wordBankSubTab === 'flashcards' || !wordBankSubTab) && (
+                           <FlashcardDeck setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'travel dictionary' && (
                           <Dictionary setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
@@ -408,14 +449,10 @@ function App() {
                       : 'text-gray-500 dark:text-gray-400'
                   }`}
                   onClick={() => {
+                    // Always navigate to the base vocabulary landing page
+                    setActiveTab('wordbank');
                     navigate('/');
-                    if (activeTab === 'wordbank') {
-                      setWordBankSubTab('add words');
-                      setLastWordBankSubTab('add words');
-                    } else {
-                      setActiveTab('wordbank');
-                      setWordBankSubTab(lastWordBankSubTab);
-                    }
+                    setWordBankSubTab('landing');
                   }}
                 >
                   <button className="w-20 py-3 flex flex-col items-center">

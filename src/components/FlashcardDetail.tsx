@@ -24,7 +24,11 @@ interface Deck {
   emoji?: string;
 }
 
-const FlashcardDetail: React.FC = () => {
+interface FlashcardDetailProps {
+  // Removed setLastViewedDeckId prop
+}
+
+const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   const { id: deckId } = useParams<{ id: string }>(); // Get deckId from URL
   const [deck, setDeck] = useState<Deck | null>(null); // State for deck details
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]); // State for flashcards
@@ -82,8 +86,17 @@ const FlashcardDetail: React.FC = () => {
   };
 
   useEffect(() => {
-    if (deckId) fetchDeckAndFlashcards();
-  }, [deckId]);
+    if (deckId) {
+      fetchDeckAndFlashcards();
+    }
+    // Cleanup function to clear the last viewed deck ID when leaving this component
+    return () => {
+      // This might not be needed if we only want to set it when entering.
+      // If we want to clear when leaving *this specific deck view* to go somewhere else *within* the vocab tab (e.g. a flashcard), that's more complex.
+      // For now, let's only set when entering this route.
+      // setLastViewedDeckId(null);
+    };
+  }, [deckId]); // Removed setLastViewedDeckId from dependencies
 
   // ADDED: Filter flashcards based on search term
   const filteredFlashcards = flashcards.filter(card =>
@@ -212,7 +225,9 @@ const FlashcardDetail: React.FC = () => {
   return (
     <div className="p-4 text-gray-900 dark:text-white">
       <button
-        onClick={() => navigate('/')} // Navigate back to the main decks list
+        onClick={() => {
+          navigate('/'); // Navigate back to the main decks list
+        }}
         className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
       >
         ← Back to Flashcard Decks

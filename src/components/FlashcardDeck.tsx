@@ -11,6 +11,7 @@ import {
   Edit2,
   Trash2,
   XCircle,
+  LibraryBig,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import FlashcardForm from './FlashcardForm';
@@ -90,11 +91,15 @@ const getDeckIcon = (deckId: string) => {
 interface FlashcardDeckProps {
   setActiveTab: (tab: string) => void;
   setWordBankSubTab: (tab: string) => void;
+  selectedDeckId?: string | null;
+  setSelectedDeckId?: (id: string | null) => void;
 }
 
 const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   setActiveTab,
   setWordBankSubTab,
+  selectedDeckId,
+  setSelectedDeckId,
 }) => {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [isCreatingNewDeck, setIsCreatingNewDeck] = useState(false); // State to show/hide new deck form
@@ -312,8 +317,10 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
   // Handler for selecting a deck (e.g., to view its cards)
   const handleSelectDeck = (deckId: string) => {
+    // Update parent state with the selected deck ID
+    if (setSelectedDeckId) setSelectedDeckId(deckId);
     // Navigate to a route that shows the cards for this deck
-    navigate(`/decks/${deckId}`);
+    navigate(`/flashcard/${deckId}`);
   };
 
   // Handler for closing the new deck modal
@@ -436,73 +443,40 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
           </div>
         )
       ) : (
-        // Display filtered decks if no search term
-        loadingDecks ? ( // Show loading indicator for decks
-           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          </div>
-        ) : filteredDecks.length === 0 ? (
-          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-            No decks yet. Create your first deck!
-          </div>
+        // Display filtered decks if no search term is present AND no specific deck is selected via prop
+        !selectedDeckId ? (
+          loadingDecks ? (
+            <div className="flex items-center justify-center py-8">
+             <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+           </div>
+          ) : filteredDecks.length === 0 ? (
+           <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+             No decks yet. Create your first deck!
+           </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {filteredDecks.map((deck) => (
+                <div
+                  key={deck.id}
+                  className="bg-white dark:bg-dark-200 rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow flex items-center"
+                  onClick={() => handleSelectDeck(deck.id)}
+                >
+                  {/* Render deck icon if available, otherwise a default */}
+                  {deck.emoji ? (
+                    <span className="text-2xl mr-4">{deck.emoji}</span>
+                  ) : (
+                    <LibraryBig size={24} className="text-emerald-600 mr-4" />
+                  )}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">{deck.name}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">{deck.cards?.length || 0} cards</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDecks.map((deck) => (
-              <div
-                key={deck.id}
-                className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer flex flex-col justify-between h-full"
-              >
-                <div className="flex items-center mb-3" onClick={() => navigate(`/flashcard/${deck.id}`)}>
-                  {getDeckIcon(deck.id)}{' '}
-                  {/* Using helper function for icon */}
-                  <h3 className="text-lg font-bold ml-2 text-gray-800 dark:text-white">
-                    {deck.name}
-                  </h3>
-                </div>
-                <p className="text-gray-600 dark:text-gray-300 text-sm" onClick={() => navigate(`/flashcard/${deck.id}`)}>
-                  {deck.description}
-                </p>
-                <div className="mt-auto pt-4 flex justify-center space-x-2">
-                  {/* Add New Flashcard Button */}
-                  <button
-                    className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCreateFlashcardInDeck(deck.id);
-                    }}
-                    title="Add New Flashcard"
-                  >
-                    <Plus size={24} />
-                  </button>
-                  {/* Edit Button */}
-                  <button
-                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeckToEdit(deck);
-                      setEditedDeckName(deck.name);
-                      setEditedDeckDescription(deck.description);
-                      setEditedDeckEmoji(deck.emoji || '');
-                      setShowEditModal(true);
-                    }}
-                  >
-                    <Edit2 size={24} />
-                  </button>
-                  {/* Delete Button */}
-                  <button
-                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeckToDelete(deck);
-                      setShowDeleteConfirm(true);
-                    }}
-                  >
-                    <Trash2 size={24} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          null // Render nothing in FlashcardDeck when a specific deck is selected.
         )
       )}
 

@@ -92,7 +92,7 @@ const TaskList: React.FC = () => {
             <span className={`
               px-2 py-1 rounded-full text-sm
               ${task.status === 'open' ? 'bg-green-100 text-green-800' : 
-                task.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+                task.status === 'assigned' ? 'bg-emerald-100 text-emerald-800' :
                 'bg-gray-100 text-gray-800'}
             `}>
               {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
@@ -140,4 +140,4 @@ const TaskList: React.FC = () => {
 
 export default TaskList;
 
-
+

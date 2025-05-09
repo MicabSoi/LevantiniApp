@@ -253,7 +253,7 @@ const { data: newCardData, error: insertError } = await supabase
               type="text"
               value={english}
               onChange={(e) => setEnglish(e.target.value)}
-              className={`w-full p-2 border rounded-lg dark:bg-dark-200 ${
+              className={`w-full p-2 border rounded-lg dark:bg-dark-200 focus:outline-none focus:border-black dark:focus:border-white ${
                 validationErrors.english
                   ? 'border-red-500 dark:border-red-800'
                   : 'border-gray-300 dark:border-gray-600'
@@ -277,7 +277,7 @@ const { data: newCardData, error: insertError } = await supabase
               value={arabic}
               onChange={(e) => setArabic(e.target.value)}
               dir="rtl"
-              className={`w-full p-2 border rounded-lg dark:bg-dark-200 ${
+              className={`w-full p-2 border rounded-lg dark:bg-dark-200 focus:outline-none focus:border-black dark:focus:border-white ${
                 validationErrors.translation
                   ? 'border-red-500 dark:border-red-800'
                   : 'border-gray-300 dark:border-gray-600'
@@ -295,7 +295,7 @@ const { data: newCardData, error: insertError } = await supabase
               type="text"
               value={transliteration}
               onChange={(e) => setTransliteration(e.target.value)}
-              className={`w-full p-2 border rounded-lg dark:bg-dark-200 ${
+              className={`w-full p-2 border rounded-lg dark:bg-dark-200 focus:outline-none focus:border-black dark:focus:border-white ${
                 validationErrors.translation
                   ? 'border-red-500 dark:border-red-800'
                   : 'border-gray-300 dark:border-gray-600'
@@ -430,7 +430,7 @@ const { data: newCardData, error: insertError } = await supabase
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleTagAdd}
               placeholder="Type and press Enter to add tags"
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-dark-200"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-dark-200 focus:outline-none focus:border-black dark:focus:border-white"
             />
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">

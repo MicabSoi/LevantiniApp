@@ -30,7 +30,7 @@ const Progress = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg">Current Level</h3>
           <div className="flex items-center">
-            <Star size={20} className="text-yellow-400 mr-2" />
+            <Star size={20} className="text-emerald-400 mr-2" />
             <span className="font-bold text-xl">Level {progressData.level}</span>
           </div>
         </div>
@@ -43,7 +43,7 @@ const Progress = () => {
             <span className="text-2xl font-bold">{progressData.totalXP}</span>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-            <div className="flex items-center text-blue-600 dark:text-blue-400 mb-2">
+            <div className="flex items-center text-emerald-600 dark:text-emerald-400 mb-2">
               <TrendingUp size={20} className="mr-2" />
               <span className="font-medium">Day Streak</span>
             </div>
@@ -77,14 +77,14 @@ const Progress = () => {
           <div>
             <div className="flex justify-between mb-2">
               <div className="flex items-center">
-                <GraduationCap size={18} className="mr-2 text-blue-600 dark:text-blue-400" />
+                <GraduationCap size={18} className="mr-2 text-emerald-600 dark:text-emerald-400" />
                 <span className="font-medium">Grammar Points Mastered</span>
               </div>
               <span>{progressData.grammarPoints}/{progressData.totalGrammarPoints}</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-dark-100 rounded-full h-2.5">
               <div 
-                className="bg-blue-600 h-2.5 rounded-full"
+                className="bg-emerald-600 h-2.5 rounded-full"
                 style={{ width: `${calculateProgress(progressData.grammarPoints, progressData.totalGrammarPoints)}%` }}
               ></div>
             </div>
@@ -121,7 +121,7 @@ const Progress = () => {
               </div>
               <div className="w-full bg-gray-200 dark:bg-dark-300 rounded-full h-2">
                 <div 
-                  className="bg-yellow-400 h-2 rounded-full"
+                  className="bg-emerald-400 h-2 rounded-full"
                   style={{ width: `${calculateProgress(achievement.progress, achievement.target)}%` }}
                 ></div>
               </div>
@@ -135,4 +135,4 @@ const Progress = () => {
 
 export default Progress;
 
-
+

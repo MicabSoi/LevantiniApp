@@ -51,11 +51,11 @@ const StudySelection: React.FC = () => {
           Study Session Setup
         </h2>
         <button
-          className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+          className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
           onClick={() => setIsSettingsModalOpen(true)}
           aria-label="Settings"
         >
-          <Settings size={24} />
+          <Settings size={28} />
         </button>
       </div>
 
@@ -63,19 +63,17 @@ const StudySelection: React.FC = () => {
         <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">
           Select Decks:
         </label>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-4">
           {decks.map((deck) => (
-            <label key={deck.id} className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={selectedDecks.has(deck.id)}
-                onChange={() => toggleDeck(deck.id)}
-                className="form-checkbox text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="text-gray-900 dark:text-gray-100">
+            <div
+              key={deck.id}
+              onClick={() => toggleDeck(deck.id)}
+              className={`p-3 border rounded-md cursor-pointer transition-colors ${selectedDecks.has(deck.id) ? "bg-emerald-100 dark:bg-emerald-800 border-emerald-500 dark:border-emerald-400" : "bg-white dark:bg-dark-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-200"}`}
+            >
+              <span className={`font-medium ${selectedDecks.has(deck.id) ? "text-emerald-800 dark:text-emerald-100" : "text-gray-900 dark:text-gray-100"}`}>
                 {deck.name}
               </span>
-            </label>
+            </div>
           ))}
         </div>
       </div>

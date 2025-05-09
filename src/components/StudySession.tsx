@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CardView, { CardViewHandle } from './CardView';
-import { AlertCircle, Settings } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon
-import SettingsModal, { loadHotkeys, HotkeySettings } from './SettingsModal'; // ADDED: Import SettingsModal and loadHotkeys
+import { AlertCircle, Settings, Loader2 } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon, ADDED: Loader2
+import SettingsModal, { loadHotkeys, HotkeySettings } from './SettingsModal'; // MODIFIED: Removed DEFAULT_HOTKEYS from import
 
 interface DueCard {
   id: string; // review id
@@ -40,6 +40,19 @@ interface DueCard {
   avg_response_time?: number;
 }
 
+// Define interface for hotkey settings structure if not imported
+// export interface HotkeySettings { ... }
+
+// Default hotkeys (can define locally or import if exported)
+const DEFAULT_HOTKEYS: HotkeySettings = {
+  undo: 'z',
+  next: ' ', // spacebar
+  quality0: '0',
+  quality1: '1',
+  quality2: '2',
+  quality3: '3',
+};
+
 const StudySession: React.FC = () => {
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -55,6 +68,7 @@ const StudySession: React.FC = () => {
   const [selectedQuality, setSelectedQuality] = useState<number | null>(null); // ADDED: State for selected quality
   const [showPostReviewButtons, setShowPostReviewButtons] = useState(false); // ADDED: State to show Undo/Next buttons
   const [showSettingsModal, setShowSettingsModal] = useState(false); // ADDED: State to control settings modal visibility
+  const [currentHotkeys, setCurrentHotkeys] = useState<HotkeySettings>(DEFAULT_HOTKEYS); // ADDED: State for hotkey settings, initialized with defaults
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
 
@@ -63,7 +77,7 @@ const StudySession: React.FC = () => {
   const dueThresholdTimestamp = useMemo(() => {
     console.log('Memoizing dueThresholdTimestamp'); // Debug log
     return new Date().toISOString();
-  }, [decks.join(','), count]); // Recalculate if decks or count change
+  }, [decks.join(','), count]);
 
   // 1) Fetch due cards on mount or when decks/count change
   useEffect(() => {
@@ -138,6 +152,16 @@ const StudySession: React.FC = () => {
     // even if they are memoized based on other dependencies listed.
     // This ensures the effect "sees" the correct, stable timestamp for the current parameters.
   }, [decks.join(','), count, dueThresholdTimestamp]); // Updated dependencies
+
+  // Add a useEffect to load hotkeys asynchronously on mount or when user changes (not implemented yet)
+  useEffect(() => {
+    const fetchHotkeys = async () => {
+      const settings = await loadHotkeys();
+      setCurrentHotkeys(settings);
+    };
+
+    fetchHotkeys();
+  }, []); // Empty dependency array means this runs once on mount
 
   // 2) Handle quality grading, run SM-2, update review
   const onQualitySelect = async (quality: number) => {
@@ -240,8 +264,7 @@ const StudySession: React.FC = () => {
 
   // Add a useEffect for hotkey listeners
   useEffect(() => {
-     const currentHotkeys = loadHotkeys(); // LOADED: Get current hotkeys from localStorage
-
+    // The handleKeyPress function now uses the currentHotkeys state
     const handleKeyPress = (event: KeyboardEvent) => {
       const key = event.key;
 
@@ -272,17 +295,20 @@ const StudySession: React.FC = () => {
           }
       }
       // Handle spacebar to flip the card only if the answer is NOT visible AND no quality has been selected yet
-      else if (!isAnswerVisible && selectedQuality === null && key === currentHotkeys.next) { // MODIFIED: Use hotkey from settings
+      // Use currentHotkeys.next
+      else if (!isAnswerVisible && selectedQuality === null && key === currentHotkeys.next) {
         cardViewRef.current?.flipCard(); // Call flipCard method on the CardView ref
         event.preventDefault(); // Prevent default behavior (e.g., scrolling)
       }
       // Handle Next key after grading
-      else if (selectedQuality !== null && key === currentHotkeys.next) { // MODIFIED: Use hotkey from settings
+      // Use currentHotkeys.next
+      else if (selectedQuality !== null && key === currentHotkeys.next) {
           handleNextCard();
           event.preventDefault();
       }
        // Handle Undo key
-      else if (selectedQuality !== null && key === currentHotkeys.undo) { // MODIFIED: Use hotkey from settings
+       // Use currentHotkeys.undo
+      else if (selectedQuality !== null && key === currentHotkeys.undo) {
          handleUndoReview();
          event.preventDefault();
       }
@@ -293,7 +319,8 @@ const StudySession: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal]); // ADDED: Depend on showSettingsModal
+    // Add currentHotkeys and other relevant states/functions to the dependency array
+  }, [currentHotkeys, onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal, handleNextCard, handleUndoReview]);
 
   // ADDED: Handle browser refresh/close and internal navigation prompts
   useEffect(() => {
@@ -421,9 +448,9 @@ const StudySession: React.FC = () => {
         {/* Add the "Force Review" button */}
         <button
           onClick={forceLoadMoreCards}
-          className="mb-4 mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" // Use a different color
+          className="mb-4 mr-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
         >
-          Force Review Next {count} Cards
+          Load More Cards
         </button>
         <button
           onClick={() => navigate('/study')} // Go back to selection
@@ -544,7 +571,7 @@ const StudySession: React.FC = () => {
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs font-bold hover:bg-red-600 min-w-0 ${selectedQuality === 0 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
-            <span className="text-lg">0</span>
+            <span className="text-lg">1</span>
             <span className="block font-normal text-gray-200 text-[10px] leading-tight">Blackout</span>
           </button>
           <button
@@ -552,7 +579,7 @@ const StudySession: React.FC = () => {
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 min-w-0 ${selectedQuality === 1 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
-            <span className="text-lg">1</span>
+            <span className="text-lg">2</span>
             <span className="block font-normal text-gray-200 text-[10px] leading-tight">Wrong but familiar</span>
           </button>
           <button
@@ -560,7 +587,7 @@ const StudySession: React.FC = () => {
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 min-w-0 ${selectedQuality === 2 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
-            <span className="text-lg">2</span>
+            <span className="text-lg">3</span>
             <span className="block font-normal text-gray-200 dark:text-white text-[10px] leading-tight">Hesitation</span>
           </button>
           <button
@@ -568,7 +595,7 @@ const StudySession: React.FC = () => {
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs font-bold hover:bg-green-600 min-w-0 ${selectedQuality === 3 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
-            <span className="text-lg">3</span>
+            <span className="text-lg">4</span>
             <span className="block font-normal text-gray-200 text-[10px] leading-tight">Perfect</span>
           </button>
         </div>

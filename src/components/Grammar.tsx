@@ -1066,7 +1066,7 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
                ${
                  expandedLesson === lesson.id
                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-500'
-                   : 'bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500'
+                   : 'bg-emerald-100 dark:bg-dark-100 border border-emerald-300 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500'
                }`}
               onClick={() => toggleLesson(lesson.id)}
             >
@@ -1074,10 +1074,17 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
                 <h3 className="text-lg font-bold">
                   {lesson.id}. {lesson.title}
                 </h3>
-                {expandedLesson !== lesson.id && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {lesson.objective}
-                  </p>
+                {expandedLesson === lesson.id && lesson.videoUrl && (
+                  <div className="mt-2">
+                    <a
+                      href={lesson.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center"
+                    >
+                      <Youtube size={18} className="mr-1" /> Watch Video
+                    </a>
+                  </div>
                 )}
               </div>
               {expandedLesson === lesson.id ? (
@@ -1107,7 +1114,7 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
                        expandedPoint &&
                        expandedPoint.lessonId === lesson.id &&
                        expandedPoint.pointIndex === pointIndex
-                         ? 'bg-blue-50 border border-emerald-500'
+                         ? 'bg-emerald-50 border border-emerald-500'
                          : 'bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500'
                      }`}
                         onClick={() => togglePoint(lesson.id, pointIndex)}
@@ -1116,7 +1123,7 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
                         {expandedPoint &&
                         expandedPoint.lessonId === lesson.id &&
                         expandedPoint.pointIndex === pointIndex ? (
-                          <ChevronUp className="text-blue-600" size={18} />
+                          <ChevronUp className="text-emerald-600" size={18} />
                         ) : (
                           <ChevronDown className="text-gray-400" size={18} />
                         )}
@@ -1188,7 +1195,7 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
           ? isCorrect
             ? 'bg-green-100 border border-green-300'
             : 'bg-red-100 border border-red-300'
-          : 'bg-blue-100 border border-blue-300'
+          : 'bg-emerald-100 border border-emerald-300'
         : isSubmitted && question.correctAnswer === oIndex
         ? 'bg-green-100 border border-green-300'
         : 'bg-gray-50 border border-gray-200 hover:!border-emerald-500 dark:border-gray-200 dark:hover:!border-emerald-500'
@@ -1289,4 +1296,4 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
 export default Grammar;
 
 
-
+

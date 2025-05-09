@@ -19,7 +19,11 @@ interface Deck {
   name: string;
 }
 
-const SingleFlashcardView: React.FC = () => {
+interface SingleFlashcardViewProps {
+  // Removed setLastViewedFlashcardId and setLastViewedDeckId props
+}
+
+const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
   const { deckId, cardId } = useParams<{ deckId: string; cardId: string }>();
   const [flashcard, setFlashcard] = useState<Flashcard | null>(null);
   const [deckName, setDeckName] = useState<string | null>(null);
@@ -92,7 +96,9 @@ const SingleFlashcardView: React.FC = () => {
     <div className="p-4 text-gray-900 dark:text-white">
       {deckName && (
         <button
-          onClick={() => navigate(`/flashcard/${deckId}`)}
+          onClick={() => {
+            navigate(`/flashcard/${deckId}`);
+          }}
           className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
         >
           ← Back to {deckName}

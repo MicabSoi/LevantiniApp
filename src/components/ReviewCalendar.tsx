@@ -302,7 +302,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                       {/*
                             <div className="flex space-x-2">
                                 <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Review Now</button>
-                                <button className="px-3 py-1 text-sm bg-blue-100 rounded">Change Date</button>
+                                <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Change Date</button>
                             </div>
                             */}
                     </div>

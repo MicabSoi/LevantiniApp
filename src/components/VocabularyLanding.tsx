@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, LibraryBig, Plane } from 'lucide-react';
+import { BookOpen, Clock, LibraryBig, Plane, CalendarDays } from 'lucide-react';
 
 interface VocabularyLandingProps {
   setWordBankSubTab: (tab: string) => void;
@@ -19,6 +19,12 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
       label: 'Recently Learned',
       description: 'Last 7 days',
       icon: <Clock size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'daily words',
+      label: 'Daily Words',
+      description: 'Words for today',
+      icon: <CalendarDays size={24} className="text-emerald-600" />,
     },
     {
       id: 'add words',

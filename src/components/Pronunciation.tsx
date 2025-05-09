@@ -109,8 +109,8 @@ const Pronunciation: React.FC<PronunciationProps> = ({ setSubTab }) => {
               </button>
             </div>
             <p className="mb-2">{item.translation}</p>
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-md">
-              <p className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-md">
+              <p className="text-sm text-emerald-800 dark:text-emerald-200">
                 <span className="font-medium">Phonetic tip:</span> {item.phonetic}
               </p>
             </div>
@@ -123,4 +123,4 @@ const Pronunciation: React.FC<PronunciationProps> = ({ setSubTab }) => {
 
 export default Pronunciation;
 
-
+
