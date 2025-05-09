@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Volume2 } from 'lucide-react';
 
 // Define the expected structure of the 'fields' JSONB column for a basic card
@@ -21,12 +21,24 @@ interface CardViewProps {
   };
   // Corrected prop type to only expect quality
   onQualitySelect: (quality: number) => void;
+  onAnswerShown: () => void; // ADDED: New prop to notify when answer is shown
+  selectedQuality: number | null; // ADDED: Prop to indicate selected quality
 }
 
-const CardView: React.FC<CardViewProps> = ({ card, onQualitySelect }) => {
+// Define the ref handle type
+export interface CardViewHandle {
+  flipCard: () => void;
+}
+
+const CardView = forwardRef<CardViewHandle, CardViewProps>(({ card, onQualitySelect, onAnswerShown, selectedQuality }, ref) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showQualityButtons, setShowQualityButtons] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Expose flipCard function via ref
+  useImperativeHandle(ref, () => ({
+    flipCard: handleFlip,
+  }));
 
   // Reset state when card changes
   useEffect(() => {
@@ -45,6 +57,7 @@ const CardView: React.FC<CardViewProps> = ({ card, onQualitySelect }) => {
       // Show quality buttons after a slight delay
       setTimeout(() => {
         setShowQualityButtons(true);
+        onAnswerShown(); // ADDED: Call onAnswerShown when quality buttons are shown
         // Autoplay audio on flip if available
         if (card.audio_url) {
           playAudio(card.audio_url);
@@ -151,43 +164,9 @@ const renderFront = () => (
       </div>
 
       {/* Quality Buttons */}
-      {showQualityButtons && (
-        <div className="p-4 grid grid-cols-4 gap-3 mt-4">
-          {/* Quality 0 button - Blackout */}
-          <button
-            onClick={() => handleQualitySelect(0)}
-            className="p-3 rounded-md bg-red-500 text-white text-xs font-bold hover:bg-red-600"
-          >
-            0<span className="block font-normal text-gray-200">Blackout</span>
-          </button>
-          {/* Quality 1 button - Wrong but familiar */}
-          <button
-            onClick={() => handleQualitySelect(1)}
-            className="p-3 rounded-md bg-orange-500 text-white text-xs font-bold hover:bg-orange-600"
-          >
-            1
-            <span className="block font-normal text-gray-200">
-              Wrong but familiar
-            </span>
-          </button>
-          {/* Quality 2 button - Correct after hesitation */}
-          <button
-            onClick={() => handleQualitySelect(2)}
-            className="p-3 rounded-md bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600"
-          >
-            2<span className="block font-normal text-gray-800">Hesitation</span>
-          </button>
-          {/* Quality 3 button - Perfect recall */}
-          <button
-            onClick={() => handleQualitySelect(3)}
-            className="p-3 rounded-md bg-green-500 text-white text-xs font-bold hover:bg-green-600"
-          >
-            3<span className="block font-normal text-gray-200">Perfect</span>
-          </button>
-        </div>
-      )}
+      {/* Removed quality buttons for bottom bar implementation */}
     </div>
   );
-};
+});
 
 export default CardView;

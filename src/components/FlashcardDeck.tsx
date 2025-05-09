@@ -337,7 +337,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
         ← Back to Vocabulary
       </button>
 
-      <h2 className="text-xl font-bold mb-6">Flashcard Decks</h2>
+      {/* Header with title */}
+      <div className="flex justify-between items-center mb-6">
+         <h2 className="text-xl font-bold">Flashcard Decks</h2>
+      </div>
+      {/* END Header with title */}
 
       {/* Search Bar with Clear Button */}
       <div className="relative mb-4">

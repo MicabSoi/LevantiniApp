@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { Settings } from 'lucide-react';
+import SettingsModal from './SettingsModal';
 
 const StudySelection: React.FC = () => {
   const [decks, setDecks] = useState<{ id: string; name: string }[]>([]);
   const [selectedDecks, setSelectedDecks] = useState<Set<string>>(new Set());
   const [cardCount, setCardCount] = useState<number>(10);
   const navigate = useNavigate();
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchDecks() {
@@ -42,9 +45,20 @@ const StudySelection: React.FC = () => {
       >
         ← Back to Flashcard Decks
       </button>
-      <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-        Study Session Setup
-      </h2>
+
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+          Study Session Setup
+        </h2>
+        <button
+          className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+          onClick={() => setIsSettingsModalOpen(true)}
+          aria-label="Settings"
+        >
+          <Settings size={24} />
+        </button>
+      </div>
+
       <div className="mb-4">
         <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">
           Select Decks:
@@ -86,6 +100,11 @@ const StudySelection: React.FC = () => {
       >
         Start
       </button>
+
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
     </div>
   );
 };

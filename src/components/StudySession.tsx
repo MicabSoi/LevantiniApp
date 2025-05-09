@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useLocation, useNavigate } from 'react-router-dom';
-import CardView from './CardView';
-import { AlertCircle } from 'lucide-react'; // ✅ Import AlertCircle
+import CardView, { CardViewHandle } from './CardView';
+import { AlertCircle, Settings } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon
+import SettingsModal, { loadHotkeys, HotkeySettings } from './SettingsModal'; // ADDED: Import SettingsModal and loadHotkeys
 
 interface DueCard {
   id: string; // review id
@@ -50,6 +51,12 @@ const StudySession: React.FC = () => {
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null); // Add error state
+  const [isAnswerVisible, setIsAnswerVisible] = useState(false); // State to track if answer is visible
+  const [selectedQuality, setSelectedQuality] = useState<number | null>(null); // ADDED: State for selected quality
+  const [showPostReviewButtons, setShowPostReviewButtons] = useState(false); // ADDED: State to show Undo/Next buttons
+  const [showSettingsModal, setShowSettingsModal] = useState(false); // ADDED: State to control settings modal visibility
+
+  const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
 
   // Calculate the "due now" threshold timestamp once when the component mounts
   // for this specific set of URL parameters. This value will be stable.
@@ -132,9 +139,14 @@ const StudySession: React.FC = () => {
     // This ensures the effect "sees" the correct, stable timestamp for the current parameters.
   }, [decks.join(','), count, dueThresholdTimestamp]); // Updated dependencies
 
-  // 2) Handle quality grading, run SM-2, update review, advance card
+  // 2) Handle quality grading, run SM-2, update review
   const onQualitySelect = async (quality: number) => {
-    // Removed cardId as it's available from current card
+    // Prevent grading if a quality has already been selected
+    if (selectedQuality !== null) {
+      console.log('Quality already selected for this card.');
+      return;
+    }
+
     const review = dueCards[current];
     if (!review) {
       console.error('No current review to grade.');
@@ -192,10 +204,21 @@ const StudySession: React.FC = () => {
       setError('Failed to save review progress.'); // Set user-friendly error
       // Advance card anyway
     } else {
-      console.log('Review updated successfully. Moving to next card.'); // Debug log
+      console.log('Review updated successfully. Displaying post-review options.'); // Debug log
+      setSelectedQuality(quality); // ADDED: Set selected quality state
+      setShowPostReviewButtons(true); // ADDED: Show post-review buttons
     }
 
-    // move to next card or finish
+    // REMOVED: Logic to move to next card or finish - this is now handled by handleNextCard
+  };
+
+  // ADDED: Function to handle moving to the next card
+  const handleNextCard = () => {
+    // Hide post-review buttons immediately when moving to next card
+    setShowPostReviewButtons(false); 
+    setSelectedQuality(null); // Clear selected quality
+    setIsAnswerVisible(false); // Reset answer visibility for the next card
+
     if (current < dueCards.length - 1) {
       setCurrent(current + 1);
     } else {
@@ -204,13 +227,64 @@ const StudySession: React.FC = () => {
     }
   };
 
+   // ADDED: Function to handle undoing the last review (UI state only for now)
+   const handleUndoReview = () => {
+      console.log('Undoing last review (UI state only).');
+      // TODO: Implement actual database rollback or state reversal if needed
+      setSelectedQuality(null); // Clear selected quality
+      setShowPostReviewButtons(false); // Hide post-review buttons
+      // Optionally, reset isAnswerVisible to true so they can re-grade immediately
+      // setIsAnswerVisible(true);
+      // Re-enable hotkeys by clearing selectedQuality state
+   };
+
   // Add a useEffect for hotkey listeners
   useEffect(() => {
+     const currentHotkeys = loadHotkeys(); // LOADED: Get current hotkeys from localStorage
+
     const handleKeyPress = (event: KeyboardEvent) => {
       const key = event.key;
-      if (['0', '1', '2', '3'].includes(key)) {
-        const quality = parseInt(key, 10);
-        onQualitySelect(quality);
+
+      // Prevent hotkeys from working when modal is open
+      if (showSettingsModal) return;
+
+      // Handle grading hotkeys only if the answer is visible AND no quality has been selected yet
+      if (isAnswerVisible && selectedQuality === null) {
+          switch(key) {
+              case currentHotkeys.quality0:
+                  onQualitySelect(0);
+                  event.preventDefault();
+                  break;
+              case currentHotkeys.quality1:
+                  onQualitySelect(1);
+                  event.preventDefault();
+                  break;
+              case currentHotkeys.quality2:
+                  onQualitySelect(2);
+                  event.preventDefault();
+                  break;
+              case currentHotkeys.quality3:
+                  onQualitySelect(3);
+                  event.preventDefault();
+                  break;
+              default:
+                  break;
+          }
+      }
+      // Handle spacebar to flip the card only if the answer is NOT visible AND no quality has been selected yet
+      else if (!isAnswerVisible && selectedQuality === null && key === currentHotkeys.next) { // MODIFIED: Use hotkey from settings
+        cardViewRef.current?.flipCard(); // Call flipCard method on the CardView ref
+        event.preventDefault(); // Prevent default behavior (e.g., scrolling)
+      }
+      // Handle Next key after grading
+      else if (selectedQuality !== null && key === currentHotkeys.next) { // MODIFIED: Use hotkey from settings
+          handleNextCard();
+          event.preventDefault();
+      }
+       // Handle Undo key
+      else if (selectedQuality !== null && key === currentHotkeys.undo) { // MODIFIED: Use hotkey from settings
+         handleUndoReview();
+         event.preventDefault();
       }
     };
 
@@ -219,7 +293,7 @@ const StudySession: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [onQualitySelect]); // Depend on onQualitySelect
+  }, [onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal]); // ADDED: Depend on showSettingsModal
 
   // Render loading, error, or content
   if (loading) {
@@ -358,15 +432,99 @@ const StudySession: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-xl mx-auto relative pb-20 min-h-screen">
       {/* Pass the correct card object to CardView */}
       <CardView
+        ref={cardViewRef} // ADDED: Pass the ref to CardView
         card={currentCard} // Pass the nested card object
-        onQualitySelect={(quality) => onQualitySelect(quality)} // Pass the quality
+        onQualitySelect={onQualitySelect} // Pass the quality
+        onAnswerShown={() => setIsAnswerVisible(true)} // Pass the onAnswerShown function
+        selectedQuality={selectedQuality} // ADDED: Pass selectedQuality to CardView
       />
       <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
         Card {current + 1} of {dueCards.length}
       </p>
+
+      {/* ADDED: Post-review buttons (Undo and Next) */}
+      {showPostReviewButtons && (
+        <div className="flex justify-center space-x-4 mt-6">
+          <button
+            onClick={handleUndoReview}
+            className="px-6 py-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
+          >
+            Undo
+          </button>
+          <button
+            onClick={handleNextCard}
+            className="px-6 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            Next Card
+          </button>
+        </div>
+      )}
+      {/* END ADDED: Post-review buttons */}
+
+      {/* Error message display */}
+      {error && (
+        <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-md">
+          <AlertCircle size={20} className="inline mr-2" />
+          {error}
+        </div>
+      )}
+
+      {/* Settings button */}
+      <button
+        className="fixed bottom-32 right-6 p-3 rounded-full shadow-lg transition-colors z-50 text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
+        onClick={() => setShowSettingsModal(true)} // MODIFIED: Open settings modal
+        aria-label="Settings"
+        style={{ zIndex: 60 }} // Ensure above most content, but below the bottom bar
+      >
+        <Settings size={28} />
+      </button>
+      {/* END ADDED: Settings button */}
+
+      {/* Fixed Bottom Bar for Review Rating Buttons */}
+      {isAnswerVisible && selectedQuality === null && (
+        <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-3 px-2 z-50" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}>
+          <button
+            onClick={() => onQualitySelect(0)}
+            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs font-bold hover:bg-red-600 min-w-0"
+            style={{ minWidth: 0 }}
+          >
+            <span className="text-lg">0</span>
+            <span className="block font-normal text-gray-200 text-[10px] leading-tight">Blackout</span>
+          </button>
+          <button
+            onClick={() => onQualitySelect(1)}
+            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 min-w-0"
+            style={{ minWidth: 0 }}
+          >
+            <span className="text-lg">1</span>
+            <span className="block font-normal text-gray-200 text-[10px] leading-tight">Wrong but familiar</span>
+          </button>
+          <button
+            onClick={() => onQualitySelect(2)}
+            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 min-w-0"
+            style={{ minWidth: 0 }}
+          >
+            <span className="text-lg">2</span>
+            <span className="block font-normal text-gray-800 text-[10px] leading-tight">Hesitation</span>
+          </button>
+          <button
+            onClick={() => onQualitySelect(3)}
+            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs font-bold hover:bg-green-600 min-w-0"
+            style={{ minWidth: 0 }}
+          >
+            <span className="text-lg">3</span>
+            <span className="block font-normal text-gray-200 text-[10px] leading-tight">Perfect</span>
+          </button>
+        </div>
+      )}
+      {/* END: Fixed Bottom Bar */}
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} /> {/* ADDED: Settings Modal component */}
+      {/* END Settings Modal */}
     </div>
   );
 };
