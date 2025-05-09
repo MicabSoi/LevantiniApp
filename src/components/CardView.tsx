@@ -106,9 +106,9 @@ const renderFront = () => (
         {card.fields?.english || 'No English text'} {/* Add defensive check and fallback */}
       </p>
       {/* Add image rendering here if card type is 'image' */}
-      {/* {card.type === 'image' && card.fields?.imageUrl && (
+      {card.fields?.imageUrl && (
         <img src={card.fields.imageUrl} alt="Flashcard front" className="mt-4 max-h-40 object-contain" />
-      )} */}
+      )}
     </div>
   );
 
@@ -138,9 +138,9 @@ const renderFront = () => (
          </p>
       )} */}
       {/* Add image rendering here if card type is 'image' */}
-      {/* {card.type === 'image' && card.fields?.imageUrl && (
+      {card.fields?.imageUrl && (
         <img src={card.fields.imageUrl} alt="Flashcard back" className="mt-4 max-h-40 object-contain" />
-      )} */}
+      )}
 
       {card.audio_url && (
         <button

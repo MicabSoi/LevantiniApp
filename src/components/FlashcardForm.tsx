@@ -228,7 +228,7 @@ const { data: newCardData, error: insertError } = await supabase
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-dark-200 rounded-lg shadow-xl max-w-md w-full p-6 relative">
+      <div className="bg-white dark:bg-dark-200 rounded-lg shadow-xl max-w-xs w-full p-6 relative max-h-[90vh]">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
@@ -236,7 +236,7 @@ const { data: newCardData, error: insertError } = await supabase
           <X size={20} />
         </button>
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Create New Flashcard</h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 overflow-y-auto pr-2">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-3 rounded-md">
               {error}

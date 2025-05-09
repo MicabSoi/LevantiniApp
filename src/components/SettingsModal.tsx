@@ -143,7 +143,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       id={key}
                       value={displayValue}
                       readOnly
-                      className={`w-24 p-1 text-center border rounded-md mr-2 cursor-pointer ${capturingKeyFor === key ? 'ring-2 ring-emerald-500' : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-dark-100'}`}
+                      className={`w-24 p-1 text-center border rounded-md mr-2 cursor-pointer text-gray-900 dark:text-white ${capturingKeyFor === key ? 'ring-2 ring-emerald-500' : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-dark-100'}`}
                       onClick={() => setCapturingKeyFor(key as keyof HotkeySettings)}
                     />
                      {capturingKeyFor === key && <span className="text-sm text-emerald-600 dark:text-emerald-400">Press a key...</span>}

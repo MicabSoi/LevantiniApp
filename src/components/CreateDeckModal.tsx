@@ -12,10 +12,12 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState('📚');
+  const [customIcon, setCustomIcon] = useState('');
+  const [usingCustom, setUsingCustom] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(name, description, selectedEmoji);
+    onSubmit(name, description, usingCustom && customIcon ? customIcon : selectedEmoji);
   };
 
   return (
@@ -34,24 +36,65 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              Choose an Emoji
+              Choose an Icon
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-2 mb-2">
               {EMOJI_OPTIONS.map(emoji => (
                 <button
                   key={emoji}
                   type="button"
-                  onClick={() => setSelectedEmoji(emoji)}
+                  onClick={() => { setSelectedEmoji(emoji); setUsingCustom(false); }}
                   className={`text-2xl p-2 rounded-lg ${
-                    selectedEmoji === emoji
-                      ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                      : 'hover:bg-gray-100 dark:hover:bg-dark-100'
+                    !usingCustom && selectedEmoji === emoji
+                      ? 'bg-emerald-100 dark:bg-emerald-900/30 border-2 border-emerald-500'
+                      : 'hover:bg-gray-100 dark:hover:bg-dark-100 border border-transparent'
                   }`}
                 >
                   {emoji}
                 </button>
               ))}
             </div>
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                value={customIcon}
+                onChange={e => {
+                  const value = e.target.value;
+                  // Only allow one grapheme cluster (single character or complex emoji)
+                  if (value === '' || [...value].length <= 1) {
+                    setCustomIcon(value);
+                    setUsingCustom(true);
+                  } else if ([...value].length > 1 && value.startsWith(customIcon)) {
+                    // If trying to type more than one, but the start is the current customIcon, ignore the extra input
+                    // This prevents the input from clearing if the user types extra characters after the first one
+                  } else {
+                     // If the input is something else, potentially a paste, only take the first grapheme
+                     setCustomIcon([...value][0] || '');
+                     setUsingCustom(true);
+                  }
+                }}
+                placeholder="Enter your own icon (emoji or character)"
+                className={`w-32 p-2 border rounded-lg text-base text-center bg-white dark:bg-dark-300 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 ${usingCustom ? 'border-emerald-500' : 'border-gray-300 dark:border-dark-100'}`}
+                onFocus={() => setUsingCustom(true)}
+              />
+              <button
+                type="button"
+                className={`px-3 py-2 rounded-lg font-semibold border ${usingCustom ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-500 text-emerald-700 dark:text-emerald-300' : 'bg-gray-100 dark:bg-dark-100 border-gray-300 dark:border-dark-100 text-gray-700 dark:text-gray-300'}`}
+                onClick={() => setUsingCustom(true)}
+              >
+                Custom Icon
+              </button>
+              {usingCustom && customIcon && (
+                <button
+                  type="button"
+                  className="ml-2 text-xs text-gray-500 hover:text-red-500"
+                  onClick={() => { setCustomIcon(''); setUsingCustom(false); }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">You can select an icon above or type your own (emoji or character).</p>
           </div>
 
           <div>

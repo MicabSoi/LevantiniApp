@@ -295,6 +295,26 @@ const StudySession: React.FC = () => {
     };
   }, [onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal]); // ADDED: Depend on showSettingsModal
 
+  // ADDED: Handle browser refresh/close and internal navigation prompts
+  useEffect(() => {
+    // Determine if session is active with unsaved progress
+    const shouldBlockNavigation = dueCards.length > 0 && current < dueCards.length && !loading && !error;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (shouldBlockNavigation) {
+        event.preventDefault();
+        event.returnValue = ''; // Required for some browsers
+        return ''; // Message for others
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [dueCards.length, current, loading, error]); // Depend on values that determine shouldBlockNavigation
+
   // Render loading, error, or content
   if (loading) {
     return (
@@ -432,7 +452,40 @@ const StudySession: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-xl mx-auto relative pb-20 min-h-screen">
+    <div
+      className="p-6 max-w-xl mx-auto relative pb-20 min-h-screen"
+      onClick={(e) => {
+        // Only flip if answer is not visible and no quality selected, and not clicking on a button
+        if (!isAnswerVisible && selectedQuality === null) {
+          // Prevent if click is on a button or inside the bottom bar/post-review buttons
+          const target = e.target as HTMLElement;
+          if (
+            target.closest('button') ||
+            target.closest('.fixed.bottom-0') ||
+            target.closest('.fixed.bottom-32') ||
+            target.closest('.post-review-buttons')
+          ) {
+            return;
+          }
+          cardViewRef.current?.flipCard();
+        }
+      }}
+      onTouchStart={(e) => {
+        // Only flip if answer is not visible and no quality selected, and not touching a button
+        if (!isAnswerVisible && selectedQuality === null) {
+          const touch = e.target as HTMLElement;
+          if (
+            touch.closest('button') ||
+            touch.closest('.fixed.bottom-0') ||
+            touch.closest('.fixed.bottom-32') ||
+            touch.closest('.post-review-buttons')
+          ) {
+            return;
+          }
+          cardViewRef.current?.flipCard();
+        }
+      }}
+    >
       {/* Pass the correct card object to CardView */}
       <CardView
         ref={cardViewRef} // ADDED: Pass the ref to CardView
@@ -447,7 +500,7 @@ const StudySession: React.FC = () => {
 
       {/* ADDED: Post-review buttons (Undo and Next) */}
       {showPostReviewButtons && (
-        <div className="flex justify-center space-x-4 mt-6">
+        <div className="flex justify-center space-x-4 mt-6 post-review-buttons">
           <button
             onClick={handleUndoReview}
             className="px-6 py-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
@@ -484,11 +537,11 @@ const StudySession: React.FC = () => {
       {/* END ADDED: Settings button */}
 
       {/* Fixed Bottom Bar for Review Rating Buttons */}
-      {isAnswerVisible && selectedQuality === null && (
+      {isAnswerVisible && (
         <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-3 px-2 z-50" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}>
           <button
             onClick={() => onQualitySelect(0)}
-            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs font-bold hover:bg-red-600 min-w-0"
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs font-bold hover:bg-red-600 min-w-0 ${selectedQuality === 0 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">0</span>
@@ -496,7 +549,7 @@ const StudySession: React.FC = () => {
           </button>
           <button
             onClick={() => onQualitySelect(1)}
-            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 min-w-0"
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 min-w-0 ${selectedQuality === 1 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">1</span>
@@ -504,15 +557,15 @@ const StudySession: React.FC = () => {
           </button>
           <button
             onClick={() => onQualitySelect(2)}
-            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 min-w-0"
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 min-w-0 ${selectedQuality === 2 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">2</span>
-            <span className="block font-normal text-gray-800 text-[10px] leading-tight">Hesitation</span>
+            <span className="block font-normal text-gray-200 dark:text-white text-[10px] leading-tight">Hesitation</span>
           </button>
           <button
             onClick={() => onQualitySelect(3)}
-            className="flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs font-bold hover:bg-green-600 min-w-0"
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs font-bold hover:bg-green-600 min-w-0 ${selectedQuality === 3 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">3</span>
@@ -530,3 +583,11 @@ const StudySession: React.FC = () => {
 };
 
 export default StudySession;
+
+// ADDED: Interface for SM-2 results for type safety
+// Assuming the RPC returns an array of objects with these properties
+interface SM2Result {
+  next_interval: number;
+  next_ease_factor: number;
+  next_repetition_count: number;
+}

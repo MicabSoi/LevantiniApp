@@ -450,7 +450,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
             {filteredDecks.map((deck) => (
               <div
                 key={deck.id}
-                className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer"
+                className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer flex flex-col justify-between h-full"
               >
                 <div className="flex items-center mb-3" onClick={() => navigate(`/flashcard/${deck.id}`)}>
                   {getDeckIcon(deck.id)}{' '}
@@ -462,25 +462,23 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 <p className="text-gray-600 dark:text-gray-300 text-sm" onClick={() => navigate(`/flashcard/${deck.id}`)}>
                   {deck.description}
                 </p>
-                <div className="flex justify-end mt-4">
-                  {/* ADDED: Add New Flashcard Button */}
+                <div className="mt-auto pt-4 flex justify-center space-x-2">
+                  {/* Add New Flashcard Button */}
                   <button
-                    className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 mr-2 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                    className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent navigating to deck detail
+                      e.stopPropagation();
                       handleCreateFlashcardInDeck(deck.id);
                     }}
                     title="Add New Flashcard"
                   >
                     <Plus size={24} />
                   </button>
-                  {/* END ADDED */}
-
                   {/* Edit Button */}
                   <button
-                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 mr-2 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent navigating to deck detail
+                      e.stopPropagation();
                       setDeckToEdit(deck);
                       setEditedDeckName(deck.name);
                       setEditedDeckDescription(deck.description);
@@ -494,7 +492,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   <button
                     className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-3 rounded-md hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent navigating to deck detail
+                      e.stopPropagation();
                       setDeckToDelete(deck);
                       setShowDeleteConfirm(true);
                     }}
@@ -512,7 +510,45 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       {isCreatingNewDeck && (
         <CreateDeckModal
           onClose={handleCloseNewDeckModal}
-          onSubmit={handleSaveNewDeck}
+          onSubmit={async (name, description, emoji) => {
+            if (!name.trim()) {
+              setError('Deck name is required.');
+              return;
+            }
+            setError(null);
+            try {
+              const {
+                data: { session },
+                error: sessionError,
+              } = await supabase.auth.getSession();
+              if (sessionError) throw sessionError;
+              if (!session?.user) throw new Error('No authenticated user');
+
+              const { data, error: insertError } = await supabase
+                .from('decks')
+                .insert({
+                  user_id: session.user.id,
+                  name: name.trim(),
+                  description,
+                  emoji: emoji || '📚',
+                  is_default: false,
+                  archived: false,
+                })
+                .select()
+                .single();
+
+              if (insertError) throw insertError;
+
+              setDecks((prev) => [...prev, data]);
+              setIsCreatingNewDeck(false);
+              setNewDeckName('');
+              setNewDeckDescription('');
+              setError(null);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Failed to create deck');
+              console.error('Error creating deck:', err);
+            }
+          }}
         />
       )}
 

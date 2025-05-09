@@ -48,7 +48,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [subTab, setSubTab] = useState('landing');
   const [homeSubTab, setHomeSubTab] = useState('dashboard');
-  const [wordBankSubTab, setWordBankSubTab] = useState('landing'); // Set initial sub-tab to landing
+  const [wordBankSubTab, setWordBankSubTab] = useState('landing');
   const [communitySubTab, setCommunitySubTab] = useState('forums');
   const [userLevel] = useState(12); // This would come from your user context/state management
 
@@ -56,6 +56,25 @@ function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Add last sub-tab memory for each tab
+  const [lastLearnSubTab, setLastLearnSubTab] = useState('landing');
+  const [lastWordBankSubTab, setLastWordBankSubTab] = useState('add words');
+  const [lastFluencySubTab, setLastFluencySubTab] = useState('landing');
+
+  // Handlers to update sub-tabs and last sub-tabs
+  const handleSetLearnSubTab = (tab: string) => {
+    setSubTab(tab);
+    setLastLearnSubTab(tab);
+  };
+  const handleSetWordBankSubTab = (tab: string) => {
+    setWordBankSubTab(tab);
+    setLastWordBankSubTab(tab);
+  };
+  const handleSetFluencySubTab = (tab: string) => {
+    setSubTab(tab);
+    setLastFluencySubTab(tab);
+  };
 
   useEffect(() => {
     const checkScrollable = (element: HTMLElement) => {
@@ -205,23 +224,23 @@ function App() {
                     {activeTab === 'learn' && (
                       <div className="p-4">
                         {subTab === 'landing' && (
-                          <LearnLanding setSubTab={setSubTab} />
+                          <LearnLanding setSubTab={handleSetLearnSubTab} />
                         )}
                         {subTab === 'topic' && (
                           <LessonsTopics
                             selectedTopic={selectedTopic}
                             setSelectedTopic={setSelectedTopic}
-                            setSubTab={setSubTab}
+                            setSubTab={handleSetLearnSubTab}
                           />
                         )}
                         {subTab === 'alphabet' && (
-                          <Alphabet setSubTab={setSubTab} />
+                          <Alphabet setSubTab={handleSetLearnSubTab} />
                         )}
                         {subTab === 'pronunciation' && (
-                          <Pronunciation setSubTab={setSubTab} />
+                          <Pronunciation setSubTab={handleSetLearnSubTab} />
                         )}
                         {subTab === 'grammar' && (
-                          <Grammar setSubTab={setSubTab} />
+                          <Grammar setSubTab={handleSetLearnSubTab} />
                         )}
                         {/* {subTab === 'quizzes' && <AlphabetLessonsQuizzes />} */} {/* Commented out due to undefined component */}
                       </div>
@@ -230,30 +249,22 @@ function App() {
                     {activeTab === 'wordbank' && (
                       <div className="p-4">
                         {wordBankSubTab === 'landing' && (
-                          <VocabularyLanding setWordBankSubTab={setWordBankSubTab} />
+                          <VocabularyLanding setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'recently learned' && (
-                          <div>Recently Learned Content Here</div> // Placeholder for Recently Learned content
+                          <div>Recently Learned Content Here</div>
                         )}
                         {wordBankSubTab === 'add words' && (
-                          <VocabularyLanding
-                            setWordBankSubTab={setWordBankSubTab}
-                          />
+                          <VocabularyLanding setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'flashcards' && (
-                          <FlashcardDeck
-                            setActiveTab={setActiveTab}
-                            setWordBankSubTab={setWordBankSubTab}
-                          />
+                          <FlashcardDeck setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'travel dictionary' && (
-                          <Dictionary
-                            setActiveTab={setActiveTab}
-                            setWordBankSubTab={setWordBankSubTab}
-                          />
+                          <Dictionary setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'daily words' && (
-                          <div>Daily Words Content Here</div> // Placeholder for Daily Words content
+                          <div>Daily Words Content Here</div>
                         )}
                       </div>
                     )}
@@ -289,23 +300,23 @@ function App() {
                       <div>
                         <div className="relative">
                           {subTab === 'landing' && (
-                            <FluencyLanding setSubTab={setSubTab} />
+                            <FluencyLanding setSubTab={handleSetFluencySubTab} />
                           )}
                         </div>
                         <div className="p-4">
                           {subTab === 'translate' && (
-                            <Translate setSubTab={setSubTab} />
+                            <Translate setSubTab={handleSetFluencySubTab} />
                           )}
                           {subTab === 'comprehension' && (
-                            <Comprehension setSubTab={setSubTab} />
+                            <Comprehension setSubTab={handleSetFluencySubTab} />
                           )}
                           {subTab === 'tutor' && (
-                            <FindTutor setSubTab={setSubTab} />
+                            <FindTutor setSubTab={handleSetFluencySubTab} />
                           )}
                           {subTab === 'community' && (
                             <div>
                               <button
-                                onClick={() => setSubTab('landing')}
+                                onClick={() => handleSetFluencySubTab('landing')}
                                 className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
                               >
                                 ← Back to Fluency
@@ -354,8 +365,11 @@ function App() {
                   }`}
                   onClick={() => {
                     navigate('/');
-                    setActiveTab('home');
-                    setHomeSubTab('dashboard');
+                    if (activeTab === 'home') {
+                      setHomeSubTab('dashboard');
+                    } else {
+                      setActiveTab('home');
+                    }
                   }}
                 >
                   <button className="w-20 py-3 flex flex-col items-center">
@@ -371,9 +385,14 @@ function App() {
                   }`}
                   onClick={() => {
                     navigate('/');
-                    setActiveTab('learn');
-                    setSubTab('landing');
-                    setSelectedTopic(null);
+                    if (activeTab === 'learn') {
+                      setSubTab('landing');
+                      setLastLearnSubTab('landing');
+                      setSelectedTopic(null);
+                    } else {
+                      setActiveTab('learn');
+                      setSubTab(lastLearnSubTab);
+                    }
                   }}
                 >
                   <button className="w-20 py-3 flex flex-col items-center">
@@ -390,8 +409,13 @@ function App() {
                   }`}
                   onClick={() => {
                     navigate('/');
-                    setActiveTab('wordbank');
-                    setWordBankSubTab('add words');
+                    if (activeTab === 'wordbank') {
+                      setWordBankSubTab('add words');
+                      setLastWordBankSubTab('add words');
+                    } else {
+                      setActiveTab('wordbank');
+                      setWordBankSubTab(lastWordBankSubTab);
+                    }
                   }}
                 >
                   <button className="w-20 py-3 flex flex-col items-center">
@@ -407,8 +431,13 @@ function App() {
                   }`}
                   onClick={() => {
                     navigate('/');
-                    setActiveTab('fluency');
-                    setSubTab('landing');
+                    if (activeTab === 'fluency') {
+                      setSubTab('landing');
+                      setLastFluencySubTab('landing');
+                    } else {
+                      setActiveTab('fluency');
+                      setSubTab(lastFluencySubTab);
+                    }
                   }}
                 >
                   <button className="w-20 py-3 flex flex-col items-center">
