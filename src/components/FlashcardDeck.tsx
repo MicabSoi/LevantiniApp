@@ -50,7 +50,7 @@ interface Deck {
   is_default: boolean;
   archived: boolean;
   created_at: string;
-  cards?: Flashcard[];
+  cards?: { count: number }[];
 }
 
 // Define type for cards fetched from the 'reviews' table
@@ -133,7 +133,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     setLoadingDecks(true); // Start loading
     const { data, error } = await supabase
       .from('decks')
-      .select('*')
+      .select('*, cards(count)')
       .order('created_at', { ascending: true });
     if (error) {
       console.error('Error loading decks:', error);
@@ -454,25 +454,104 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
              No decks yet. Create your first deck!
            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {filteredDecks.map((deck) => (
+            // Calculate total cards for display before returning JSX
+            // Note: This calculation happens here within the render logic,
+            // which might be slightly less performant for very large numbers of decks.
+            // For better performance, this could be calculated in a useEffect or memoized.
+            // Removed variable declaration from inside JSX
+
+            <div className="flex flex-col">
+              {/* Total Card Count Display */}
+              <div className="mb-6 text-center text-xl font-semibold text-gray-800 dark:text-gray-100">
+                Total no. of cards: {filteredDecks.reduce((sum, deck) => sum + (deck.cards?.[0]?.count || 0), 0)}
+              </div>
+              {/* Grid of Decks */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Sort filtered decks alphabetically by name before mapping */}
+              {filteredDecks.sort((a, b) => a.name.localeCompare(b.name)).map((deck) => (
                 <div
                   key={deck.id}
-                  className="bg-white dark:bg-dark-200 rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow flex items-center"
-                  onClick={() => handleSelectDeck(deck.id)}
+                  className="relative bg-gray-50 dark:bg-dark-100 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer flex flex-col justify-between h-full"
+                  onClick={() => handleSelectDeck(deck.id)} // Navigate to deck detail on click
                 >
-                  {/* Render deck icon if available, otherwise a default */}
-                  {deck.emoji ? (
-                    <span className="text-2xl mr-4">{deck.emoji}</span>
-                  ) : (
-                    <LibraryBig size={24} className="text-emerald-600 mr-4" />
-                  )}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">{deck.name}</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">{deck.cards?.length || 0} cards</p>
-                  </div>
+                   {/* Removed Edit and Delete Buttons - Absolute positioned */}
+
+                   {/* Container for Deck Info and Card Count */}
+                   <div className="flex justify-between items-start w-full mb-3 flex-grow">
+                     {/* Left: Deck Icon, Name, Description */}
+                     <div className="flex flex-col flex-grow pr-4">
+                        {/* Deck Icon and Name */}
+                        <div className="flex items-center mb-1">
+                          {deck.emoji ? (
+                            <span className="text-2xl mr-3">{deck.emoji}</span>
+                          ) : (
+                            <LibraryBig size={24} className="text-emerald-600 mr-3" />
+                          )}
+                          <h3 className="text-lg font-bold text-gray-800 dark:text-white flex-grow truncate">
+                            {deck.name}
+                          </h3>
+                        </div>
+
+                        {/* Deck Description */}
+                        <p className="text-gray-600 dark:text-gray-300 text-sm flex-grow">
+                          {deck.description}
+                        </p>
+                     </div>
+
+                     {/* Right: Card Count Indicator */}
+                     <div className="flex-shrink-0 flex items-center justify-center p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-full text-emerald-800 dark:text-emerald-200 font-semibold text-sm">
+                       {/* Access the count from the nested structure returned by the query */}
+                       No. of cards: {deck.cards?.[0]?.count || 0}
+                     </div>
+                   </div>
+
+                    {/* Icons for Add, Edit, Delete - Centered and spaced evenly */}
+                   <div className="flex justify-around items-center w-full mt-auto pt-3 border-t border-gray-200 dark:border-dark-100">
+                     {/* Add New Flashcard Icon */}
+                     <button
+                       className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded-md"
+                       onClick={(e) => {
+                         e.stopPropagation(); // Prevent deck click navigation
+                         handleCreateFlashcardInDeck(deck.id);
+                       }}
+                       title="Add New Flashcard"
+                     >
+                       <Plus size={20} />
+                     </button>
+                     {/* Edit Button */}
+                     <button
+                       className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-1 rounded-md"
+                       onClick={(e) => {
+                         e.stopPropagation(); // Prevent deck click navigation
+                         setDeckToEdit(deck);
+                         setEditedDeckName(deck.name);
+                         setEditedDeckDescription(deck.description);
+                         setEditedDeckEmoji(deck.emoji || '');
+                         setShowEditModal(true);
+                       }}
+                        title="Edit Deck"
+                     >
+                       <Edit2 size={20} />
+                     </button>
+                     {/* Delete Button */}
+                     <button
+                       className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent deck click navigation
+                          setDeckToDelete(deck);
+                          setShowDeleteConfirm(true);
+                        }}
+                        title="Delete Deck"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                   </div>
+
+                   {/* Removed redundant card count */}
+
                 </div>
               ))}
+              </div>
             </div>
           )
         ) : (
