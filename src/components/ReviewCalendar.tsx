@@ -24,6 +24,7 @@ interface Review {
     transliteration?: string | null;
   } | null; // card can be null if RLS prevents access or card deleted
   next_review_date: string | null;
+  last_review_date: string | null;
 }
 
 interface ReviewCalendarProps {
@@ -65,6 +66,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
             `
             id,
             next_review_date,
+            last_review_date,
             card:cards!reviews_card_fk (
               id,
               english,
@@ -122,7 +124,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
     }
   };
 
-  // Filter reviews for the selected day
+  // Filter reviews for the selected day (Upcoming reviews)
   const reviewsForSelectedDay = useMemo(() => {
     if (!selectedDay) return [];
     return reviews.filter(
@@ -132,7 +134,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
     );
   }, [selectedDay, reviews]);
 
-  // Group reviews by date for the current month view
+  // Group reviews by date for the current month view (Upcoming reviews)
   const reviewsByDay: { [key: string]: Review[] } = useMemo(() => {
     const grouped: { [key: string]: Review[] } = {};
     reviews.forEach((review) => {
@@ -142,6 +144,26 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
           grouped[dateKey] = [];
         }
         grouped[dateKey].push(review);
+      }
+    });
+    return grouped;
+  }, [reviews]);
+
+  // ADDED: Group reviews by last_review_date for past dates
+  const completedReviewsByDay: { [key: string]: Review[] } = useMemo(() => {
+    const grouped: { [key: string]: Review[] } = {};
+    const today = new Date();
+    reviews.forEach((review) => {
+      if (review.last_review_date) {
+         const reviewDate = new Date(review.last_review_date);
+         // Only consider last_review_date for days strictly in the past
+         if (isPast(reviewDate) && !isToday(reviewDate)) {
+            const dateKey = format(reviewDate, 'yyyy-MM-dd');
+            if (!grouped[dateKey]) {
+              grouped[dateKey] = [];
+            }
+            grouped[dateKey].push(review);
+         }
       }
     });
     return grouped;
@@ -218,6 +240,9 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                   <div className="flex-1 mr-4">
                     <p className="font-medium">{review.card.english}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{review.card.arabic}</p>
+                    {review.card.transliteration && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{review.card.transliteration}</p>
+                    )}
                   </div>
                 ) : (
                   <p className="text-red-600">Card details unavailable.</p>
@@ -225,7 +250,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                 {/* Display Due Date */}
                 {review.next_review_date && (
                   <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    {format(new Date(review.next_review_date), 'dd MMM yyyy')}
+                    Next Due Date: {format(new Date(review.next_review_date), 'dd MMM yyyy')}
                   </span>
                 )}
               </li>
@@ -242,6 +267,16 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
       )}
 
       <div className="bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 p-6 mb-6">
+        {/* Added Today button */}
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={() => setCurrentMonth(new Date())}
+            className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            Today
+          </button>
+        </div>
+
         {/* Calendar Header */}
         <div className="flex justify-between items-center mb-4">
           <button
@@ -278,8 +313,13 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
           {/* Render days of the month */}
           {daysInMonth.map((day) => {
             const dayKey = format(day, 'yyyy-MM-dd');
-            const dayReviews = reviewsByDay[dayKey] || [];
-            const hasReviews = dayReviews.length > 0;
+            const dayReviews = reviewsByDay[dayKey] || []; // Upcoming reviews
+            const completedToday = isToday(day) ? reviews.filter(review => review.last_review_date && isSameDay(new Date(review.last_review_date), day)).length : 0; // Count completed reviews today
+            const dayCompletedReviews = completedReviewsByDay[dayKey] || []; // Completed reviews in the past
+
+            const hasUpcomingReviews = dayReviews.length > 0;
+            const hasCompletedReviews = dayCompletedReviews.length > 0 || completedToday > 0;
+
             const isSelected = selectedDay && isSameDay(day, selectedDay);
             const isPastDay = isPast(day) && !isToday(day);
             const isTodayDay = isToday(day);
@@ -312,14 +352,36 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                 >
                   {format(day, 'd')}
                 </span>
-                {hasReviews && (
-                  <div className="relative">
-                    <span className="mt-1 w-4 h-4 flex items-center justify-center bg-emerald-500 text-white rounded-full text-xs font-bold">
+
+                {/* Display Upcoming Reviews count */}
+                {hasUpcomingReviews && (
+                  <div className="relative mt-1">
+                    <span className="w-4 h-4 flex items-center justify-center bg-emerald-500 text-white rounded-full text-xs font-bold z-10">
                       {dayReviews.length}
                     </span>
-                    <span className="absolute inset-0 animate-ping h-4 w-4 rounded-full bg-emerald-500 opacity-75"></span>
+                    {/* Add a smaller dot for upcoming reviews */}
+                    {!isTodayDay && <span className="absolute inset-0 animate-ping h-4 w-4 rounded-full bg-emerald-500 opacity-75"></span>}
                   </div>
                 )}
+
+                {/* Display Completed Reviews count for past days or today */}
+                {isPastDay && hasCompletedReviews && (
+                   <div className="relative mt-1">
+                     {/* Use a different color for completed reviews, e.g., gray or blue */}
+                     <span className="w-4 h-4 flex items-center justify-center bg-gray-500 text-white rounded-full text-xs font-bold">
+                       {dayCompletedReviews.length}
+                     </span>
+                   </div>
+                )}
+                 {isTodayDay && completedToday > 0 && (
+                   <div className="relative mt-1">
+                     {/* Use a different color for completed reviews today */}
+                     <span className="w-4 h-4 flex items-center justify-center bg-blue-500 text-white rounded-full text-xs font-bold">
+                       {completedToday}
+                     </span>
+                   </div>
+                 )}
+
               </div>
             );
           })}
@@ -339,7 +401,9 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                Reviews Due<span className="sm:hidden"><br/></span> {selectedDay ? format(selectedDay, 'dd MMMM yyyy') : ''}
+                {/* Dynamic Title */}
+                {isPast(selectedDay) && !isToday(selectedDay) ? 'Reviews Completed' : 'Reviews Due'}
+                <span className="sm:hidden"><br/></span> {selectedDay ? format(selectedDay, 'dd MMMM yyyy') : ''}
               </h3>
               <button
                 onClick={() => setSelectedDay(null)}
@@ -350,38 +414,75 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
               </button>
             </div>
 
-            {reviewsForSelectedDay.length === 0 ? (
+            {/* Determine which list of reviews to show */}
+            {((isPast(selectedDay) && !isToday(selectedDay)) ? completedReviewsByDay[format(selectedDay, 'yyyy-MM-dd')] || [] : reviewsForSelectedDay).length === 0 ? (
               <p className="text-gray-600 dark:text-gray-400">
-                No cards scheduled for review on this day.
+                {/* Dynamic Message */}
+                {isPast(selectedDay) && !isToday(selectedDay) ? 'No reviews completed on this day.' : 'No cards scheduled for review on this day.'}
               </p>
             ) : (
               <ul className="space-y-3">
-                {reviewsForSelectedDay.map((review) => (
-                  <li
-                    key={review.id}
-                    className="border border-gray-200 dark:border-dark-100 rounded-md p-3 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200"
-                  >
-                    {review.card ? (
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
-                            {review.card.english}
-                          </p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {review.card.arabic}
-                          </p>
-                          {review.card.transliteration && (
-                            <p className="text-xs text-gray-600 dark:text-gray-400 italic">
-                              {review.card.transliteration}
-                            </p>
-                          )}
-                        </div>
+                {(
+                  (isPast(selectedDay) && !isToday(selectedDay))
+                    ? completedReviewsByDay[format(selectedDay, 'yyyy-MM-dd')] || []
+                    : reviewsForSelectedDay
+                ).length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {/* Dynamic Message */}
+                    {isPast(selectedDay) && !isToday(selectedDay) ? 'No reviews completed on this day.' : 'No cards scheduled for review on this day.'}
+                  </p>
+                ) : (
+                  <>
+                    {/* Add Column Titles for Completed Reviews only */}
+                    {isPast(selectedDay) && !isToday(selectedDay) && (
+                      <div className="grid grid-cols-[2fr_2fr_1fr] gap-3 items-center text-gray-900 dark:text-gray-100 font-bold mb-2 border-b border-gray-300 dark:border-dark-100 pb-1 text-xs">
+                        <div className="col-span-1">English</div>
+                        <div className="col-span-1">Arabic</div>
+                        <div className="col-span-1">Transliteration</div>
                       </div>
-                    ) : (
-                      <p className="text-red-600">Card details unavailable.</p>
                     )}
-                  </li>
-                ))}
+                    <ul className="space-y-1">
+                      {(isPast(selectedDay) && !isToday(selectedDay)
+                        ? completedReviewsByDay[format(selectedDay, 'yyyy-MM-dd')] || []
+                        : reviewsForSelectedDay
+                      ).map((review) => {
+                        if (!review.card) {
+                          return (
+                            <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
+                              <p className="text-red-600">Card details unavailable.</p>
+                            </li>
+                          );
+                        }
+                        // Completed reviews (past days)
+                        if (isPast(selectedDay) && !isToday(selectedDay)) {
+                          return (
+                            <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
+                              <div className="grid grid-cols-[2fr_2fr_1fr] gap-3 items-center text-gray-900 dark:text-gray-100 text-xs">
+                                <div className="col-span-1 font-medium overflow-hidden text-ellipsis whitespace-nowrap">{review.card.english}</div>
+                                <div className="col-span-1 text-gray-700 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{review.card.arabic}</div>
+                                <div className="col-span-1 text-gray-600 dark:text-gray-400 italic overflow-hidden text-ellipsis whitespace-nowrap">{review.card.transliteration || ''}</div>
+                              </div>
+                            </li>
+                          );
+                        }
+                        // Upcoming reviews (future/today)
+                        return (
+                          <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-xs font-medium text-gray-900 dark:text-gray-100">{review.card.english}</p>
+                                <p className="text-xs text-gray-700 dark:text-gray-300">{review.card.arabic}</p>
+                                {review.card.transliteration && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 italic">{review.card.transliteration}</p>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
               </ul>
             )}
           </div>
