@@ -94,28 +94,6 @@ const DeckList: React.FC<DeckListProps> = ({ onSelectDeck, onCreateDeck, onCreat
                   >
                     <Plus size={18} />
                   </button>
-                  <button
-                    onClick={() => {
-                      /* Implement edit */
-                    }}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-100 rounded-lg transition-colors"
-                    title="Edit Deck"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (
-                        confirm('Are you sure you want to archive this deck?')
-                      ) {
-                        archiveDeck(deck.id);
-                      }
-                    }}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-100 rounded-lg transition-colors"
-                    title="Archive Deck"
-                  >
-                    <Archive size={18} />
-                  </button>
                 </div>
               </div>
             </div>

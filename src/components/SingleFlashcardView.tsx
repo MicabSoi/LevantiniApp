@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Volume2, Trash2 } from 'lucide-react';
+import FlashcardForm from './FlashcardForm';
 
 interface Flashcard {
   id: string;
@@ -30,6 +31,9 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editData, setEditData] = useState<Partial<Flashcard> | null>(null);
 
   useEffect(() => {
     const fetchCardAndDeck = async () => {
@@ -74,6 +78,31 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
     new Audio(audioUrl).play();
   };
 
+  // Edit handler
+  const handleEdit = () => {
+    if (!flashcard) return;
+    setEditData(flashcard);
+    setShowEditModal(true);
+  };
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!flashcard) return;
+    setShowDeleteConfirm(false);
+    setLoading(true);
+    setError(null);
+    const { error: deleteError } = await supabase
+      .from('cards')
+      .delete()
+      .eq('id', flashcard.id);
+    setLoading(false);
+    if (deleteError) {
+      setError(deleteError.message);
+    } else {
+      navigate(`/flashcard/${deckId}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-10">
@@ -105,7 +134,25 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
         </button>
       )}
 
-      <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative">
+        {/* Edit and Delete buttons in the top right */}
+        <div className="absolute top-4 right-4 flex space-x-2">
+          <button
+            className="text-emerald-600 dark:text-emerald-400 p-1 rounded-md"
+            onClick={handleEdit}
+            title="Edit Flashcard"
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit2"><path d="M16.474 3.526a2.121 2.121 0 0 1 3 3L7.5 18.5l-4 1 1-4 10.974-10.974Z"></path></svg>
+          </button>
+          <button
+            className="text-red-600 dark:text-red-400 p-1 rounded-md"
+            onClick={() => setShowDeleteConfirm(true)}
+            title="Delete Flashcard"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+        {/* End edit/delete buttons */}
         {flashcard.image_url && (
           <img
             crossOrigin="anonymous"
@@ -142,6 +189,59 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
           </button>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && flashcard && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg">
+            <FlashcardForm
+              deckId={flashcard.deck_id}
+              onClose={() => setShowEditModal(false)}
+              onSubmit={() => {
+                setShowEditModal(false);
+                setLoading(true);
+                // Refetch card data
+                supabase
+                  .from('cards')
+                  .select('*')
+                  .eq('id', flashcard.id)
+                  .single()
+                  .then(({ data }) => {
+                    setFlashcard(data as Flashcard);
+                    setLoading(false);
+                  });
+              }}
+              // Optionally, pass initial values if FlashcardForm supports it
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg">
+            <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Confirm Deletion</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Are you sure you want to delete this flashcard? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                className="px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={handleDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

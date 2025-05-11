@@ -122,6 +122,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [editedDeckDescription, setEditedDeckDescription] = useState('');
   const [editedDeckEmoji, setEditedDeckEmoji] = useState('');
 
+  // State to indicate if we are selecting a deck for editing
+  const [isSelectingDeckForEdit, setIsSelectingDeckForEdit] = useState(false);
+  // State to indicate if we are selecting a deck for deleting
+  const [isSelectingDeckForDelete, setIsSelectingDeckForDelete] = useState(false);
+
   // State for Create New Flashcard Modal
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
   const [currentDeckIdForFlashcard, setCurrentDeckIdForFlashcard] = useState<string | null>(null);
@@ -476,9 +481,44 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
             <div className="flex flex-col">
               {/* Total Card Count Display */}
-              <div className="mb-6 text-center text-xl font-semibold text-gray-800 dark:text-gray-100">
-                Total no. of cards: {filteredDecks.reduce((sum, deck) => sum + (deck.cards?.[0]?.count || 0), 0)}
+              <div className="mb-6 text-center text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-center space-x-4">
+                <span>Total no. of cards: {filteredDecks.reduce((sum, deck) => sum + (deck.cards?.[0]?.count || 0), 0)}</span>
+                {/* Single Edit Button for Decks */}
+                <button
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-1 rounded-md"
+                  onClick={(e) => {
+                    setIsSelectingDeckForEdit(!isSelectingDeckForEdit);
+                    setIsSelectingDeckForDelete(false); // Turn off delete mode if turning on edit mode
+                  }}
+                  title="Edit Decks"
+                >
+                  <Edit2 size={20} />
+                </button>
+                {/* Single Delete Button for Decks */}
+                <button
+                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md"
+                  onClick={(e) => {
+                    setIsSelectingDeckForDelete(!isSelectingDeckForDelete);
+                    setIsSelectingDeckForEdit(false); // Turn off edit mode if turning on delete mode
+                  }}
+                  title="Delete Decks"
+                >
+                  <Trash2 size={20} />
+                </button>
               </div>
+
+              {/* Optional: Visual indicator for edit selection mode */}
+              {isSelectingDeckForEdit && (
+                <div className="text-center text-emerald-600 dark:text-emerald-400 mb-4">
+                  Click on a deck card to edit it.
+                </div>
+              )}
+              {isSelectingDeckForDelete && (
+                <div className="text-center text-red-600 dark:text-red-400 mb-4">
+                  Click on a deck card to delete it.
+                </div>
+              )}
+
               {/* Grid of Decks */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {/* Sort filtered decks alphabetically by name before mapping */}
@@ -486,7 +526,24 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 <div
                   key={deck.id}
                   className="relative bg-gray-50 dark:bg-dark-100 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer flex flex-col justify-between h-full"
-                  onClick={() => handleSelectDeck(deck.id)} // Navigate to deck detail on click
+                  onClick={(e) => {
+                    if (isSelectingDeckForEdit) {
+                      e.stopPropagation(); // Prevent default deck navigation
+                      setDeckToEdit(deck);
+                      setEditedDeckName(deck.name);
+                      setEditedDeckDescription(deck.description);
+                      setEditedDeckEmoji(deck.emoji || '');
+                      setIsSelectingDeckForEdit(false); // Exit selection mode
+                      setShowEditModal(true); // Open edit modal
+                    } else if (isSelectingDeckForDelete) {
+                      e.stopPropagation(); // Prevent default deck navigation
+                      setDeckToDelete(deck);
+                      setIsSelectingDeckForDelete(false); // Exit selection mode
+                      setShowDeleteConfirm(true); // Open delete confirmation modal
+                    } else {
+                      handleSelectDeck(deck.id); // Normal navigation
+                    }
+                  }} // Navigate to deck detail on click
                 >
                    {/* Removed Edit and Delete Buttons - Absolute positioned */}
 
@@ -522,43 +579,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                     {/* Icons for Add, Edit, Delete - Centered and spaced evenly */}
                    <div className="flex justify-around items-center w-full mt-auto pt-3 border-t border-gray-200 dark:border-dark-100">
                      {/* Add New Flashcard Icon */}
-                     <button
-                       className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded-md"
-                       onClick={(e) => {
-                         e.stopPropagation(); // Prevent deck click navigation
-                         handleCreateFlashcardInDeck(deck.id);
-                       }}
-                       title="Add New Flashcard"
-                     >
-                       <Plus size={20} />
-                     </button>
+                     
                      {/* Edit Button */}
-                     <button
-                       className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-1 rounded-md"
-                       onClick={(e) => {
-                         e.stopPropagation(); // Prevent deck click navigation
-                         setDeckToEdit(deck);
-                         setEditedDeckName(deck.name);
-                         setEditedDeckDescription(deck.description);
-                         setEditedDeckEmoji(deck.emoji || '');
-                         setShowEditModal(true);
-                       }}
-                        title="Edit Deck"
-                     >
-                       <Edit2 size={20} />
-                     </button>
+                     
                      {/* Delete Button */}
-                     <button
-                       className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md"
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent deck click navigation
-                          setDeckToDelete(deck);
-                          setShowDeleteConfirm(true);
-                        }}
-                        title="Delete Deck"
-                      >
-                        <Trash2 size={20} />
-                      </button>
+                     
                    </div>
 
                    {/* Removed redundant card count */}

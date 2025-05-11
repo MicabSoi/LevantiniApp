@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2, Volume2, Edit2, Trash2, XCircle } from 'lucide-react'; // Added Edit2, Trash2, and XCircle
+import { Loader2, Volume2, Edit2, Trash2, XCircle, CheckCircle2 } from 'lucide-react'; // Added Edit2, Trash2, and XCircle
 import { useNavigate } from 'react-router-dom';
 import FlashcardForm from './FlashcardForm'; // Import FlashcardForm
 import { Plus } from 'lucide-react'; // Import Plus icon
@@ -35,6 +35,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   const { id: deckId } = useParams<{ id: string }>(); // Get deckId from URL
   const [deck, setDeck] = useState<Deck | null>(null); // State for deck details
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]); // State for flashcards
+  const [reviewCounts, setReviewCounts] = useState<{ [cardId: string]: number }>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -81,10 +82,29 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
     if (flashcardsError) {
       setError(flashcardsError.message);
-    } else {
-      setFlashcards(flashcardsData as Flashcard[]);
+      setLoading(false);
+      return;
     }
+    setFlashcards(flashcardsData as Flashcard[]);
 
+    // Fetch review counts for all cards in this deck
+    const cardIds = (flashcardsData as Flashcard[]).map(card => card.id);
+    if (cardIds.length > 0) {
+      const { data: reviewData, error: reviewError } = await supabase
+        .from('reviews')
+        .select('card_id, reviews_count')
+        .in('card_id', cardIds);
+      if (!reviewError && reviewData) {
+        // Map card_id to reviews_count (if multiple reviews per card, take the max)
+        const counts: { [cardId: string]: number } = {};
+        reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
+          if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
+            counts[row.card_id] = row.reviews_count;
+          }
+        });
+        setReviewCounts(counts);
+      }
+    }
     setLoading(false);
   };
 
@@ -275,124 +295,59 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         </button>
       )}
 
+      {/* Header Row for Flashcards */}
+      {filteredFlashcards.length > 0 && (
+        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
+          <div className="col-span-5">Word</div>
+          <div className="col-span-2 text-center">Review count</div>
+          <div className="col-span-3 text-right">Date created</div>
+          <div className="col-span-2 text-center">Media</div>
+        </div>
+      )}
+
       {/* Display list of flashcards */}
       {filteredFlashcards.length === 0 ? (
         <div className="text-center text-gray-500 dark:text-gray-400 py-8">
           No flashcards in this deck yet.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex flex-col h-[60vh] overflow-y-auto mt-4">
           {filteredFlashcards.map((card) => (
             <div
               key={card.id}
-              className="relative p-6 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer pr-12" // Added pr-12 for right padding
+              className="grid grid-cols-12 items-center px-2 py-3 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer mb-2"
               onClick={() => navigate(`/flashcard/${deckId}/${card.id}`)}
             >
-              {/* Edit and Delete Buttons - Positioned vertically on the far right */}
-              {/* Adjusted positioning to align with the middle of the card vertically */}
-              <div className="absolute top-1/2 transform -translate-y-1/2 right-2 flex flex-col space-y-2 z-10">
-                 <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent card click navigation
-                    handleEditFlashcardClick(card);
-                  }}
-                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-2 rounded-md"
-                  title="Edit Flashcard"
-                >
-                  <Edit2 size={20} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent card click navigation
-                    handleDeleteFlashcardClick(card);
-                  }}
-                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-2 rounded-md"
-                  title="Delete Flashcard"
-                >
-                  <Trash2 size={20} />
-                </button>
+              {/* Word (col-span-5) */}
+              <div className="col-span-5 flex flex-col">
+                <span className="font-semibold text-gray-800 dark:text-gray-100 truncate">{card.english}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300 truncate">{card.arabic}</span>
+                {card.transliteration && (
+                  <span className="text-xs italic text-gray-500 dark:text-gray-400 truncate">{card.transliteration}</span>
+                )}
               </div>
-
-              {/* Three-section content layout: Text, Date, Image */}
-              {/* Removed mt-8 as buttons are now positioned differently */}
-              <div className="flex items-center">
-                {/* Section 1: Text */}
-                 <div className="flex flex-col justify-center flex-grow mr-4">
-                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
-                    {card.english}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                    {card.arabic}
-                  </p>
-                  {card.transliteration && (
-                    <p className="text-sm italic text-gray-500 dark:text-gray-400 truncate">
-                      {card.transliteration}
-                    </p>
-                  )}
-                 </div>
-
-                 {/* Section 2: Creation Date */}
-                 {card.metadata?.createdAt && (
-                   <div className="text-sm text-gray-500 dark:text-gray-400 text-center mr-4 flex-shrink-0">
-                     {
-                       (() => {
-                         const date = new Date(card.metadata.createdAt);
-                         const day = String(date.getDate()).padStart(2, '0');
-                         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                         const month = monthNames[date.getMonth()];
-                         const year = String(date.getFullYear()).slice(-2); // Get last two digits of the year
-                         return `${day}-${month}-${year}`;
-                       })()
-                     }
-                   </div>
-                 )}
-
-                {/* Section 3: Image and Audio Button */}
-                {/* Display card image thumbnail if available */}
-                {/* Reduced image size to h-14 w-14 */}
-                <div className="flex items-center flex-shrink-0">
-                  {card.image_url ? (
-                    <img
-                      crossOrigin="anonymous" // Add crossOrigin for images from external sources
-                      src={card.image_url}
-                      alt="Thumbnail"
-                      className="object-cover rounded-md h-14 w-14 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-md h-14 w-14">
-                      <span className="text-gray-400 dark:text-gray-500 text-sm text-center">
-                        No Image
-                      </span>
-                    </div>
-                  )}
-                   {/* Container for Audio Play Button - Always present to reserve space */}
-                   {/* Conditionally render button inside this container */}
-                  <div className="ml-2 flex items-center justify-center h-14 w-8 flex-shrink-0">
-                     {card.audio_url && (
-                       <button
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           new Audio(card.audio_url!).play();
-                         }}
-                         className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
-                         aria-label="Play audio"
-                       >
-                         <Volume2 size={16} />
-                       </button>
-                     )}
-                   </div>
-                </div>
+              {/* Review count (col-span-2) */}
+              <div className="col-span-2 text-center">
+                {reviewCounts[card.id] !== undefined ? reviewCounts[card.id] : '-'}
               </div>
-
-              {/* Display tags if available */}
-              {card.tags && card.tags.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Tags: {card.tags.join(', ')}
-                  </p>
-                </div>
-              )}
+              {/* Date created (col-span-3, right-aligned) */}
+              <div className="col-span-3 text-right text-sm text-gray-500 dark:text-gray-400">
+                {card.metadata?.createdAt ? (() => {
+                  const date = new Date(card.metadata.createdAt);
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                  const month = monthNames[date.getMonth()];
+                  const year = String(date.getFullYear()).slice(-2);
+                  return `${day}-${month}-${year}`;
+                })() : ''}
+              </div>
+              {/* Media (col-span-2, far right) */}
+              <div className="col-span-2 flex items-center justify-center">
+                {(card.image_url || card.audio_url) ? (
+                  <CheckCircle2 className="text-emerald-500" size={22} />
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

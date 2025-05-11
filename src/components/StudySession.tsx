@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CardView, { CardViewHandle } from './CardView';
-import { AlertCircle, Settings, Loader2 } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon, ADDED: Loader2
+import { AlertCircle, Settings, Loader2, X } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon, ADDED: Loader2, ADDED: X
 import SettingsModal, { loadHotkeys, HotkeySettings } from './SettingsModal'; // MODIFIED: Removed DEFAULT_HOTKEYS from import
 import ReviewCalendar from './ReviewCalendar'; // ADDED: Import ReviewCalendar component
 
@@ -70,6 +70,7 @@ const StudySession: React.FC = () => {
   const [showPostReviewButtons, setShowPostReviewButtons] = useState(false); // ADDED: State to show Undo/Next buttons
   const [showSettingsModal, setShowSettingsModal] = useState(false); // ADDED: State to control settings modal visibility
   const [currentHotkeys, setCurrentHotkeys] = useState<HotkeySettings>(DEFAULT_HOTKEYS); // ADDED: State for hotkey settings, initialized with defaults
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false); // ADDED: State to control exit confirmation modal visibility
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
 
@@ -269,8 +270,8 @@ const StudySession: React.FC = () => {
     const handleKeyPress = (event: KeyboardEvent) => {
       const key = event.key;
 
-      // Prevent hotkeys from working when modal is open
-      if (showSettingsModal) return;
+      // Prevent hotkeys from working when any modal is open
+      if (showSettingsModal || showExitConfirmModal) return;
 
       // Handle grading hotkeys only if the answer is visible AND no quality has been selected yet
       if (isAnswerVisible && selectedQuality === null) {
@@ -321,7 +322,7 @@ const StudySession: React.FC = () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
     // Add currentHotkeys and other relevant states/functions to the dependency array
-  }, [currentHotkeys, onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal, handleNextCard, handleUndoReview]);
+  }, [currentHotkeys, onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal, showExitConfirmModal, handleNextCard, handleUndoReview]);
 
   // ADDED: Handle browser refresh/close and internal navigation prompts
   useEffect(() => {
@@ -560,51 +561,61 @@ const StudySession: React.FC = () => {
         </div>
       )}
 
-      {/* Settings button */}
-      <button
-        className="fixed bottom-32 right-6 p-3 rounded-full shadow-lg transition-colors z-50 text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
-        onClick={() => setShowSettingsModal(true)} // MODIFIED: Open settings modal
-        aria-label="Settings"
-        style={{ zIndex: 60 }} // Ensure above most content, but below the bottom bar
-      >
-        <Settings size={28} />
-      </button>
-      {/* END ADDED: Settings button */}
+      {/* Settings and Exit buttons container */}
+      <div className="fixed bottom-32 right-6 flex space-x-2 z-50">
+        {/* Settings button */}
+        <button
+          className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
+          onClick={() => setShowSettingsModal(true)}
+          aria-label="Settings"
+        >
+          <Settings size={28} />
+        </button>
+        {/* Exit button */}
+        <button
+          className="p-3 rounded-full shadow-lg transition-colors bg-red-600 text-white hover:bg-red-700"
+          onClick={() => setShowExitConfirmModal(true)}
+          aria-label="Exit study session"
+        >
+          <X size={28} />
+        </button>
+      </div>
+      {/* END Settings and Exit buttons container */}
 
       {/* Fixed Bottom Bar for Review Rating Buttons */}
       {isAnswerVisible && (
         <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-3 px-2 z-50" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}>
           <button
             onClick={() => onQualitySelect(0)}
-            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs font-bold hover:bg-red-600 min-w-0 ${selectedQuality === 0 ? 'border-4 border-black dark:border-white' : ''}`}
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 0 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">1</span>
-            <span className="block font-normal text-gray-200 text-[10px] leading-tight">Blackout</span>
+            <span className="block font-normal text-gray-200 text-xs sm:text-sm leading-tight">Blackout</span>
           </button>
           <button
             onClick={() => onQualitySelect(1)}
-            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 min-w-0 ${selectedQuality === 1 ? 'border-4 border-black dark:border-white' : ''}`}
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 1 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">2</span>
-            <span className="block font-normal text-gray-200 text-[10px] leading-tight">Wrong but familiar</span>
+            <span className="block font-normal text-gray-200 text-xs sm:text-sm leading-tight">Wrong but familiar</span>
           </button>
           <button
             onClick={() => onQualitySelect(2)}
-            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 min-w-0 ${selectedQuality === 2 ? 'border-4 border-black dark:border-white' : ''}`}
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 2 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">3</span>
-            <span className="block font-normal text-gray-200 dark:text-white text-[10px] leading-tight">Hesitation</span>
+            <span className="block font-normal text-gray-200 dark:text-white text-xs sm:text-sm leading-tight">Hesitation</span>
           </button>
           <button
             onClick={() => onQualitySelect(3)}
-            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs font-bold hover:bg-green-600 min-w-0 ${selectedQuality === 3 ? 'border-4 border-black dark:border-white' : ''}`}
+            className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 3 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
             <span className="text-lg">4</span>
-            <span className="block font-normal text-gray-200 text-[10px] leading-tight">Perfect</span>
+            <span className="block font-normal text-gray-200 text-xs sm:text-sm leading-tight">Perfect</span>
           </button>
         </div>
       )}
@@ -613,6 +624,31 @@ const StudySession: React.FC = () => {
       {/* Settings Modal */}
       <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} /> {/* ADDED: Settings Modal component */}
       {/* END Settings Modal */}
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirmModal(false); }}>
+          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-sm text-center">
+            <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">End Study Session?</h3>
+            <p className="mb-6 text-gray-600 dark:text-gray-400">Are you sure you want to end the current study session? Your progress on unsaved cards will be lost.</p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => setShowExitConfirmModal(false)}
+                className="px-6 py-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => navigate('/study')} // Navigate back to study selection
+                className="px-6 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* END Exit Confirmation Modal */}
     </div>
   );
 };
