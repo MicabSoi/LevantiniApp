@@ -10,6 +10,7 @@ import {
   isSameDay,
   isToday,
   isPast,
+  isSameMonth,
 } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,6 +38,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   // Calculate the start and end dates for the currently displayed month
@@ -50,26 +52,9 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
       setLoading(true);
       setError(null);
 
-      // Fetch reviews for ~1 month around the current view
-      const fetchStartDate = startOfMonth(currentMonth);
-      const fetchEndDate = endOfMonth(currentMonth);
-
-      // Adjust range slightly to cover potential edge cases or see upcoming reviews
-      // Let's fetch reviews due within the next 3 months from today for simplicity
-      const today = new Date();
-      const reviewRangeStart = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - 30 // Fetch some past due cards too? Or just future? Let's focus on future.
-      );
-      const reviewRangeEnd = new Date(
-        today.getFullYear(),
-        today.getMonth() + 3, // Fetch up to 3 months ahead
-        today.getDate()
-      );
-
       console.log(
-        `Fetching reviews due between ${reviewRangeStart.toISOString()} and ${reviewRangeEnd.toISOString()}`
+        // Removed date range filtering to show all reviews for all cards
+        `Fetching all reviews for user's cards.`
       );
 
       try {
@@ -87,9 +72,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
               transliteration
             )
           `
-          )
-          .gte('next_review_date', reviewRangeStart.toISOString()) // >= start of range
-          .lte('next_review_date', reviewRangeEnd.toISOString()); // <= end of range
+          );
 
         if (error) {
           throw error;
@@ -167,6 +150,37 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   // Determine the day of the week for the first day of the month (0 for Sunday, 6 for Saturday)
   const startingDayIndex = startDate.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
 
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Filter reviews based on search query
+  const filteredReviews = useMemo(() => {
+    if (!searchQuery) return [];
+
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    return reviews.filter(review =>
+      review.card && (
+        review.card.english.toLowerCase().includes(lowerCaseQuery) ||
+        review.card.arabic.toLowerCase().includes(lowerCaseQuery) ||
+        (review.card.transliteration && review.card.transliteration.toLowerCase().includes(lowerCaseQuery))
+      )
+    );
+  }, [searchQuery, reviews]);
+
+  // Handle clicking a search result
+  const handleSearchResultClick = (review: Review) => {
+    if (review.next_review_date) {
+      const reviewDate = new Date(review.next_review_date);
+      // Check if the review date is in the current month, otherwise navigate
+      if (!isSameMonth(reviewDate, currentMonth)) {
+        setCurrentMonth(startOfMonth(reviewDate));
+      }
+      setSelectedDay(reviewDate); // Select the day to open the modal
+      setSearchQuery(''); // Clear search query
+    }
+  };
+
   return (
     <div className="p-4">
       {/* Back button */}
@@ -180,6 +194,45 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
       <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
         Review Schedule
       </h2>
+
+      {/* Search Input */}
+      <div className="mb-4 relative">
+        <input
+          type="text"
+          placeholder="Search for cards..."
+          className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-dark-300 dark:border-dark-100 dark:text-gray-100"
+          value={searchQuery}
+          onChange={handleSearchInputChange}
+        />
+        {/* Dropdown */}
+        {searchQuery && filteredReviews.length > 0 && (
+          <ul className="absolute z-10 w-full bg-white dark:bg-dark-200 border border-gray-200 dark:border-dark-100 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+            {filteredReviews.map((review) => (
+              <li
+                key={review.id}
+                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-dark-100 cursor-pointer text-gray-800 dark:text-gray-100 flex justify-between items-center"
+                onClick={() => handleSearchResultClick(review)}
+              >
+                {/* Display relevant card info */}
+                {review.card ? (
+                  <div className="flex-1 mr-4">
+                    <p className="font-medium">{review.card.english}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{review.card.arabic}</p>
+                  </div>
+                ) : (
+                  <p className="text-red-600">Card details unavailable.</p>
+                )}
+                {/* Display Due Date */}
+                {review.next_review_date && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                    {format(new Date(review.next_review_date), 'dd MMM yyyy')}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {error && (
         <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-md flex items-start">
@@ -286,7 +339,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                Reviews Due on {format(selectedDay, 'PPP')}
+                Reviews Due<span className="sm:hidden"><br/></span> {selectedDay ? format(selectedDay, 'dd MMMM yyyy') : ''}
               </h3>
               <button
                 onClick={() => setSelectedDay(null)}

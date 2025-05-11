@@ -134,32 +134,34 @@ function App() {
         <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-dark-300">
           {/* Sticky Header */}
           <header className="fixed top-0 left-0 right-0 z-50 bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-1 sm:px-4 sm:py-2 shadow-md dark:shadow-black/20">
-            <div className="container mx-auto max-w-4xl flex justify-between items-center">
-              {/* Left: Title */}
-              <h1 className="text-xl sm:text-2xl font-bold">Levantini</h1>
+            <div className="container mx-auto max-w-4xl flex justify-between items-center relative">
+              {/* Left: Dark Mode Toggle */}
+              <div className="flex-shrink-0">
+                <button
+                  onClick={() => {
+                    setIsDarkMode((prev) => {
+                      const newMode = !prev;
+                      localStorage.setItem('darkMode', JSON.stringify(newMode));
+                      return newMode;
+                    });
+                  }}
+                  className="p-2 rounded-full bg-emerald-700 dark:bg-emerald-800 hover:bg-emerald-800 dark:hover:bg-emerald-900 transition-colors"
+                  aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {isDarkMode ? (
+                    <Lightbulb size={18} className="text-emerald-400 fill-current" />
+                  ) : (
+                    <Lightbulb size={18} className="text-gray-300" />
+                  )}
+                </button>
+              </div>
 
-              {/* Center: Dark Mode Toggle */}
-              <button
-                onClick={() => {
-                  setIsDarkMode((prev) => {
-                    const newMode = !prev;
-                    localStorage.setItem('darkMode', JSON.stringify(newMode));
-                    return newMode;
-                  });
-                }}
-                className="p-2 rounded-full bg-emerald-700 dark:bg-emerald-800 hover:bg-emerald-800 dark:hover:bg-emerald-900 transition-colors"
-                aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {isDarkMode ? (
-                  <Lightbulb size={18} className="text-emerald-400 fill-current" />
-                ) : (
-                  <Lightbulb size={18} className="text-gray-300" />
-                )}
-              </button>
+              {/* Center: Title */}
+              <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl sm:text-2xl font-bold">Levantini</h1>
 
               {/* Right: User Info */}
-              <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="flex-shrink-0 flex items-center space-x-1 sm:space-x-2">
                 <div className="flex items-center bg-emerald-700 dark:bg-emerald-800 px-2 py-0.5 rounded-full text-xs sm:text-sm">
                   <span className="text-yellow-400 font-bold mr-1">Lvl {userLevel}</span>
                   <Star size={14} className="text-yellow-400" />
