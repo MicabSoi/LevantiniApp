@@ -37,8 +37,6 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [isExpanding, setIsExpanding] = useState(false);
-  const [dayDetailHeight, setDayDetailHeight] = useState('0px');
   const navigate = useNavigate();
 
   // Calculate the start and end dates for the currently displayed month
@@ -133,34 +131,11 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   };
 
   const handleDayClick = (day: Date) => {
+    // Toggle the selected day
     if (selectedDay && isSameDay(day, selectedDay)) {
-      // If clicking the already selected day, close the detail view with animation
-      setIsExpanding(false);
-      setDayDetailHeight('0px');
-      // Wait for animation to complete before clearing the selection
-      setTimeout(() => {
-        setSelectedDay(null);
-      }, 300); // Match the transition duration
+      setSelectedDay(null); // Deselect if clicking the same day
     } else {
-      // Clicking a new day - first close current selection if any
-      if (selectedDay) {
-        setIsExpanding(false);
-        setDayDetailHeight('0px');
-        // Wait for closing animation, then show the new day
-        setTimeout(() => {
-          setSelectedDay(day);
-          setIsExpanding(true);
-          setDayDetailHeight('auto');
-        }, 300);
-      } else {
-        // No day was selected, simply open the new one
-        setSelectedDay(day);
-        setIsExpanding(true);
-        // Slight delay to trigger animation
-        setTimeout(() => {
-          setDayDetailHeight('auto');
-        }, 50);
-      }
+      setSelectedDay(day); // Select the new day
     }
   };
 
@@ -306,22 +281,16 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
         )}
       </div>
 
-      {/* Details for Selected Day - With Animation */}
-      <div 
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          selectedDay ? 'mt-6 opacity-100' : 'opacity-0 h-0'
-        }`}
-        style={{ height: selectedDay ? dayDetailHeight : '0px' }}
-      >
-        {selectedDay && (
-          <div className="bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 p-6">
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setSelectedDay(null); }}>
+          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
                 Reviews Due on {format(selectedDay, 'PPP')}
               </h3>
-              <button 
-                onClick={() => handleDayClick(selectedDay)}
-                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100"
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100 text-gray-700 dark:text-gray-300"
                 aria-label="Close day view"
               >
                 <X size={20} />
@@ -339,7 +308,6 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                     key={review.id}
                     className="border border-gray-200 dark:border-dark-100 rounded-md p-3 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200"
                   >
-                    {/* Display card details (English, Arabic, Transliteration) */}
                     {review.card ? (
                       <div className="flex justify-between items-center">
                         <div>
@@ -355,13 +323,6 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                             </p>
                           )}
                         </div>
-                        {/* Add action buttons here later */}
-                        {/*
-                              <div className="flex space-x-2">
-                                  <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Review Now</button>
-                                  <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Change Date</button>
-                              </div>
-                              */}
                       </div>
                     ) : (
                       <p className="text-red-600">Card details unavailable.</p>
@@ -371,8 +332,8 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
               </ul>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
