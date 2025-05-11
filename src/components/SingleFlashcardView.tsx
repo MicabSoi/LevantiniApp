@@ -21,14 +21,15 @@ interface Deck {
 }
 
 interface SingleFlashcardViewProps {
-  // Removed setLastViewedFlashcardId and setLastViewedDeckId props
+  flashcard?: Flashcard | null;
+  onClose?: () => void;
 }
 
-const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
+const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: propFlashcard, onClose }) => {
   const { deckId, cardId } = useParams<{ deckId: string; cardId: string }>();
-  const [flashcard, setFlashcard] = useState<Flashcard | null>(null);
+  const [flashcard, setFlashcard] = useState<Flashcard | null>(propFlashcard || null);
   const [deckName, setDeckName] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(!propFlashcard);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -37,10 +38,11 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
 
   useEffect(() => {
     const fetchCardAndDeck = async () => {
+      if (propFlashcard) return;
+
       setLoading(true);
       setError(null);
 
-      // Fetch flashcard details
       const { data: cardData, error: cardError } = await supabase
         .from('cards')
         .select('*')
@@ -54,38 +56,40 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
       }
       setFlashcard(cardData as Flashcard);
 
-      // Fetch deck details
-      const { data: deckData, error: deckError } = await supabase
-        .from('decks')
-        .select('name')
-        .eq('id', deckId)
-        .single();
+      if (cardData?.deck_id) {
+        const { data: deckData, error: deckError } = await supabase
+          .from('decks')
+          .select('name')
+          .eq('id', cardData.deck_id)
+          .single();
 
-      if (deckError) {
-        setError(deckError.message);
-        setLoading(false);
-        return;
+        if (deckError) {
+          console.error('Error fetching deck name in SingleFlashcardView:', deckError);
+        }
+        setDeckName(deckData?.name || null);
       }
-      setDeckName(deckData.name);
 
       setLoading(false);
     };
 
-    if (deckId && cardId) fetchCardAndDeck();
-  }, [deckId, cardId]);
+    if (!propFlashcard && deckId && cardId) fetchCardAndDeck();
+  }, [propFlashcard, deckId, cardId]);
+
+  useEffect(() => {
+    setFlashcard(propFlashcard || null);
+    setLoading(!propFlashcard);
+  }, [propFlashcard]);
 
   const handlePlayAudio = (audioUrl: string) => {
     new Audio(audioUrl).play();
   };
 
-  // Edit handler
   const handleEdit = () => {
     if (!flashcard) return;
     setEditData(flashcard);
     setShowEditModal(true);
   };
 
-  // Delete handler
   const handleDelete = async () => {
     if (!flashcard) return;
     setShowDeleteConfirm(false);
@@ -99,7 +103,11 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
     if (deleteError) {
       setError(deleteError.message);
     } else {
-      navigate(`/flashcard/${deckId}`);
+      if (onClose) {
+        onClose();
+      } else if (flashcard.deck_id) {
+        navigate(`/flashcard/${flashcard.deck_id}`);
+      }
     }
   };
 
@@ -134,8 +142,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
         </button>
       )}
 
-      <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative">
-        {/* Edit and Delete buttons in the top right */}
+      <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative pt-12">
         <div className="absolute top-4 right-4 flex space-x-2">
           <button
             className="text-emerald-600 dark:text-emerald-400 p-1 rounded-md"
@@ -152,42 +159,43 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = () => {
             <Trash2 size={18} />
           </button>
         </div>
-        {/* End edit/delete buttons */}
-        {flashcard.image_url && (
-          <img
-            crossOrigin="anonymous"
-            src={flashcard.image_url}
-            alt="Flashcard image"
-            className="object-cover rounded-md mb-4 w-full h-64"
-          />
-        )}
-        <h1 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
-          {flashcard.english}
-        </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
-          {flashcard.arabic}
-        </p>
-        {flashcard.transliteration && (
-          <p className="text-lg italic text-gray-500 dark:text-gray-400 mb-4">
-            {flashcard.transliteration}
+        <div className={`${flashcard.image_url ? 'mt-12' : ''}`}>
+          {flashcard.image_url && (
+            <img
+              crossOrigin="anonymous"
+              src={flashcard.image_url}
+              alt="Flashcard image"
+              className="object-cover rounded-md mb-4 w-full h-64"
+            />
+          )}
+          <h1 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
+            {flashcard.english}
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
+            {flashcard.arabic}
           </p>
-        )}
-        {flashcard.tags && flashcard.tags.length > 0 && (
-          <div className="mt-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Tags: {flashcard.tags.join(', ')}
+          {flashcard.transliteration && (
+            <p className="text-lg italic text-gray-500 dark:text-gray-400 mb-4">
+              {flashcard.transliteration}
             </p>
-          </div>
-        )}
-        {flashcard.audio_url && (
-          <button
-            onClick={() => handlePlayAudio(flashcard.audio_url!)}
-            className="mt-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-3 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors flex items-center justify-center"
-            aria-label="Play audio"
-          >
-            <Volume2 size={24} />
-          </button>
-        )}
+          )}
+          {flashcard.tags && flashcard.tags.length > 0 && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Tags: {flashcard.tags.join(', ')}
+              </p>
+            </div>
+          )}
+          {flashcard.audio_url && (
+            <button
+              onClick={() => handlePlayAudio(flashcard.audio_url!)}
+              className="mt-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-3 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors flex items-center justify-center"
+              aria-label="Play audio"
+            >
+              <Volume2 size={24} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Edit Modal */}

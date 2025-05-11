@@ -5,6 +5,7 @@ import { Loader2, Volume2, Edit2, Trash2, XCircle, CheckCircle2 } from 'lucide-r
 import { useNavigate } from 'react-router-dom';
 import FlashcardForm from './FlashcardForm'; // Import FlashcardForm
 import { Plus } from 'lucide-react'; // Import Plus icon
+import SingleFlashcardView from './SingleFlashcardView'; // Import SingleFlashcardView
 
 interface Flashcard {
   id: string;
@@ -54,6 +55,10 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
   // ADDED: State for search term
   const [searchTerm, setSearchTerm] = useState('');
+
+  // State for Flashcard Modal
+  const [showFlashcardModal, setShowFlashcardModal] = useState(false);
+  const [selectedFlashcard, setSelectedFlashcard] = useState<Flashcard | null>(null);
 
   // Fetch deck details and flashcards
   const fetchDeckAndFlashcards = async () => {
@@ -316,7 +321,10 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
             <div
               key={card.id}
               className="grid grid-cols-12 items-center px-2 py-3 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer mb-2"
-              onClick={() => navigate(`/flashcard/${deckId}/${card.id}`)}
+              onClick={() => {
+                setSelectedFlashcard(card);
+                setShowFlashcardModal(true);
+              }}
             >
               {/* Word (col-span-5) */}
               <div className="col-span-5 flex flex-col">
@@ -479,6 +487,44 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
           onClose={handleCloseCreateFlashcardModal}
           onSubmit={handleCloseCreateFlashcardModal} // Close modal on successful submit
         />
+      )}
+
+      {/* Flashcard Modal */}
+      {showFlashcardModal && selectedFlashcard && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Close modal if clicking outside the modal content
+            if (e.target === e.currentTarget) {
+              setShowFlashcardModal(false);
+              setSelectedFlashcard(null);
+            }
+          }}
+        >
+          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-md relative">
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              onClick={() => {
+                setShowFlashcardModal(false);
+                setSelectedFlashcard(null);
+              }}
+            >
+              <XCircle size={24} />
+            </button>
+            {/* TODO: Integrate SingleFlashcardView content here or adapt it */}
+            {/* For now, just displaying basic info as a placeholder */}
+            <SingleFlashcardView
+              flashcard={selectedFlashcard}
+              onClose={() => {
+                setShowFlashcardModal(false);
+                setSelectedFlashcard(null);
+                // Optional: Refresh the list in FlashcardDetail after closing if a change might have occurred (e.g., deletion)
+                fetchDeckAndFlashcards();
+              }}
+            />
+          </div>
+        </div>
       )}
 
     </div>
