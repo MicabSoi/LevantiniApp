@@ -1,7 +1,7 @@
 // src/components/ReviewCalendar.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle, X } from 'lucide-react';
 import {
   format,
   startOfMonth,
@@ -11,10 +11,7 @@ import {
   isToday,
   isPast,
 } from 'date-fns';
-
-// Use the Card type defined previously
-import { Database } from '../types/supabase';
-type Card = Database['public']['Tables']['cards']['Row'];
+import { useNavigate } from 'react-router-dom';
 
 // Define a type for the data structure returned by the reviews fetch
 interface Review {
@@ -40,6 +37,9 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [isExpanding, setIsExpanding] = useState(false);
+  const [dayDetailHeight, setDayDetailHeight] = useState('0px');
+  const navigate = useNavigate();
 
   // Calculate the start and end dates for the currently displayed month
   const startDate = startOfMonth(currentMonth);
@@ -101,7 +101,9 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
         const validReviews = data
           ? data.filter((review) => review.card !== null)
           : [];
-        setReviews(validReviews as Review[]);
+        
+        // Type casting to ensure it matches our Review type
+        setReviews(validReviews as unknown as Review[]);
         console.log('Fetched reviews:', validReviews);
       } catch (err: any) {
         console.error('Error fetching reviews:', err);
@@ -131,7 +133,35 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   };
 
   const handleDayClick = (day: Date) => {
-    setSelectedDay(day);
+    if (selectedDay && isSameDay(day, selectedDay)) {
+      // If clicking the already selected day, close the detail view with animation
+      setIsExpanding(false);
+      setDayDetailHeight('0px');
+      // Wait for animation to complete before clearing the selection
+      setTimeout(() => {
+        setSelectedDay(null);
+      }, 300); // Match the transition duration
+    } else {
+      // Clicking a new day - first close current selection if any
+      if (selectedDay) {
+        setIsExpanding(false);
+        setDayDetailHeight('0px');
+        // Wait for closing animation, then show the new day
+        setTimeout(() => {
+          setSelectedDay(day);
+          setIsExpanding(true);
+          setDayDetailHeight('auto');
+        }, 300);
+      } else {
+        // No day was selected, simply open the new one
+        setSelectedDay(day);
+        setIsExpanding(true);
+        // Slight delay to trigger animation
+        setTimeout(() => {
+          setDayDetailHeight('auto');
+        }, 50);
+      }
+    }
   };
 
   // Filter reviews for the selected day
@@ -164,6 +194,14 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
 
   return (
     <div className="p-4">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 text-emerald-600 dark:text-emerald-400 flex items-center"
+      >
+        ← Back
+      </button>
+
       <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
         Review Schedule
       </h2>
@@ -180,16 +218,16 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={handlePrevMonth}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100 text-gray-700 dark:text-gray-300"
           >
             <ChevronLeft size={20} />
           </button>
-          <h3 className="text-lg font-bold">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
             {format(currentMonth, 'MMMM yyyy')}
           </h3>
           <button
             onClick={handleNextMonth}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100 text-gray-700 dark:text-gray-300"
           >
             <ChevronRight size={20} />
           </button>
@@ -224,9 +262,10 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                 className={`
                   h-16 flex flex-col items-center justify-start p-1 text-xs rounded-md cursor-pointer
                   border border-gray-200 dark:border-dark-100
-                  ${
+                  transition-all duration-300 ease-in-out
+                  text-gray-800 dark:text-gray-200 ${
                     isPastDay
-                      ? 'bg-gray-100 dark:bg-dark-300 text-gray-400'
+                      ? 'bg-gray-300 dark:bg-dark-300 text-gray-400'
                       : 'bg-gray-50 dark:bg-dark-100 hover:bg-gray-100 dark:hover:bg-dark-300'
                   }
                   ${
@@ -246,9 +285,12 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
                   {format(day, 'd')}
                 </span>
                 {hasReviews && (
-                  <span className="mt-1 w-4 h-4 flex items-center justify-center bg-emerald-500 text-white rounded-full text-xs font-bold">
-                    {dayReviews.length}
-                  </span>
+                  <div className="relative">
+                    <span className="mt-1 w-4 h-4 flex items-center justify-center bg-emerald-500 text-white rounded-full text-xs font-bold">
+                      {dayReviews.length}
+                    </span>
+                    <span className="absolute inset-0 animate-ping h-4 w-4 rounded-full bg-emerald-500 opacity-75"></span>
+                  </div>
                 )}
               </div>
             );
@@ -264,57 +306,73 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
         )}
       </div>
 
-      {/* Details for Selected Day */}
-      {selectedDay && (
-        <div className="mt-6 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 p-6">
-          <h3 className="text-lg font-bold mb-4">
-            Reviews Due on {format(selectedDay, 'PPP')}
-          </h3>
+      {/* Details for Selected Day - With Animation */}
+      <div 
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          selectedDay ? 'mt-6 opacity-100' : 'opacity-0 h-0'
+        }`}
+        style={{ height: selectedDay ? dayDetailHeight : '0px' }}
+      >
+        {selectedDay && (
+          <div className="bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">
+                Reviews Due on {format(selectedDay, 'PPP')}
+              </h3>
+              <button 
+                onClick={() => handleDayClick(selectedDay)}
+                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100"
+                aria-label="Close day view"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-          {reviewsForSelectedDay.length === 0 ? (
-            <p className="text-gray-600 dark:text-gray-400">
-              No cards scheduled for review on this day.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {reviewsForSelectedDay.map((review) => (
-                <li
-                  key={review.id}
-                  className="border border-gray-200 dark:border-dark-100 rounded-md p-3"
-                >
-                  {/* Display card details (English, Arabic, Transliteration) */}
-                  {review.card ? (
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {review.card.english}
-                        </p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          {review.card.arabic}
-                        </p>
-                        {review.card.transliteration && (
-                          <p className="text-xs text-gray-600 dark:text-gray-400 italic">
-                            {review.card.transliteration}
+            {reviewsForSelectedDay.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400">
+                No cards scheduled for review on this day.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {reviewsForSelectedDay.map((review) => (
+                  <li
+                    key={review.id}
+                    className="border border-gray-200 dark:border-dark-100 rounded-md p-3 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200"
+                  >
+                    {/* Display card details (English, Arabic, Transliteration) */}
+                    {review.card ? (
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {review.card.english}
                           </p>
-                        )}
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {review.card.arabic}
+                          </p>
+                          {review.card.transliteration && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                              {review.card.transliteration}
+                            </p>
+                          )}
+                        </div>
+                        {/* Add action buttons here later */}
+                        {/*
+                              <div className="flex space-x-2">
+                                  <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Review Now</button>
+                                  <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Change Date</button>
+                              </div>
+                              */}
                       </div>
-                      {/* Add action buttons here later */}
-                      {/*
-                            <div className="flex space-x-2">
-                                <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Review Now</button>
-                                <button className="px-3 py-1 text-sm bg-emerald-100 rounded">Change Date</button>
-                            </div>
-                            */}
-                    </div>
-                  ) : (
-                    <p className="text-red-600">Card details unavailable.</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+                    ) : (
+                      <p className="text-red-600">Card details unavailable.</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

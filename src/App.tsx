@@ -7,6 +7,7 @@ import {
   User,
   Star,
   Lightbulb,
+  CalendarDays
 } from 'lucide-react';
 import { useSupabase } from './context/SupabaseContext';
 import Auth from './components/Auth';
@@ -52,6 +53,7 @@ function App() {
   const [wordBankSubTab, setWordBankSubTab] = useState('landing');
   const [communitySubTab, setCommunitySubTab] = useState('forums');
   const [userLevel] = useState(12); // This would come from your user context/state management
+  const [dueReviewsCount] = useState(5); // Placeholder for due reviews count
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => { // Explicitly type prev
     const saved = localStorage.getItem('darkMode');
@@ -202,7 +204,13 @@ function App() {
                               <span className="font-semibold text-emerald-700 dark:text-emerald-200 mr-2">🔥</span>
                               <span className="font-semibold text-emerald-700 dark:text-emerald-200">Streak: 5 days</span>
                             </div>
-                            {/* Add more quick stats as needed */}
+                            <div
+                              className="flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800 cursor-pointer"
+                              onClick={() => navigate('/study/run')}
+                            >
+                              <CalendarDays size={18} className="text-emerald-600 mr-2" />
+                              <span className="font-semibold text-emerald-800 dark:text-emerald-200">Due Reviews: {dueReviewsCount}</span>
+                            </div>
                           </div>
                         </div>
 

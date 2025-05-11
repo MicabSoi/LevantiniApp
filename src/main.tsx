@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';  // <-- Import BrowserRouter
 import { SupabaseProvider } from './context/SupabaseContext';
 import App from './App.tsx';
 import './index.css';
+import 'react-calendar/dist/Calendar.css'; // Import react-calendar CSS
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

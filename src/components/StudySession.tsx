@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import CardView, { CardViewHandle } from './CardView';
 import { AlertCircle, Settings, Loader2 } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon, ADDED: Loader2
 import SettingsModal, { loadHotkeys, HotkeySettings } from './SettingsModal'; // MODIFIED: Removed DEFAULT_HOTKEYS from import
+import ReviewCalendar from './ReviewCalendar'; // ADDED: Import ReviewCalendar component
 
 interface DueCard {
   id: string; // review id
@@ -454,10 +455,17 @@ const StudySession: React.FC = () => {
         </button>
         <button
           onClick={() => navigate('/study')} // Go back to selection
-          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 mb-8"
         >
           Select different decks
         </button>
+        
+        {/* ADDED: Calendar UI for upcoming reviews */}
+        <div className="mt-8 border-t pt-8 border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-bold mb-4">Upcoming Reviews</h3>
+          <p className="mb-6 text-sm">View your upcoming reviews on the calendar. Days with scheduled reviews are marked with a green dot.</p>
+          <ReviewCalendar />
+        </div>
       </div>
     );
   }

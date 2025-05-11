@@ -12,6 +12,7 @@ import {
   Trash2,
   XCircle,
   LibraryBig,
+  CalendarDays,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import FlashcardForm from './FlashcardForm';
@@ -377,24 +378,37 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
         </div>
       )}
 
-      {/* ADDED: Start Study Session button when viewing the list of decks */}
-      <button
-        onClick={() => navigate('/study')} // Navigate to the StudySelection route
-        className="w-full p-4 mb-4 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors flex items-center justify-center"
-      >
-        <BookOpen size={20} className="mr-2" />
-        Start Study Session
-      </button>
-      {/* END ADDED */}
+      {/* Container for main action buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* ADDED: Start Study Session button when viewing the list of decks */}
+        <button
+          onClick={() => navigate('/study')} // Navigate to the StudySelection route
+          className="w-full p-4 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors flex items-center justify-center"
+        >
+          <BookOpen size={20} className="mr-2" />
+          Start Study Session
+        </button>
+        {/* END ADDED */}
 
-      {/* Button to trigger showing the form for adding a new deck */}
-      <button
-        onClick={() => setIsCreatingNewDeck(true)}
-        className="mb-4 w-full p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center justify-center"
-      >
-        <Plus size={20} className="mr-2" />
-        Create New Deck
-      </button>
+        {/* ADDED: Button to navigate to Review Schedule */}
+        <button
+          onClick={() => navigate('/schedule')} // Navigate to the Review Schedule route
+          className="w-full p-4 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors flex items-center justify-center"
+        >
+          <CalendarDays size={20} className="mr-2" />
+          Review Schedule
+        </button>
+        {/* END ADDED */}
+
+        {/* Button to trigger showing the form for adding a new deck */}
+        <button
+          onClick={() => setIsCreatingNewDeck(true)}
+          className="w-full p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center justify-center"
+        >
+          <Plus size={20} className="mr-2" />
+          Create New Deck
+        </button>
+      </div>
 
       {/* Display list of decks OR filtered flashcards based on search term */}
       {searchTerm ? (
@@ -501,7 +515,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                      {/* Right: Card Count Indicator */}
                      <div className="flex-shrink-0 flex items-center justify-center p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-full text-emerald-800 dark:text-emerald-200 font-semibold text-sm">
                        {/* Access the count from the nested structure returned by the query */}
-                       No. of cards: {deck.cards?.[0]?.count || 0}
+                       cards: {deck.cards?.[0]?.count || 0}
                      </div>
                    </div>
 

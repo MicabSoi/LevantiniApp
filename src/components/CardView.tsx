@@ -100,35 +100,35 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({ card, onQualitySel
     }
   };
 
-const renderFront = () => (
+const renderFront = (cardFields: CardFields) => (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
       <p className="text-2xl font-bold text-center text-gray-900 dark:text-white">
-        {card.fields?.english || 'No English text'} {/* Add defensive check and fallback */}
+        {cardFields?.english || 'No English text'} {/* Add defensive check and fallback */}
       </p>
       {/* Add image rendering here if card type is 'image' */}
-      {card.fields?.imageUrl && (
-        <img src={card.fields.imageUrl} alt="Flashcard front" className="mt-4 max-h-40 object-contain" />
+      {cardFields?.imageUrl && (
+        <img src={cardFields.imageUrl} alt="Flashcard front" className="mt-4 max-h-40 object-contain" />
       )}
     </div>
   );
 
-  const renderBack = () => (
-    <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-50 dark:bg-dark-200 rounded-t-lg">
-      {card.fields?.arabic ? ( // Add defensive check
+  const renderBack = (cardFields: CardFields, audioUrl?: string | null, playAudio?: (url: string) => void) => (
+    <div className="flex flex-col items-center justify-center p-6 bg-gray-50 dark:bg-dark-200 rounded-b-lg">
+      {cardFields?.arabic ? ( // Add defensive check
         <p
           dir="rtl"
           className="text-3xl font-bold text-center text-gray-900 dark:text-white"
         >
-          {card.fields.arabic}
+          {cardFields.arabic}
         </p>
       ) : (
         <p className="text-xl text-gray-600 dark:text-gray-400 text-center">
           No Arabic text
         </p>
       )}
-      {card.fields?.transliteration && ( // Add defensive check
+      {cardFields?.transliteration && ( // Add defensive check
         <p className="text-lg text-gray-600 dark:text-gray-400 text-center mt-2">
-          ({card.fields.transliteration})
+          ({cardFields.transliteration})
         </p>
       )}
       {/* Add cloze text rendering here if card type is 'cloze' */}
@@ -138,15 +138,18 @@ const renderFront = () => (
          </p>
       )} */}
       {/* Add image rendering here if card type is 'image' */}
-      {card.fields?.imageUrl && (
-        <img src={card.fields.imageUrl} alt="Flashcard back" className="mt-4 max-h-40 object-contain" />
+      {/* Removed image rendering from the back to avoid duplication */}
+      {/*
+      {cardFields?.imageUrl && (
+        <img src={cardFields.imageUrl} alt="Flashcard back" className="mt-4 max-h-40 object-contain" />
       )}
+      */}
 
-      {card.audio_url && (
+      {audioUrl && playAudio && (
         <button
           onClick={(e) => {
             e.stopPropagation(); // Prevent flip if clicking audio
-            playAudio(card.audio_url!);
+            playAudio(audioUrl);
           }}
           className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
         >
@@ -156,11 +159,22 @@ const renderFront = () => (
     </div>
   );
 
+const renderAnswerView = (card: CardViewProps['card'], playAudio: (url: string) => void) => (
+    <div className="flex flex-col">
+      {/* Question remains at the top */}
+      {renderFront(card.fields)}
+      {/* Separator */}
+      <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
+      {/* Answer appears below */}
+      {renderBack(card.fields, card.audio_url, playAudio)}
+    </div>
+);
+
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-dark-200 rounded-lg shadow-xl overflow-hidden">
       {/* Card Content Area */}
       <div onClick={handleFlip} className="cursor-pointer">
-        {isFlipped ? renderBack() : renderFront()}
+        {isFlipped ? renderAnswerView(card, playAudio) : renderFront(card.fields)}
       </div>
 
       {/* Quality Buttons */}
