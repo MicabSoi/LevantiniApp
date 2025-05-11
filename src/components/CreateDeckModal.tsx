@@ -25,12 +25,6 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
       <div className="bg-white dark:bg-dark-200 rounded-lg w-full max-w-md">
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-dark-100">
           <h2 className="text-lg font-bold">Create New Deck</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -129,7 +123,7 @@ export const CreateDeckModal: React.FC<CreateDeckModalProps> = ({ onClose, onSub
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-100 rounded-lg"
+              className="px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
             >
               Cancel
             </button>

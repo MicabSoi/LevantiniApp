@@ -15,6 +15,9 @@ interface Flashcard {
   audio_url?: string;
   tags?: string[];
   deck_id: string; // Assuming cards table has deck_id
+  metadata?: {
+    createdAt: string;
+  };
 }
 
 interface Deck {
@@ -282,11 +285,12 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
           {filteredFlashcards.map((card) => (
             <div
               key={card.id}
-              className="relative p-6 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer"
+              className="relative p-6 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer pr-12" // Added pr-12 for right padding
               onClick={() => navigate(`/flashcard/${deckId}/${card.id}`)}
             >
-              {/* Edit and Delete Buttons */}
-              <div className="absolute top-2 right-2 flex space-x-2 z-10">
+              {/* Edit and Delete Buttons - Positioned vertically on the far right */}
+              {/* Adjusted positioning to align with the middle of the card vertically */}
+              <div className="absolute top-1/2 transform -translate-y-1/2 right-2 flex flex-col space-y-2 z-10">
                  <button
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent card click navigation
@@ -309,23 +313,11 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                 </button>
               </div>
 
-              <div className="flex">
-                {/* Display card image thumbnail if available */}
-                {card.image_url ? (
-                  <img
-                    crossOrigin="anonymous" // Add crossOrigin for images from external sources
-                    src={card.image_url}
-                    alt="Thumbnail"
-                    className="object-cover rounded-md h-16 w-16 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-md h-16 w-16">
-                    <span className="text-gray-400 dark:text-gray-500 text-sm text-center">
-                      No Image
-                    </span>
-                  </div>
-                )}
-                <div className="ml-4 flex flex-col justify-center flex-grow">
+              {/* Three-section content layout: Text, Date, Image */}
+              {/* Removed mt-8 as buttons are now positioned differently */}
+              <div className="flex items-center">
+                {/* Section 1: Text */}
+                 <div className="flex flex-col justify-center flex-grow mr-4">
                   <p className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
                     {card.english}
                   </p>
@@ -337,8 +329,62 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                       {card.transliteration}
                     </p>
                   )}
+                 </div>
+
+                 {/* Section 2: Creation Date */}
+                 {card.metadata?.createdAt && (
+                   <div className="text-sm text-gray-500 dark:text-gray-400 text-center mr-4 flex-shrink-0">
+                     {
+                       (() => {
+                         const date = new Date(card.metadata.createdAt);
+                         const day = String(date.getDate()).padStart(2, '0');
+                         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                         const month = monthNames[date.getMonth()];
+                         const year = String(date.getFullYear()).slice(-2); // Get last two digits of the year
+                         return `${day}-${month}-${year}`;
+                       })()
+                     }
+                   </div>
+                 )}
+
+                {/* Section 3: Image and Audio Button */}
+                {/* Display card image thumbnail if available */}
+                {/* Reduced image size to h-14 w-14 */}
+                <div className="flex items-center flex-shrink-0">
+                  {card.image_url ? (
+                    <img
+                      crossOrigin="anonymous" // Add crossOrigin for images from external sources
+                      src={card.image_url}
+                      alt="Thumbnail"
+                      className="object-cover rounded-md h-14 w-14 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-md h-14 w-14">
+                      <span className="text-gray-400 dark:text-gray-500 text-sm text-center">
+                        No Image
+                      </span>
+                    </div>
+                  )}
+                   {/* Container for Audio Play Button - Always present to reserve space */}
+                   {/* Conditionally render button inside this container */}
+                  <div className="ml-2 flex items-center justify-center h-14 w-8 flex-shrink-0">
+                     {card.audio_url && (
+                       <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           new Audio(card.audio_url!).play();
+                         }}
+                         className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
+                         aria-label="Play audio"
+                       >
+                         <Volume2 size={16} />
+                       </button>
+                     )}
+                   </div>
                 </div>
               </div>
+
               {/* Display tags if available */}
               {card.tags && card.tags.length > 0 && (
                 <div className="mt-2">
@@ -346,19 +392,6 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                     Tags: {card.tags.join(', ')}
                   </p>
                 </div>
-              )}
-              {/* Audio Play Button */}
-              {card.audio_url && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    new Audio(card.audio_url!).play();
-                  }}
-                  className="absolute bottom-2 right-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
-                  aria-label="Play audio"
-                >
-                  <Volume2 size={16} />
-                </button>
               )}
             </div>
           ))}
@@ -410,6 +443,10 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                   onChange={(e) => setEditedFlashcardData({ ...editedFlashcardData, image_url: e.target.value })}
                   className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
                 />
+                {/* TODO: Add 'Upload File' and 'Take Photo' options here */}
+                {/* Example: */}
+                {/* <input type="file" accept="image/*" onChange={handleImageFileUpload} /> */}
+                {/* <button onClick={handleTakePhoto}>Take Photo</button> */}
               </div>
                <div>
                 <label htmlFor="editedAudio" className="block text-sm font-medium text-gray-900 dark:text-gray-300">Audio URL (Optional)</label>
@@ -420,6 +457,10 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                   onChange={(e) => setEditedFlashcardData({ ...editedFlashcardData, audio_url: e.target.value })}
                   className="mt-1 block w-full p-2 border border-gray-500 dark:border-gray-700 dark:bg-dark-300 dark:text-white rounded-md shadow-sm focus:outline-none focus:border-emerald-500 dark:focus:border-gray-700"
                 />
+                {/* TODO: Add 'Upload File' and 'Record Audio' options here */}
+                {/* Example: */}
+                {/* <input type="file" accept="audio/*" onChange={handleAudioFileUpload} /> */}
+                {/* <button onClick={handleRecordAudio}>Record Audio</button> */}
               </div>
               <div>
                 <label htmlFor="editedTags" className="block text-sm font-medium text-gray-900 dark:text-gray-300">Tags (comma-separated, Optional)</label>

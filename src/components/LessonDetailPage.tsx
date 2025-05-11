@@ -4,11 +4,89 @@ import { Volume2 } from 'lucide-react';
 import Quiz from './Quiz';
 import { motion } from 'framer-motion';
 import { useAudio } from '../context/AudioContext'; // ✅ Import shared audio data
+import { JSX } from 'react/jsx-runtime'; // Import JSX
 
 interface LessonDetailProps {
   lessonId: string;
   onBack: () => void;
 }
+
+// Helper function to highlight a specific letter in a word at a given position
+const highlightLetter = (word: string, letterToHighlight: string, position: 'start' | 'middle' | 'end'): (string | JSX.Element)[] => {
+  if (!word || !letterToHighlight) return [word];
+
+  const elements: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+
+  // Find all occurrences of the letter
+  const regex = new RegExp(letterToHighlight, 'g');
+  let match;
+  const matches: { index: number, text: string }[] = [];
+  while ((match = regex.exec(word)) !== null) {
+    matches.push({ index: match.index, text: match[0] });
+  }
+
+  if (matches.length === 0) return [word]; // No occurrences found
+
+  let highlightedIndex = -1;
+
+  // Determine which occurrence to highlight based on position
+  if (position === 'start') {
+    if (matches[0].index === 0) {
+      highlightedIndex = 0;
+    }
+  } else if (position === 'end') {
+    // Find the last character of the word, accounting for potential whitespace or special characters at the very end
+    const trimmedWord = word.trim();
+    const lastCharIndexInTrimmed = trimmedWord.length - 1;
+
+    // Find the match that corresponds to the last character of the trimmed word
+    for (let i = matches.length - 1; i >= 0; i--) {
+        // Check if the match's index + its length is the very end of the trimmed word
+        // This is a simplification; actual logic might need to consider Arabic character connection rules
+        if (matches[i].index === word.indexOf(trimmedWord) + lastCharIndexInTrimmed && matches[i].text === trimmedWord.slice(-1))
+         {
+            highlightedIndex = i;
+            break;
+         }
+    }
+
+  } else if (position === 'middle') {
+    // Highlight the first occurrence that is not at the start or end
+    // This is a simplified logic. A more robust solution might involve checking surrounding characters.
+    for (let i = 0; i < matches.length; i++) {
+        if (matches[i].index > 0 && matches[i].index < word.length - matches[i].text.length) {
+            highlightedIndex = i;
+            break;
+        }
+    }
+  }
+
+
+  if (highlightedIndex === -1) {
+      // If no specific occurrence matched the position logic, just return the word unhighlighted
+      // Alternatively, could fallback to highlighting based on visual form or other criteria
+      console.warn(`Could not find a clear instance of letter '${letterToHighlight}' at position '${position}' in word '${word}' for highlighting.`);
+      return [word];
+  }
+
+  // Reconstruct the word with highlighting at the determined index
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    elements.push(word.substring(lastIndex, match.index));
+
+    if (i === highlightedIndex) {
+      elements.push(<span key={match.index} className="text-emerald-400">{match.text}</span>);
+    } else {
+      elements.push(match.text);
+    }
+    lastIndex = match.index + match.text.length;
+  }
+
+  elements.push(word.substring(lastIndex));
+
+  return elements;
+};
 
 // Map lesson IDs to their corresponding letters ALPHABET topic
 const lessonLettersMap: { [key: string]: string[] } = {
@@ -348,7 +426,7 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
                         </div>
                         {letter.examples[position]?.word && (
                           <div className="text-md" dir="rtl">
-                            {letter.examples[position].word}
+                            {highlightLetter(letter.examples[position].word, letter.letter, position as 'start' | 'middle' | 'end')}
                           </div>
                         )}
 
