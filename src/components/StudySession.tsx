@@ -569,7 +569,7 @@ const StudySession: React.FC = () => {
           onClick={() => setShowSettingsModal(true)}
           aria-label="Settings"
         >
-          <Settings size={28} />
+          <Settings size={20} />
         </button>
         {/* Exit button */}
         <button

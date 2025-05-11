@@ -249,8 +249,11 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }) => {
         onClick={() => setSubTab('landing')}
         className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
       >
-        ← Back to Fluency
+        ← Back to Learn
       </button>
+
+      {/* Header and Settings Icon for the Translate page */}
+      <h2 className="text-xl font-bold mb-4">Translate</h2>
 
       {/* Note Section with Dark Mode Classes */}
       <div className="mb-4 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-md border border-emerald-100 dark:border-emerald-800">
@@ -258,12 +261,6 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }) => {
           <strong>Note:</strong> This translator provides words and phrases in
           Levantine Arabic dialect (spoken in Lebanon, Syria, Jordan, and
           Palestine), not Modern Standard Arabic.
-          {!savedApiKey && (
-            <span className="block mt-1">
-              Add your OpenAI API key in settings to enable unlimited
-              translations.
-            </span>
-          )}
         </p>
       </div>
 
@@ -391,34 +388,6 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }) => {
           </div>
         </div>
       )}
-
-      {/* About Transliteration Section with Dark Mode Styling */}
-      <div className="mt-6 bg-gray-50 dark:bg-dark-200 p-4 rounded-md border border-gray-200 dark:border-dark-100">
-        <h3 className="font-bold text-md mb-2 dark:text-gray-100">
-          About Levantine Arabic Transliteration
-        </h3>
-        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-          Levantine Arabic uses numbers to represent sounds that don't exist in
-          English:
-        </p>
-        <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-disc pl-5">
-          <li>
-            <strong>3</strong> - represents the Arabic letter ع ('ayn), a deep
-            throat sound
-          </li>
-          <li>
-            <strong>7</strong> - represents the Arabic letter ح (ḥa), a breathy
-            H sound
-          </li>
-          <li>
-            <strong>2</strong> - represents the glottal stop (hamza)
-          </li>
-          <li>
-            <strong>gh</strong> - represents the Arabic letter غ (ghayn),
-            similar to French R
-          </li>
-        </ul>
-      </div>
     </div>
   );
 };
@@ -426,4 +395,4 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }) => {
 export default Translate;
 
 
-
+

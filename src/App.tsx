@@ -36,6 +36,7 @@ import FluencyLanding from './components/FluencyLanding';
 import FindTutor from './components/FindTutor';
 import LearnLanding from './components/LearnLanding';
 import LessonsTopics from './components/LessonsTopics';
+import Community from './components/Community'; // Import Community component
 import { AudioProvider } from './context/AudioContext';
 import StudySelection from './components/StudySelection';
 import ReviewCalendar from './components/ReviewCalendar'; // Import ReviewCalendar
@@ -54,6 +55,8 @@ function App() {
   const [communitySubTab, setCommunitySubTab] = useState('forums');
   const [userLevel] = useState(12); // This would come from your user context/state management
   const [dueReviewsCount] = useState(5); // Placeholder for due reviews count
+
+  console.log('Current activeTab:', activeTab);
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => { // Explicitly type prev
     const saved = localStorage.getItem('darkMode');
@@ -273,7 +276,7 @@ function App() {
                     )}
 
                     {activeTab === 'learn' && (
-                      <div className="p-4">
+                      <div className="relative">
                         {subTab === 'landing' && (
                           <LearnLanding setSubTab={handleSetLearnSubTab} />
                         )}
@@ -298,105 +301,57 @@ function App() {
                     )}
 
                     {activeTab === 'wordbank' && (
-                      <div className="p-4">
+                      <div className="relative">
                         {wordBankSubTab === 'landing' && (
                           <VocabularyLanding setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'recently learned' && (
-                          <div>Recently Learned Content Here</div>
+                          <div className="p-4">Recently Learned Placeholder</div>
                         )}
                         {wordBankSubTab === 'add words' && (
-                          <VocabularyLanding setWordBankSubTab={handleSetWordBankSubTab} />
+                          <div className="p-4">Word Bank Placeholder</div>
                         )}
                         {(wordBankSubTab === 'flashcards' || !wordBankSubTab) && (
                            <FlashcardDeck setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
                         )}
                         {wordBankSubTab === 'travel dictionary' && (
-                          <Dictionary setActiveTab={setActiveTab} setWordBankSubTab={handleSetWordBankSubTab} />
+                          <div className="p-4">Travel Dictionary Placeholder</div>
                         )}
                         {wordBankSubTab === 'daily words' && (
-                          <div>Daily Words Content Here</div>
+                          <div className="p-4">Daily Words Placeholder</div>
                         )}
                       </div>
                     )}
 
-                    {activeTab === 'community' && (
-                      <div>
-                        <div className="relative">
-                          <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-dark-100 overflow-x-auto whitespace-nowrap pb-2 scrollbar-hide smooth-scroll scroll-bounce scroll-fade">
-                            {['forums', 'chat'].map((tab) => (
-                              <button
-                                key={tab}
-                                onClick={() => setCommunitySubTab(tab)}
-                                className={`px-4 py-2 ${
-                                  communitySubTab === tab
-                                    ? 'text-emerald-600 border-b-2 border-emerald-600'
-                                    : 'text-gray-600 dark:text-gray-400'
-                                }`}
-                              >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <div className="text-center text-gray-500 py-8">
-                            Community features coming soon!
-                          </div>
-                        </div>
+                    {/* Render Fluency content */}
+                    {activeTab === 'fluency' && (
+                      <div className="relative">
+                        {subTab === 'landing' && (
+                          <FluencyLanding setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'translate' && (
+                          <Translate setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'comprehension' && (
+                          <Comprehension setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'tutor' && (
+                          <FindTutor setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'community' && (
+                          <Community setSubTab={handleSetFluencySubTab} />
+                        )}
                       </div>
                     )}
 
-                    {activeTab === 'fluency' && (
-                      <div>
-                        <div className="relative">
-                          {subTab === 'landing' && (
-                            <FluencyLanding setSubTab={handleSetFluencySubTab} />
-                          )}
-                        </div>
-                        <div className="p-4">
-                          {subTab === 'translate' && (
-                            <Translate setSubTab={handleSetFluencySubTab} />
-                          )}
-                          {subTab === 'comprehension' && (
-                            <Comprehension setSubTab={handleSetFluencySubTab} />
-                          )}
-                          {subTab === 'tutor' && (
-                            <FindTutor setSubTab={handleSetFluencySubTab} />
-                          )}
-                          {subTab === 'community' && (
-                            <div>
-                              <button
-                                onClick={() => handleSetFluencySubTab('landing')}
-                                className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
-                              >
-                                ← Back to Fluency
-                              </button>
+                    {/* Render Community content */}
+                    {activeTab === 'community' && (
+                         <Community setSubTab={setCommunitySubTab} />
+                    )}
 
-                              <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-dark-100 overflow-x-auto whitespace-nowrap pb-2">
-                                {['forums', 'chat'].map((tab) => (
-                                  <button
-                                    key={tab}
-                                    onClick={() => setCommunitySubTab(tab)}
-                                    className={`px-4 py-2 ${
-                                      communitySubTab === tab
-                                        ? 'text-emerald-600 border-b-2 border-emerald-600'
-                                        : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                                  >
-                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                  </button>
-                                ))}
-                              </div>
-                              <div className="p-4">
-                                <div className="text-center text-gray-500 py-8">
-                                  Community features coming soon!
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                    {/* Render Settings content */}
+                    {activeTab === 'settings' && (
+                      <Settings />
                     )}
                   </div>
                 }

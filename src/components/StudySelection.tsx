@@ -55,7 +55,7 @@ const StudySelection: React.FC = () => {
           onClick={() => setIsSettingsModalOpen(true)}
           aria-label="Settings"
         >
-          <Settings size={28} />
+          <Settings size={20} />
         </button>
       </div>
 
