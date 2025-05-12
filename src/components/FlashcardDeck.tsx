@@ -134,6 +134,35 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   // ADDED: State for search term
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Add state for default decks and default flashcards
+  const [defaultDecks, setDefaultDecks] = useState<Deck[]>([]);
+  const [defaultFlashcards, setDefaultFlashcards] = useState<Flashcard[]>([]);
+
+  // Fetch default decks
+  const loadDefaultDecks = async () => {
+    const { data, error } = await supabase
+      .from('default_decks')
+      .select('*')
+      .order('name');
+    if (error) {
+      console.error('Error loading default decks:', error);
+    } else {
+      setDefaultDecks(data as Deck[]);
+    }
+  };
+
+  // Fetch default flashcards
+  const loadDefaultFlashcards = async () => {
+    const { data, error } = await supabase
+      .from('default_flashcards')
+      .select('*');
+    if (error) {
+      console.error('Error loading default flashcards:', error);
+    } else {
+      setDefaultFlashcards(data as Flashcard[]);
+    }
+  };
+
   // Load user's decks from Supabase
   const loadUserDecks = async () => {
     setLoadingDecks(true); // Start loading
@@ -152,8 +181,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     setLoadingDecks(false); // End loading
   };
 
+  // Fetch both user and default decks/flashcards on mount
   useEffect(() => {
     loadUserDecks();
+    loadDefaultDecks();
+    loadDefaultFlashcards();
   }, []);
 
   // ADDED: Effect to load all flashcards after decks are loaded
@@ -189,25 +221,44 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     console.log('Loaded decks:', decks);
   }, [decks]);
 
-  // ADDED: Filter decks based on search term (This will be updated)
-  const filteredDecks = decks.filter(deck =>
-    deck.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    deck.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Calculate card counts for default decks
+  const defaultDeckCardCounts = React.useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    defaultFlashcards.forEach(card => {
+      const deckId = (card as any).default_deck_id || card.deck_id;
+      if (deckId) {
+        counts[deckId] = (counts[deckId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [defaultFlashcards]);
 
-  // ADDED: Filter flashcards based on search term
-  const filteredFlashcards = allFlashcards.filter((card) => {
+  // Combine user and default decks for display
+  const combinedDecks = React.useMemo(() => {
+    const userDecks = decks.map(deck => ({ ...deck, isDefault: false, card_count: deck.cards?.[0]?.count || 0 }));
+    const defDecks = defaultDecks.map(deck => ({
+      ...deck,
+      isDefault: true,
+      card_count: defaultDeckCardCounts[deck.id] || 0,
+    }));
+    return [...userDecks, ...defDecks];
+  }, [decks, defaultDecks, defaultDeckCardCounts]);
+
+  // Combine all flashcards for search
+  const combinedFlashcards = React.useMemo(() => {
+    const userCards = allFlashcards.map(card => ({ ...card, isDefault: false }));
+    const defCards = defaultFlashcards.map(card => ({ ...card, isDefault: true }));
+    return [...userCards, ...defCards];
+  }, [allFlashcards, defaultFlashcards]);
+
+  // Update search logic to include both user and default flashcards
+  const filteredFlashcards = combinedFlashcards.filter((card) => {
     const term = searchTerm.toLowerCase();
     return (
       card.english.toLowerCase().includes(term) ||
       card.arabic.toLowerCase().includes(term) ||
-      (card.transliteration &&
-        card.transliteration.toLowerCase().includes(term)) ||
-      (card.tags && card.tags.join(' ').toLowerCase().includes(term)) ||
-      // Also include searching by deck name or description if the card has a deck_id
-      (card.deck_id && decks.some(deck => deck.id === card.deck_id &&
-         (deck.name.toLowerCase().includes(term) || deck.description.toLowerCase().includes(term))
-      ))
+      (card.transliteration && card.transliteration.toLowerCase().includes(term)) ||
+      (card.tags && card.tags.join(' ').toLowerCase().includes(term))
     );
   });
 
@@ -321,12 +372,14 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     loadUserDecks(); // Refresh decks to show new flashcard count (optional, could optimize later)
   };
 
-  // Handler for selecting a deck (e.g., to view its cards)
-  const handleSelectDeck = (deckId: string) => {
-    // Update parent state with the selected deck ID
-    if (setSelectedDeckId) setSelectedDeckId(deckId);
-    // Navigate to a route that shows the cards for this deck
-    navigate(`/flashcard/${deckId}`);
+  // Update deck selection navigation
+  const handleSelectDeck = (deck: any) => {
+    console.log('Navigating to deck:', deck);
+    if (deck.isDefault) {
+      navigate(`/default-deck/${deck.id}`, { state: { deckType: 'default', deckId: deck.id } });
+    } else {
+      navigate(`/deck/${deck.id}`);
+    }
   };
 
   // Handler for closing the new deck modal
@@ -342,8 +395,8 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       {/* Back button to Vocabulary */}
       <button
         onClick={() => {
-          setActiveTab('wordbank'); // Assuming 'wordbank' is the main vocabulary tab
-          setWordBankSubTab('add words'); // Assuming a default sub-tab
+          setActiveTab('wordbank');
+          setWordBankSubTab('landing');
         }}
         className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
       >
@@ -468,7 +521,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
             <div className="flex items-center justify-center py-8">
              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
            </div>
-          ) : filteredDecks.length === 0 ? (
+          ) : combinedDecks.length === 0 ? (
            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
              No decks yet. Create your first deck!
            </div>
@@ -482,11 +535,12 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
             <div className="flex flex-col">
               {/* Total Card Count Display */}
               <div className="mb-6 text-center text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-center space-x-4">
-                <span>Total no. of cards: {filteredDecks.reduce((sum, deck) => sum + (deck.cards?.[0]?.count || 0), 0)}</span>
+                <span>Total no. of cards: {combinedDecks.reduce((sum, deck) => sum + (deck.card_count || 0), 0)}</span>
                 {/* Single Edit Button for Decks */}
                 <button
                   className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-1 rounded-md"
                   onClick={(e) => {
+                    console.log('Edit Decks button clicked');
                     setIsSelectingDeckForEdit(!isSelectingDeckForEdit);
                     setIsSelectingDeckForDelete(false); // Turn off delete mode if turning on edit mode
                   }}
@@ -498,6 +552,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 <button
                   className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md"
                   onClick={(e) => {
+                    console.log('Delete Decks button clicked');
                     setIsSelectingDeckForDelete(!isSelectingDeckForDelete);
                     setIsSelectingDeckForEdit(false); // Turn off edit mode if turning on delete mode
                   }}
@@ -522,11 +577,14 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
               {/* Grid of Decks */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {/* Sort filtered decks alphabetically by name before mapping */}
-              {filteredDecks.sort((a, b) => a.name.localeCompare(b.name)).map((deck) => (
+              {combinedDecks.sort((a, b) => a.name.localeCompare(b.name)).map((deck) => (
                 <div
                   key={deck.id}
                   className="relative bg-gray-50 dark:bg-dark-100 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer flex flex-col justify-between h-full"
                   onClick={(e) => {
+                    console.log('Deck card clicked:', deck.name);
+                    console.log('isSelectingDeckForEdit:', isSelectingDeckForEdit);
+                    console.log('isSelectingDeckForDelete:', isSelectingDeckForDelete);
                     if (isSelectingDeckForEdit) {
                       e.stopPropagation(); // Prevent default deck navigation
                       setDeckToEdit(deck);
@@ -541,7 +599,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                       setIsSelectingDeckForDelete(false); // Exit selection mode
                       setShowDeleteConfirm(true); // Open delete confirmation modal
                     } else {
-                      handleSelectDeck(deck.id); // Normal navigation
+                      handleSelectDeck(deck); // Normal navigation
                     }
                   }} // Navigate to deck detail on click
                 >
@@ -570,9 +628,9 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                      </div>
 
                      {/* Right: Card Count Indicator */}
-                     <div className="flex-shrink-0 flex items-center justify-center p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-full text-emerald-800 dark:text-emerald-200 font-semibold text-sm">
+                     <div className="flex-shrink-0 flex items-center justify-center p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-full text-emerald-800 dark:text-white font-semibold text-sm">
                        {/* Access the count from the nested structure returned by the query */}
-                       cards: {deck.cards?.[0]?.count || 0}
+                       cards: {deck.card_count || 0}
                      </div>
                    </div>
 

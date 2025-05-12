@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Loader2, Volume2, Edit2, Trash2, XCircle, CheckCircle2 } from 'lucide-react'; // Added Edit2, Trash2, and XCircle
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FlashcardForm from './FlashcardForm'; // Import FlashcardForm
 import { Plus } from 'lucide-react'; // Import Plus icon
 import SingleFlashcardView from './SingleFlashcardView'; // Import SingleFlashcardView
@@ -15,7 +15,8 @@ interface Flashcard {
   image_url?: string;
   audio_url?: string;
   tags?: string[];
-  deck_id: string; // Assuming cards table has deck_id
+  deck_id?: string; // Make deck_id optional
+  default_deck_id?: string; // Add default_deck_id
   metadata?: {
     createdAt: string;
   };
@@ -40,6 +41,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation(); // Get location object to access state
+  const deckType = (location.state as { deckType?: 'user' | 'default' })?.deckType || 'user'; // Get deckType from state, default to 'user'
 
   // State for Flashcard Edit Modal
   const [showEditFlashcardModal, setShowEditFlashcardModal] = useState(false);
@@ -65,12 +68,51 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
     setLoading(true);
     setError(null); // Clear previous errors
 
-    // Fetch deck details
-    const { data: deckData, error: deckError } = await supabase
-      .from('decks')
-      .select('*')
-      .eq('id', deckId)
-      .single();
+    let deckData = null;
+    let deckError = null;
+    let flashcardsData = null;
+    let flashcardsError = null;
+
+    if (deckType === 'user') {
+      // Fetch user deck details
+      const { data: userDeckData, error: userDeckError } = await supabase
+        .from('decks')
+        .select('*')
+        .eq('id', deckId)
+        .single();
+      deckData = userDeckData;
+      deckError = userDeckError;
+
+      if (!deckError) {
+        // Fetch user flashcards for the deck
+        const { data: userFlashcardsData, error: userFlashcardsError } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('deck_id', deckId);
+        flashcardsData = userFlashcardsData;
+        flashcardsError = userFlashcardsError;
+      }
+
+    } else { // deckType === 'default'
+      // Fetch default deck details
+      const { data: defaultDeckData, error: defaultDeckError } = await supabase
+        .from('default_decks')
+        .select('*')
+        .eq('id', deckId)
+        .single();
+      deckData = defaultDeckData;
+      deckError = defaultDeckError;
+
+      if (!deckError) {
+        // Fetch default flashcards for the deck
+        const { data: defaultFlashcardsData, error: defaultFlashcardsError } = await supabase
+          .from('default_flashcards')
+          .select('*')
+          .eq('default_deck_id', deckId);
+        flashcardsData = defaultFlashcardsData;
+        flashcardsError = defaultFlashcardsError;
+      }
+    }
 
     if (deckError) {
       setError(deckError.message);
@@ -79,12 +121,6 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
     }
     setDeck(deckData as Deck);
 
-    // Fetch flashcards for the deck
-    const { data: flashcardsData, error: flashcardsError } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('deck_id', deckId);
-
     if (flashcardsError) {
       setError(flashcardsError.message);
       setLoading(false);
@@ -92,22 +128,24 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
     }
     setFlashcards(flashcardsData as Flashcard[]);
 
-    // Fetch review counts for all cards in this deck
-    const cardIds = (flashcardsData as Flashcard[]).map(card => card.id);
-    if (cardIds.length > 0) {
-      const { data: reviewData, error: reviewError } = await supabase
-        .from('reviews')
-        .select('card_id, reviews_count')
-        .in('card_id', cardIds);
-      if (!reviewError && reviewData) {
-        // Map card_id to reviews_count (if multiple reviews per card, take the max)
-        const counts: { [cardId: string]: number } = {};
-        reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
-          if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
-            counts[row.card_id] = row.reviews_count;
-          }
-        });
-        setReviewCounts(counts);
+    // Fetch review counts for all cards in this deck - only for user decks
+    if (deckType === 'user') {
+      const cardIds = (flashcardsData as Flashcard[]).map(card => card.id);
+      if (cardIds.length > 0) {
+        const { data: reviewData, error: reviewError } = await supabase
+          .from('reviews')
+          .select('card_id, reviews_count')
+          .in('card_id', cardIds);
+        if (!reviewError && reviewData) {
+          // Map card_id to reviews_count (if multiple reviews per card, take the max)
+          const counts: { [cardId: string]: number } = {};
+          reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
+            if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
+              counts[row.card_id] = row.reviews_count;
+            }
+          });
+          setReviewCounts(counts);
+        }
       }
     }
     setLoading(false);
@@ -124,7 +162,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       // For now, let's only set when entering this route.
       // setLastViewedDeckId(null);
     };
-  }, [deckId]); // Removed setLastViewedDeckId from dependencies
+  }, [deckId, deckType]); // Add deckType to dependencies
 
   // ADDED: Filter flashcards based on search term
   const filteredFlashcards = flashcards.filter(card =>
@@ -136,6 +174,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
   // Handler to open edit modal and set data
   const handleEditFlashcardClick = (card: Flashcard) => {
+    // Only allow editing for user decks
+    if (deckType !== 'user') return;
     setFlashcardToEdit(card);
     setEditedFlashcardData(card); // Initialize edited data with current card data
     setShowEditFlashcardModal(true);
@@ -181,6 +221,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
   // Handler to open delete confirmation modal
   const handleDeleteFlashcardClick = (card: Flashcard) => {
+    // Only allow deleting for user decks
+    if (deckType !== 'user') return;
     setFlashcardToDelete(card);
     setShowDeleteFlashcardConfirm(true);
   };
@@ -227,7 +269,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   const handleCloseCreateFlashcardModal = () => {
     setShowCreateFlashcardModal(false);
     // Optional: Refresh flashcards after creating a new one
-    if (deckId) {
+    // Only refetch if it's a user deck, as default cards are static
+    if (deckType === 'user' && deckId) {
       fetchDeckAndFlashcards();
     }
   };
@@ -251,19 +294,21 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   }
 
   return (
-    <div className="p-4 text-gray-900 dark:text-white">
-      <button
-        onClick={() => {
-          navigate('/'); // Navigate back to the main decks list
-        }}
-        className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
-      >
-        ← Back to Flashcard Decks
-      </button>
-
-      <h1 className="text-2xl font-bold mb-6">
-        {deck.emoji} {deck.name}
-      </h1>
+    <div className="container mx-auto p-4 max-w-4xl">
+      {/* Back button and deck title */}
+      <div className="flex items-center mb-4">
+        <button
+          onClick={() => {
+            navigate('/wordbank'); // Or the correct route for Vocabulary landing
+          }}
+          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center"
+        >
+          ← Back to Flashcard Decks
+        </button>
+        <h1 className="text-2xl font-bold ml-4 text-gray-800 dark:text-white">
+          {deck.emoji} {deck.name}
+        </h1>
+      </div>
       <p className="text-gray-600 dark:text-gray-300 mb-8">
         {deck.description}
       </p>
@@ -290,19 +335,20 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       {/* END Search Bar for Flashcards with Clear Button */}
 
       {/* Button to add new flashcard */}
-      {deckId && (
-        <button
-          onClick={handleCreateFlashcardClick}
-          className="mb-4 w-full p-5 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center justify-center"
-        >
-          <Plus size={24} className="mr-2" />
-          Add New Flashcard
-        </button>
+      {deckType === 'user' && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleCreateFlashcardClick}
+            className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add New Flashcard
+          </button>
+        </div>
       )}
 
       {/* Header Row for Flashcards */}
       {filteredFlashcards.length > 0 && (
-        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
+        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-emerald-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
           <div className="col-span-5">Word</div>
           <div className="col-span-2 text-center">Review count</div>
           <div className="col-span-3 text-right">Date created</div>
@@ -336,7 +382,9 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
               </div>
               {/* Review count (col-span-2) */}
               <div className="col-span-2 text-center">
-                {reviewCounts[card.id] !== undefined ? reviewCounts[card.id] : '-'}
+                {deckType === 'user' && typeof reviewCounts[card.id] !== 'undefined' && reviewCounts[card.id] > 0 ? (
+                  <span className="text-gray-700 dark:text-emerald-200">{reviewCounts[card.id]} time(s)</span>
+                ) : '-'}
               </div>
               {/* Date created (col-span-3, right-aligned) */}
               <div className="col-span-3 text-right text-sm text-gray-500 dark:text-gray-400">
@@ -494,7 +542,6 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
-            // Close modal if clicking outside the modal content
             if (e.target === e.currentTarget) {
               setShowFlashcardModal(false);
               setSelectedFlashcard(null);
@@ -502,7 +549,6 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
           }}
         >
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-md relative">
-            {/* Close Button */}
             <button
               className="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               onClick={() => {
@@ -512,14 +558,15 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
             >
               <XCircle size={24} />
             </button>
-            {/* TODO: Integrate SingleFlashcardView content here or adapt it */}
-            {/* For now, just displaying basic info as a placeholder */}
+            {/* Only pass flashcards with a defined deck_id or default_deck_id */}
             <SingleFlashcardView
-              flashcard={selectedFlashcard}
+              flashcard={{
+                ...selectedFlashcard,
+                deck_id: selectedFlashcard.deck_id ?? selectedFlashcard.default_deck_id ?? '',
+              }}
               onClose={() => {
                 setShowFlashcardModal(false);
                 setSelectedFlashcard(null);
-                // Optional: Refresh the list in FlashcardDetail after closing if a change might have occurred (e.g., deletion)
                 fetchDeckAndFlashcards();
               }}
             />
