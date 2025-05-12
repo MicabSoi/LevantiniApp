@@ -21,6 +21,7 @@ import FlashcardDeck from './components/FlashcardDeck';
 import Settings from './components/Settings';
 import Profile from './components/Profile';
 import Progress from './components/Progress';
+import DailyWordsSection from './components/dashboard/DailyWordsSection'; // Import DailyWordsSection
 
 // Feature components
 import VocabularyLanding from './components/VocabularyLanding';
@@ -36,7 +37,6 @@ import FluencyLanding from './components/FluencyLanding';
 import FindTutor from './components/FindTutor';
 import LearnLanding from './components/LearnLanding';
 import LessonsTopics from './components/LessonsTopics';
-import Community from './components/Community'; // Import Community component
 import { AudioProvider } from './context/AudioContext';
 import StudySelection from './components/StudySelection';
 import ReviewCalendar from './components/ReviewCalendar'; // Import ReviewCalendar
@@ -219,6 +219,11 @@ function App() {
                           </div>
                         </div>
 
+                        {/* Add Daily Words Section Here */}
+                        <div className="w-full max-w-md mb-8">
+                          <DailyWordsSection />
+                        </div>
+
                         {/* Grid of Home Options */}
                         <div className="w-full max-w-md grid grid-cols-2 gap-4 mb-8">
                           {[
@@ -338,16 +343,16 @@ function App() {
                         {subTab === 'tutor' && (
                           <FindTutor setSubTab={handleSetFluencySubTab} />
                         )}
-                        {subTab === 'community' && (
-                          <Community setSubTab={handleSetFluencySubTab} />
-                        )}
                       </div>
                     )}
 
                     {/* Render Community content */}
+                    {/* Removed Community section due to file not found */}
+                    {/*
                     {activeTab === 'community' && (
                          <Community setSubTab={setCommunitySubTab} />
                     )}
+                    */}
 
                     {/* Render Settings content */}
                     {activeTab === 'settings' && (
