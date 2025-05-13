@@ -14,6 +14,12 @@ import {
   AlignLeft,
 } from 'lucide-react';
 import { useLearnedWords } from '../context/LearnedWordsContext';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client (replace with your actual Supabase URL and Anon Key)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface HomePageProps {
   setActiveTab: (tab: string) => void;
@@ -69,9 +75,30 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
     },
   ];
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error logging out:', error.message);
+      }
+      // Redirect to login page or home page after logout
+      window.location.href = '/login'; // Assuming you have a login route
+    } catch (error) {
+      console.error('An unexpected error occurred during logout:', error);
+    }
+  };
+
   return (
     <div className="p-4">
-      <h2 className="text-xl font-bold mb-6">Welcome Back!</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">Welcome Back!</h2>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+        >
+          Logout
+        </button>
+      </div>
 
       {/* Dashboard Cards */}
       <div className="grid grid-cols-2 gap-4 mb-6 dark:text-gray-100">
@@ -143,7 +170,7 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
         <h3 className="text-lg font-bold mb-3">Quick Start</h3>
         <div className="grid grid-cols-1 gap-3">
           {quickStartTabs.map((tabId, index) => {
-            const tab = tabInfo[tabId];
+            const tab = tabInfo[tabId as keyof typeof tabInfo];
             const Icon = tab.icon;
             return (
               <button
@@ -172,4 +199,4 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
 export default HomePage;
 
 
-
+

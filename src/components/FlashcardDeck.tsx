@@ -784,6 +784,14 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-96">
             <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Edit Deck</h3>
+
+            {/* Display error message if exists */}
+            {error && (
+              <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <span className="block sm:inline">Error: {error}</span>
+              </div>
+            )}
+
             <div className="mb-4">
               <label htmlFor="editedDeckName" className="block text-sm font-medium text-gray-900 dark:text-gray-300">
                 Name
