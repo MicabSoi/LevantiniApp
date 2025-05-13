@@ -110,6 +110,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [loadingDecks, setLoadingDecks] = useState(true); // Added loading state for decks
   const [allFlashcards, setAllFlashcards] = useState<Flashcard[]>([]); // ADDED: State for all flashcards
   const [loadingFlashcards, setLoadingFlashcards] = useState(false); // ADDED: State for loading flashcards
+  const [loadingDefaultFlashcards, setLoadingDefaultFlashcards] = useState(false); // NEW: State for loading default flashcards
 
   const navigate = useNavigate();
 
@@ -153,13 +154,41 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
   // Fetch default flashcards
   const loadDefaultFlashcards = async () => {
-    const { data, error } = await supabase
-      .from('default_flashcards')
-      .select('*');
-    if (error) {
-      console.error('Error loading default flashcards:', error);
-    } else {
-      setDefaultFlashcards(data as Flashcard[]);
+    setLoadingDefaultFlashcards(true); // Start loading
+    let allFlashcards: Flashcard[] = [];
+    let page = 0;
+    const pageSize = 1000; // Supabase typically limits to 1000 rows per request
+    let hasMore = true;
+
+    try {
+      while (hasMore) {
+        const { data, error, count } = await supabase
+          .from('default_flashcards')
+          .select('*', { count: 'exact' })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        if (error) {
+          console.error('Error loading default flashcards:', error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allFlashcards = [...allFlashcards, ...data];
+          // If we received fewer rows than the page size, we've reached the end
+          hasMore = data.length === pageSize;
+          page++;
+          console.log(`Loaded ${allFlashcards.length} default flashcards so far...`);
+        } else {
+          hasMore = false; // No more data
+        }
+      }
+
+      setDefaultFlashcards(allFlashcards as Flashcard[]);
+      console.log(`Total default flashcards loaded: ${allFlashcards.length}`);
+    } catch (err) {
+      console.error('Error in paginated loading of default flashcards:', err);
+    } finally {
+      setLoadingDefaultFlashcards(false); // End loading
     }
   };
 
@@ -535,7 +564,14 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
             <div className="flex flex-col">
               {/* Total Card Count Display */}
               <div className="mb-6 text-center text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-center space-x-4">
-                <span>Total no. of cards: {combinedDecks.reduce((sum, deck) => sum + (deck.card_count || 0), 0)}</span>
+                <span>
+                  Total no. of cards: {combinedDecks.reduce((sum, deck) => sum + (deck.card_count || 0), 0)}
+                  {loadingDefaultFlashcards && 
+                    <span className="ml-2 text-sm text-emerald-600 dark:text-emerald-400 inline-flex items-center">
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" /> Loading all cards...
+                    </span>
+                  }
+                </span>
                 {/* Single Edit Button for Decks */}
                 <button
                   className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-1 rounded-md"
