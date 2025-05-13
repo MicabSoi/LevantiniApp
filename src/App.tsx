@@ -191,6 +191,8 @@ function App() {
               <Route path="/schedule" element={<ReviewCalendar />} />
               <Route path="/study" element={<StudySelection />} />
               <Route path="/study/run" element={<StudySession />} />
+              <Route path="/deck/:id" element={<FlashcardDetail />} />
+              <Route path="/default-deck/:id" element={<FlashcardDetail />} />
               <Route
                 path="*"
                 element={

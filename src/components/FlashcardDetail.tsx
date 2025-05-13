@@ -295,23 +295,25 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      {/* Back button and deck title */}
-      <div className="flex items-center mb-4">
-        <button
+      {/* Back button moved above title/description */}
+      <button
           onClick={() => {
             navigate('/wordbank'); // Or the correct route for Vocabulary landing
           }}
-          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center"
-        >
+          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center mb-4" // Added mb-4
+      >
           ← Back to Flashcard Decks
-        </button>
-        <h1 className="text-2xl font-bold ml-4 text-gray-800 dark:text-white">
+      </button>
+
+      {/* Deck title and description moved below back button */}
+      <div className="mb-8"> {/* Wrap title and description */}
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">
           {deck.emoji} {deck.name}
         </h1>
+        <p className="text-gray-600 dark:text-gray-300">
+          {deck.description}
+        </p>
       </div>
-      <p className="text-gray-600 dark:text-gray-300 mb-8">
-        {deck.description}
-      </p>
 
       {/* Search Bar for Flashcards with Clear Button */}
       <div className="relative mb-4">
@@ -346,9 +348,9 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         </div>
       )}
 
-      {/* Header Row for Flashcards */}
+      {/* Header Row for Flashcards - Adjusted dark mode text color */}
       {filteredFlashcards.length > 0 && (
-        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-emerald-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
+        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm"> {/* Changed dark:text-emerald-200 to dark:text-gray-200 */} 
           <div className="col-span-5">Word</div>
           <div className="col-span-2 text-center">Review count</div>
           <div className="col-span-3 text-right">Date created</div>
@@ -380,10 +382,10 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                   <span className="text-xs italic text-gray-500 dark:text-gray-400 truncate">{card.transliteration}</span>
                 )}
               </div>
-              {/* Review count (col-span-2) */}
+              {/* Review count (col-span-2) - Adjusted text and dark mode color */}
               <div className="col-span-2 text-center">
                 {deckType === 'user' && typeof reviewCounts[card.id] !== 'undefined' && reviewCounts[card.id] > 0 ? (
-                  <span className="text-gray-700 dark:text-emerald-200">{reviewCounts[card.id]} time(s)</span>
+                  <span className="text-gray-700 dark:text-white">{reviewCounts[card.id]}</span> /* Removed ' time(s)' and changed dark:text-emerald-200 to dark:text-white */
                 ) : '-'}
               </div>
               {/* Date created (col-span-3, right-aligned) */}

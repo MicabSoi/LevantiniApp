@@ -605,10 +605,10 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 >
                    {/* Removed Edit and Delete Buttons - Absolute positioned */}
 
-                   {/* Container for Deck Info and Card Count */}
-                   <div className="flex justify-between items-start w-full mb-3 flex-grow">
-                     {/* Left: Deck Icon, Name, Description */}
-                     <div className="flex flex-col flex-grow pr-4">
+                   {/* Container for Deck Info and Card Count - Modified for vertical stacking on md+ */}
+                   <div className="flex flex-col md:flex-col justify-start items-stretch w-full mb-3 flex-grow"> {/* Changed to flex-col, md:flex-col, justify-start, items-stretch */}
+                     {/* Top: Deck Icon, Name, Description */}
+                     <div className="flex flex-col flex-grow pr-0 mb-2"> {/* Removed pr-4, added mb-2 */}
                         {/* Deck Icon and Name */}
                         <div className="flex items-center mb-1">
                           {deck.emoji ? (
@@ -627,10 +627,10 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                         </p>
                      </div>
 
-                     {/* Right: Card Count Indicator */}
-                     <div className="flex-shrink-0 flex items-center justify-center p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-full text-emerald-800 dark:text-white font-semibold text-sm">
+                     {/* Bottom: Card Count Indicator - Adjusted styling */}
+                     <div className="flex-shrink-0 flex items-center justify-start p-1 bg-emerald-100/50 dark:bg-emerald-900/30 rounded text-emerald-800 dark:text-emerald-200 font-semibold text-xs mt-1 self-start"> {/* Adjusted padding, background, text size/color, margin, alignment */}
                        {/* Access the count from the nested structure returned by the query */}
-                       cards: {deck.card_count || 0}
+                       {deck.card_count || 0} cards
                      </div>
                    </div>
 
