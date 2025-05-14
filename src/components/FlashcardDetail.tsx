@@ -360,7 +360,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
+    <div className="container mx-auto p-4 max-w-6xl">
       {/* Back button moved above title/description */}
       <button
           onClick={() => {
@@ -418,29 +418,38 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       {filteredFlashcards.length > 0 && (
         <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
           {/* Word Column Header - Modified for responsive sub-headers and sorting */}
-          <div className="col-span-5 flex flex-col md:flex-row md:items-baseline md:space-x-3">
-            <button onClick={() => requestSort('english')} className="md:w-1/3 text-left flex items-center hover:text-emerald-600 dark:hover:text-emerald-400">
+          {/* Added items-center for vertical centering of buttons when stacked */}
+          <div className="col-span-5 flex flex-col items-center md:flex-row md:items-baseline md:space-x-3">
+            {/* Added text-center, justify-center for small screens. md: classes override for larger screens. */}
+            <button onClick={() => requestSort('english')} className="w-full md:w-1/2 text-center md:text-left flex items-center justify-center md:justify-start hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
               English
               {sortConfig.key === 'english' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
-            <button onClick={() => requestSort('arabic')} className="md:w-1/3 md:text-center flex items-center justify-center md:justify-start hover:text-emerald-600 dark:hover:text-emerald-400">
+            {/* Added text-center, justify-center for small screens. */}
+            {/* Changed md:w-1/3 to md:w-1/4 for Arabic */}
+            <button onClick={() => requestSort('arabic')} className="w-full md:w-1/4 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
               Arabic
               {sortConfig.key === 'arabic' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
-            <button onClick={() => requestSort('transliteration')} className="md:w-1/3 md:text-right flex items-center justify-end md:justify-start hover:text-emerald-600 dark:hover:text-emerald-400">
+            {/* Added text-center, justify-center for small screens. md: classes override for larger screens. */}
+            {/* Changed md:w-1/3 to md:w-1/4 for Transliteration */}
+            <button onClick={() => requestSort('transliteration')} className="w-full md:w-1/4 text-center md:text-right flex items-center justify-center md:justify-end hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
               Transliteration
               {sortConfig.key === 'transliteration' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
           </div>
-          <button onClick={() => requestSort('reviewCount')} className="col-span-2 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400">
+          {/* Review count button - already centered */}
+          <button onClick={() => requestSort('reviewCount')} className="col-span-2 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
             Review count
             {sortConfig.key === 'reviewCount' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
           </button>
-          <button onClick={() => requestSort('createdAt')} className="col-span-3 text-right flex items-center justify-end hover:text-emerald-600 dark:hover:text-emerald-400">
+          {/* Date created button - Added text-center, justify-center for small screens. md: classes override. */}
+          <button onClick={() => requestSort('createdAt')} className="col-span-3 text-center md:text-right flex items-center justify-center md:justify-end hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
             Date created
             {sortConfig.key === 'createdAt' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
           </button>
-          <div className="col-span-2 text-center">Media</div> {/* Media column remains non-sortable */}
+          {/* Media div - already centered */}
+          <div className="col-span-2 text-center flex items-center justify-center py-1 md:py-0">Media</div>
         </div>
       )}
 
@@ -460,12 +469,12 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                 setShowFlashcardModal(true);
               }}
             >
-              {/* Word (col-span-5) - Modified for responsive layout */}
-              <div className="col-span-5 flex flex-col md:flex-row md:items-baseline md:space-x-3"> {/* Apply flex-col by default, md:flex-row for medium screens up, add spacing */}
-                <span className="font-semibold text-gray-800 dark:text-gray-100 truncate md:w-1/3">{card.english}</span>
-                <span className="text-sm text-gray-600 dark:text-gray-300 truncate md:w-1/3 md:text-center">{card.arabic}</span>
+              {/* Word (col-span-5) - Ensure items-start for small screens, and text-left for spans. Adjusted md widths and added break-words. */}
+              <div className="col-span-5 flex flex-col items-start md:flex-row md:items-baseline md:space-x-3">
+                <span className="font-semibold text-gray-800 dark:text-gray-100 text-left md:w-1/2 break-words">{card.english}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300 text-left md:w-1/4 md:text-center break-words">{card.arabic}</span>
                 {card.transliteration && (
-                  <span className="text-xs italic text-gray-500 dark:text-gray-400 truncate md:w-1/3 md:text-right">{card.transliteration}</span>
+                  <span className="text-xs italic text-gray-500 dark:text-gray-400 text-left md:w-1/4 md:text-right break-words">{card.transliteration}</span>
                 )}
               </div>
               {/* Review count (col-span-2) - Adjusted text and dark mode color */}
@@ -474,8 +483,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                   <span className="text-gray-700 dark:text-white">{reviewCounts[card.id]}</span> /* Removed ' time(s)' and changed dark:text-emerald-200 to dark:text-white */
                 ) : '-'}
               </div>
-              {/* Date created (col-span-3, right-aligned) */}
-              <div className="col-span-3 text-right text-sm text-gray-500 dark:text-gray-400">
+              {/* Date created (col-span-3, right-aligned) - Centered on small screens */}
+              <div className="col-span-3 text-sm text-gray-500 dark:text-gray-400 text-center md:text-right"> {/* text-center for small screens, md:text-right for md+ */}
                 {card.metadata?.createdAt ? (() => {
                   const date = new Date(card.metadata.createdAt);
                   const day = String(date.getDate()).padStart(2, '0');
