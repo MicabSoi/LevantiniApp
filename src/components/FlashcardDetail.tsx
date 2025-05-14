@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2, Volume2, Edit2, Trash2, XCircle, CheckCircle2 } from 'lucide-react'; // Added Edit2, Trash2, and XCircle
+import { Loader2, Volume2, Edit2, Trash2, XCircle, CheckCircle2, Plus, ArrowUpDown } from 'lucide-react'; // Added Edit2, Trash2, and XCircle
 import { useNavigate, useLocation } from 'react-router-dom';
 import FlashcardForm from './FlashcardForm'; // Import FlashcardForm
-import { Plus } from 'lucide-react'; // Import Plus icon
 import SingleFlashcardView from './SingleFlashcardView'; // Import SingleFlashcardView
 
 interface Flashcard {
@@ -58,6 +57,9 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
   // ADDED: State for search term
   const [searchTerm, setSearchTerm] = useState('');
+
+  // State for sorting
+  const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
 
   // State for Flashcard Modal
   const [showFlashcardModal, setShowFlashcardModal] = useState(false);
@@ -171,6 +173,70 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
     (card.transliteration && card.transliteration.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (card.tags && card.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
   );
+
+  // Function to handle sort request
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    // If clicking the same column that is already desc, reset sort (or cycle back to asc)
+    // For now, let's cycle: asc -> desc -> asc
+    // if (sortConfig.key === key && sortConfig.direction === 'desc') {
+    //   setSortConfig({ key: null, direction: 'asc' });
+    //   return;
+    // }
+    setSortConfig({ key, direction });
+  };
+
+  // Memoized and sorted flashcards
+  const sortedFlashcards = React.useMemo(() => {
+    let sortableItems = [...filteredFlashcards];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let valA: any = null;
+        let valB: any = null;
+
+        switch (sortConfig.key) {
+          case 'english':
+            valA = a.english.toLowerCase();
+            valB = b.english.toLowerCase();
+            break;
+          case 'arabic':
+            // For Arabic, use localeCompare for proper sorting
+            valA = a.arabic;
+            valB = b.arabic;
+            // localeCompare directly returns -1, 0, or 1
+            if (valA.localeCompare(valB, 'ar') < 0) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (valA.localeCompare(valB, 'ar') > 0) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+          case 'transliteration':
+            valA = (a.transliteration || '').toLowerCase();
+            valB = (b.transliteration || '').toLowerCase();
+            break;
+          case 'reviewCount':
+            valA = reviewCounts[a.id] || 0;
+            valB = reviewCounts[b.id] || 0;
+            break;
+          case 'createdAt':
+            valA = new Date(a.metadata?.createdAt || 0).getTime();
+            valB = new Date(b.metadata?.createdAt || 0).getTime();
+            break;
+          default:
+            return 0;
+        }
+
+        if (valA < valB) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (valA > valB) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredFlashcards, sortConfig, reviewCounts]);
 
   // Handler to open edit modal and set data
   const handleEditFlashcardClick = (card: Flashcard) => {
@@ -350,11 +416,31 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
       {/* Header Row for Flashcards - Adjusted dark mode text color */}
       {filteredFlashcards.length > 0 && (
-        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm"> {/* Changed dark:text-emerald-200 to dark:text-gray-200 */} 
-          <div className="col-span-5">Word</div>
-          <div className="col-span-2 text-center">Review count</div>
-          <div className="col-span-3 text-right">Date created</div>
-          <div className="col-span-2 text-center">Media</div>
+        <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
+          {/* Word Column Header - Modified for responsive sub-headers and sorting */}
+          <div className="col-span-5 flex flex-col md:flex-row md:items-baseline md:space-x-3">
+            <button onClick={() => requestSort('english')} className="md:w-1/3 text-left flex items-center hover:text-emerald-600 dark:hover:text-emerald-400">
+              English
+              {sortConfig.key === 'english' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+            </button>
+            <button onClick={() => requestSort('arabic')} className="md:w-1/3 md:text-center flex items-center justify-center md:justify-start hover:text-emerald-600 dark:hover:text-emerald-400">
+              Arabic
+              {sortConfig.key === 'arabic' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+            </button>
+            <button onClick={() => requestSort('transliteration')} className="md:w-1/3 md:text-right flex items-center justify-end md:justify-start hover:text-emerald-600 dark:hover:text-emerald-400">
+              Transliteration
+              {sortConfig.key === 'transliteration' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+            </button>
+          </div>
+          <button onClick={() => requestSort('reviewCount')} className="col-span-2 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400">
+            Review count
+            {sortConfig.key === 'reviewCount' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+          </button>
+          <button onClick={() => requestSort('createdAt')} className="col-span-3 text-right flex items-center justify-end hover:text-emerald-600 dark:hover:text-emerald-400">
+            Date created
+            {sortConfig.key === 'createdAt' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+          </button>
+          <div className="col-span-2 text-center">Media</div> {/* Media column remains non-sortable */}
         </div>
       )}
 
@@ -365,7 +451,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         </div>
       ) : (
         <div className="flex flex-col h-[60vh] overflow-y-auto mt-4">
-          {filteredFlashcards.map((card) => (
+          {sortedFlashcards.map((card) => (
             <div
               key={card.id}
               className="grid grid-cols-12 items-center px-2 py-3 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer mb-2"
@@ -374,12 +460,12 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                 setShowFlashcardModal(true);
               }}
             >
-              {/* Word (col-span-5) */}
-              <div className="col-span-5 flex flex-col">
-                <span className="font-semibold text-gray-800 dark:text-gray-100 truncate">{card.english}</span>
-                <span className="text-sm text-gray-600 dark:text-gray-300 truncate">{card.arabic}</span>
+              {/* Word (col-span-5) - Modified for responsive layout */}
+              <div className="col-span-5 flex flex-col md:flex-row md:items-baseline md:space-x-3"> {/* Apply flex-col by default, md:flex-row for medium screens up, add spacing */}
+                <span className="font-semibold text-gray-800 dark:text-gray-100 truncate md:w-1/3">{card.english}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300 truncate md:w-1/3 md:text-center">{card.arabic}</span>
                 {card.transliteration && (
-                  <span className="text-xs italic text-gray-500 dark:text-gray-400 truncate">{card.transliteration}</span>
+                  <span className="text-xs italic text-gray-500 dark:text-gray-400 truncate md:w-1/3 md:text-right">{card.transliteration}</span>
                 )}
               </div>
               {/* Review count (col-span-2) - Adjusted text and dark mode color */}
