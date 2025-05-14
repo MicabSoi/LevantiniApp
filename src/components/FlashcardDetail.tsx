@@ -417,23 +417,17 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       {/* Header Row for Flashcards - Adjusted dark mode text color */}
       {filteredFlashcards.length > 0 && (
         <div className="grid grid-cols-12 gap-2 px-2 py-2 font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2 text-sm">
-          {/* Word Column Header - Modified for responsive sub-headers and sorting */}
-          {/* Added items-center for vertical centering of buttons when stacked */}
-          <div className="col-span-5 flex flex-col items-center md:flex-row md:items-baseline md:space-x-3">
-            {/* Added text-center, justify-center for small screens. md: classes override for larger screens. */}
-            <button onClick={() => requestSort('english')} className="w-full md:w-1/2 text-center md:text-left flex items-center justify-center md:justify-start hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
+          {/* Word Column Header - Align stack to left, and button content to left on small screens */}
+          <div className="col-span-5 flex flex-col items-start md:flex-row md:items-baseline md:space-x-3">
+            <button onClick={() => requestSort('english')} className="w-full md:w-1/2 text-left flex items-center justify-start hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
               English
               {sortConfig.key === 'english' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
-            {/* Added text-center, justify-center for small screens. */}
-            {/* Changed md:w-1/3 to md:w-1/4 for Arabic */}
-            <button onClick={() => requestSort('arabic')} className="w-full md:w-1/4 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
+            <button onClick={() => requestSort('arabic')} className="w-full md:w-1/4 text-left md:text-center flex items-center justify-start md:justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
               Arabic
               {sortConfig.key === 'arabic' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
-            {/* Added text-center, justify-center for small screens. md: classes override for larger screens. */}
-            {/* Changed md:w-1/3 to md:w-1/4 for Transliteration */}
-            <button onClick={() => requestSort('transliteration')} className="w-full md:w-1/4 text-center md:text-right flex items-center justify-center md:justify-end hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
+            <button onClick={() => requestSort('transliteration')} className="w-full md:w-1/4 text-left md:text-right flex items-center justify-start md:justify-end hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
               Transliteration
               {sortConfig.key === 'transliteration' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
