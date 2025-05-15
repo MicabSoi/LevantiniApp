@@ -18,6 +18,9 @@ interface CardViewProps {
     audio_url?: string | null; // Add audio_url here
     // layout?: any; // Assuming we render based on simple fields for now
     // type?: 'basic' | 'cloze' | 'image'; // Assuming 'basic' for now
+    // ADDED: New props for study direction and transliteration visibility
+    studyDirection: 'en-ar' | 'ar-en';
+    showTransliteration: boolean;
   };
   // Corrected prop type to only expect quality
   onQualitySelect: (quality: number) => void;
@@ -30,126 +33,106 @@ export interface CardViewHandle {
   flipCard: () => void;
 }
 
-const CardView = forwardRef<CardViewHandle, CardViewProps>(({ card, onQualitySelect, onAnswerShown, selectedQuality }, ref) => {
+const CardView = forwardRef<CardViewHandle, CardViewProps>(({ 
+  card, 
+  onQualitySelect, 
+  onAnswerShown, 
+  selectedQuality, 
+  studyDirection, 
+  showTransliteration 
+}: CardViewProps, ref) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const [showQualityButtons, setShowQualityButtons] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Expose flipCard function via ref
   useImperativeHandle(ref, () => ({
     flipCard: handleFlip,
   }));
 
-  // Reset state when card changes
   useEffect(() => {
     setIsFlipped(false);
-    setShowQualityButtons(false);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
-      audioRef.current = null;
     }
-  }, [card]);
+  }, [card.id]);
 
   const handleFlip = () => {
     if (!isFlipped) {
       setIsFlipped(true);
-      // Show quality buttons after a slight delay
-      setTimeout(() => {
-        setShowQualityButtons(true);
-        onAnswerShown(); // ADDED: Call onAnswerShown when quality buttons are shown
-        // Autoplay audio on flip if available
-        if (card.audio_url) {
-          playAudio(card.audio_url);
-        }
-      }, 300); // Adjust delay as needed
+      onAnswerShown();
+      // Play audio only if it exists, and current direction is English to Arabic (meaning Arabic is on the back)
+      if (card.audio_url && studyDirection === 'en-ar') { 
+        playAudio(card.audio_url); 
+      }
     }
-    // Flipping back is not typically done in a standard review session flow,
-    // but you could add logic here if needed.
   };
 
   const handleQualitySelect = (quality: number) => {
-    // Corrected call to match the updated prop type
-    onQualitySelect(quality); // Call the parent handler
+    onQualitySelect(quality);
   };
 
-  const playAudio = (audioUrl: string) => {
+  const playAudio = (audioUrl: string | null | undefined) => {
     try {
       if (!audioUrl) return;
-
       if (!audioRef.current) {
         audioRef.current = new Audio(audioUrl);
-        audioRef.current.onerror = (e) => {
-          console.error('Audio failed to load:', e);
-        };
+        audioRef.current.onerror = (e) => console.error('Audio failed to load:', e);
       } else {
         audioRef.current.src = audioUrl;
       }
-
       audioRef.current.currentTime = 0;
-      audioRef.current.volume = 0.7; // Adjust volume if needed
+      audioRef.current.volume = 0.7;
       const playPromise = audioRef.current.play();
-
       if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.error('Error playing audio:', error);
-        });
+        playPromise.catch((error) => console.error('Error playing audio:', error));
       }
     } catch (error) {
       console.error('Error in playAudio function:', error);
     }
   };
 
-const renderFront = (cardFields: CardFields) => (
+  const frontText = studyDirection === 'en-ar' ? card.fields?.english : card.fields?.arabic;
+  const backText = studyDirection === 'en-ar' ? card.fields?.arabic : card.fields?.english;
+  const isRtlFront = studyDirection === 'ar-en';
+  const isRtlBack = studyDirection === 'en-ar';
+
+  const renderFrontContent = () => (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
-      <p className="text-2xl font-bold text-center text-gray-900 dark:text-white">
-        {cardFields?.english || 'No English text'} {/* Add defensive check and fallback */}
+      <p 
+        dir={isRtlFront ? 'rtl' : 'ltr'}
+        className={`text-2xl font-bold text-center text-gray-900 dark:text-white ${isRtlFront ? 'font-arabic' : ''}`}>
+        {frontText || (studyDirection === 'en-ar' ? 'No English text' : 'No Arabic text')}
       </p>
-      {/* Add image rendering here if card type is 'image' */}
-      {cardFields?.imageUrl && (
-        <img src={cardFields.imageUrl} alt="Flashcard front" className="mt-4 max-h-40 object-contain" />
+      {/* Render transliteration on the front if Arabic is on the front and showTransliteration is true */}
+      {studyDirection === 'ar-en' && showTransliteration && card.fields?.transliteration && (
+        <p className="text-lg text-gray-600 dark:text-gray-400 text-center mt-2">
+          ({card.fields.transliteration})
+        </p>
+      )}
+      {card.fields?.imageUrl && (
+        <img src={card.fields.imageUrl} alt="Flashcard content" className="mt-4 max-h-40 object-contain" />
       )}
     </div>
   );
 
-  const renderBack = (cardFields: CardFields, audioUrl?: string | null, playAudio?: (url: string) => void) => (
+  const renderBackContent = () => (
     <div className="flex flex-col items-center justify-center p-6 bg-gray-50 dark:bg-dark-200 rounded-b-lg">
-      {cardFields?.arabic ? ( // Add defensive check
-        <p
-          dir="rtl"
-          className="text-3xl font-bold text-center text-gray-900 dark:text-white"
-        >
-          {cardFields.arabic}
-        </p>
-      ) : (
-        <p className="text-xl text-gray-600 dark:text-gray-400 text-center">
-          No Arabic text
-        </p>
-      )}
-      {cardFields?.transliteration && ( // Add defensive check
+      <p 
+        dir={isRtlBack ? 'rtl' : 'ltr'}
+        className={`text-3xl font-bold text-center text-gray-900 dark:text-white ${isRtlBack ? 'font-arabic' : ''}`}>
+        {backText || (studyDirection === 'en-ar' ? 'No Arabic text' : 'No English text')}
+      </p>
+      {/* Render transliteration on the back if Arabic is on the back and showTransliteration is true */}
+      {studyDirection === 'en-ar' && showTransliteration && card.fields?.transliteration && (
         <p className="text-lg text-gray-600 dark:text-gray-400 text-center mt-2">
-          ({cardFields.transliteration})
+          ({card.fields.transliteration})
         </p>
       )}
-      {/* Add cloze text rendering here if card type is 'cloze' */}
-      {/* {card.type === 'cloze' && card.fields?.clozeText && (
-         <p className="text-xl font-bold text-center text-gray-900 dark:text-white mt-4">
-           {card.fields.clozeText} // Render with blanks filled? Or originally with blanks? Depends on layout logic.
-         </p>
-      )} */}
-      {/* Add image rendering here if card type is 'image' */}
-      {/* Removed image rendering from the back to avoid duplication */}
-      {/*
-      {cardFields?.imageUrl && (
-        <img src={cardFields.imageUrl} alt="Flashcard back" className="mt-4 max-h-40 object-contain" />
-      )}
-      */}
-
-      {audioUrl && playAudio && (
+      {card.audio_url && (
         <button
           onClick={(e) => {
-            e.stopPropagation(); // Prevent flip if clicking audio
-            playAudio(audioUrl);
+            e.stopPropagation();
+            playAudio(card.audio_url);
           }}
           className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
         >
@@ -159,28 +142,23 @@ const renderFront = (cardFields: CardFields) => (
     </div>
   );
 
-const renderAnswerView = (card: CardViewProps['card'], playAudio: (url: string) => void) => (
+  const renderAnswerView = () => (
     <div className="flex flex-col">
-      {/* Question remains at the top */}
-      {renderFront(card.fields)}
-      {/* Separator */}
+      {renderFrontContent()} 
       <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
-      {/* Answer appears below */}
-      {renderBack(card.fields, card.audio_url, playAudio)}
+      {renderBackContent()}
     </div>
-);
+  );
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-dark-200 rounded-lg shadow-xl overflow-hidden">
-      {/* Card Content Area */}
       <div onClick={handleFlip} className="cursor-pointer">
-        {isFlipped ? renderAnswerView(card, playAudio) : renderFront(card.fields)}
+        {isFlipped ? renderAnswerView() : renderFrontContent()}
       </div>
-
-      {/* Quality Buttons */}
-      {/* Removed quality buttons for bottom bar implementation */}
     </div>
   );
 });
 
 export default CardView;
+
+

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CardView, { CardViewHandle } from './CardView';
 import { AlertCircle, Settings, Loader2, X } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon, ADDED: Loader2, ADDED: X
-import SettingsModal, { loadHotkeys, HotkeySettings } from './SettingsModal'; // MODIFIED: Removed DEFAULT_HOTKEYS from import
+import SettingsModal, { StudySettings, loadStudySettings as loadInitialStudySettings, HotkeySettings } from './SettingsModal'; // MODIFIED: Removed DEFAULT_HOTKEYS from import
 import ReviewCalendar from './ReviewCalendar'; // ADDED: Import ReviewCalendar component
 
 interface DueCard {
@@ -69,7 +69,7 @@ const StudySession: React.FC = () => {
   const [selectedQuality, setSelectedQuality] = useState<number | null>(null); // ADDED: State for selected quality
   const [showPostReviewButtons, setShowPostReviewButtons] = useState(false); // ADDED: State to show Undo/Next buttons
   const [showSettingsModal, setShowSettingsModal] = useState(false); // ADDED: State to control settings modal visibility
-  const [currentHotkeys, setCurrentHotkeys] = useState<HotkeySettings>(DEFAULT_HOTKEYS); // ADDED: State for hotkey settings, initialized with defaults
+  const [studySettings, setStudySettings] = useState<StudySettings | null>(null); // ADDED: State for all study settings
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false); // ADDED: State to control exit confirmation modal visibility
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
@@ -80,6 +80,17 @@ const StudySession: React.FC = () => {
     console.log('Memoizing dueThresholdTimestamp'); // Debug log
     return new Date().toISOString();
   }, [decks.join(','), count]);
+
+  // Fetch initial study settings on mount
+  useEffect(() => {
+    const fetchInitialSettings = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const settings = await loadInitialStudySettings(user);
+      setStudySettings(settings);
+      // setLoading(false); // Loading for cards is separate
+    };
+    fetchInitialSettings();
+  }, []);
 
   // 1) Fetch due cards on mount or when decks/count change
   useEffect(() => {
@@ -107,8 +118,15 @@ const StudySession: React.FC = () => {
           quality_history,
           card:cards!reviews_card_fk (
             id,
-            fields,
-            audio_url
+            english,
+            arabic,
+            transliteration,
+            image_url,
+            audio_url,
+            tags,
+            type,
+            layout,
+            metadata
           )
         `
         )
@@ -154,16 +172,6 @@ const StudySession: React.FC = () => {
     // even if they are memoized based on other dependencies listed.
     // This ensures the effect "sees" the correct, stable timestamp for the current parameters.
   }, [decks.join(','), count, dueThresholdTimestamp]); // Updated dependencies
-
-  // Add a useEffect to load hotkeys asynchronously on mount or when user changes (not implemented yet)
-  useEffect(() => {
-    const fetchHotkeys = async () => {
-      const settings = await loadHotkeys();
-      setCurrentHotkeys(settings);
-    };
-
-    fetchHotkeys();
-  }, []); // Empty dependency array means this runs once on mount
 
   // 2) Handle quality grading, run SM-2, update review
   const onQualitySelect = async (quality: number) => {
@@ -266,63 +274,51 @@ const StudySession: React.FC = () => {
 
   // Add a useEffect for hotkey listeners
   useEffect(() => {
-    // The handleKeyPress function now uses the currentHotkeys state
-    const handleKeyPress = (event: KeyboardEvent) => {
-      const key = event.key;
+    if (!studySettings) return; // Don't attach listener if settings not loaded
 
-      // Prevent hotkeys from working when any modal is open
+    const handleKeyPress = (event: KeyboardEvent) => {
+      const key = event.key === ' ' ? 'spacebar' : event.key; // Normalize spacebar key
+
       if (showSettingsModal || showExitConfirmModal) return;
 
-      // Handle grading hotkeys only if the answer is visible AND no quality has been selected yet
       if (isAnswerVisible && selectedQuality === null) {
-          switch(key) {
-              case currentHotkeys.quality0:
-                  onQualitySelect(0);
-                  event.preventDefault();
-                  break;
-              case currentHotkeys.quality1:
-                  onQualitySelect(1);
-                  event.preventDefault();
-                  break;
-              case currentHotkeys.quality2:
-                  onQualitySelect(2);
-                  event.preventDefault();
-                  break;
-              case currentHotkeys.quality3:
-                  onQualitySelect(3);
-                  event.preventDefault();
-                  break;
-              default:
-                  break;
-          }
-      }
-      // Handle spacebar to flip the card only if the answer is NOT visible AND no quality has been selected yet
-      // Use currentHotkeys.next
-      else if (!isAnswerVisible && selectedQuality === null && key === currentHotkeys.next) {
-        cardViewRef.current?.flipCard(); // Call flipCard method on the CardView ref
-        event.preventDefault(); // Prevent default behavior (e.g., scrolling)
-      }
-      // Handle Next key after grading
-      // Use currentHotkeys.next
-      else if (selectedQuality !== null && key === currentHotkeys.next) {
-          handleNextCard();
-          event.preventDefault();
-      }
-       // Handle Undo key
-       // Use currentHotkeys.undo
-      else if (selectedQuality !== null && key === currentHotkeys.undo) {
-         handleUndoReview();
-         event.preventDefault();
+        switch (key) {
+          case studySettings.hotkeys.quality0:
+            onQualitySelect(0);
+            event.preventDefault();
+            break;
+          case studySettings.hotkeys.quality1:
+            onQualitySelect(1);
+            event.preventDefault();
+            break;
+          case studySettings.hotkeys.quality2:
+            onQualitySelect(2);
+            event.preventDefault();
+            break;
+          case studySettings.hotkeys.quality3:
+            onQualitySelect(3);
+            event.preventDefault();
+            break;
+          default:
+            break;
+        }
+      } else if (!isAnswerVisible && selectedQuality === null && key === studySettings.hotkeys.next) {
+        cardViewRef.current?.flipCard();
+        event.preventDefault();
+      } else if (selectedQuality !== null && key === studySettings.hotkeys.next) {
+        handleNextCard();
+        event.preventDefault();
+      } else if (selectedQuality !== null && key === studySettings.hotkeys.undo) {
+        handleUndoReview();
+        event.preventDefault();
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
-
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-    // Add currentHotkeys and other relevant states/functions to the dependency array
-  }, [currentHotkeys, onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal, showExitConfirmModal, handleNextCard, handleUndoReview]);
+  }, [studySettings, onQualitySelect, isAnswerVisible, selectedQuality, showSettingsModal, showExitConfirmModal, handleNextCard, handleUndoReview]);
 
   // ADDED: Handle browser refresh/close and internal navigation prompts
   useEffect(() => {
@@ -344,8 +340,14 @@ const StudySession: React.FC = () => {
     };
   }, [dueCards.length, current, loading, error]); // Depend on values that determine shouldBlockNavigation
 
+  // Handle settings save from modal
+  const handleSettingsSave = (newSettings: StudySettings) => {
+    setStudySettings(newSettings);
+    // Hotkeys will be re-applied by the keydown listener's useEffect dependency on studySettings
+  };
+
   // Render loading, error, or content
-  if (loading) {
+  if (loading || !studySettings) { // Also wait for studySettings to load
     return (
       <div className="flex items-center justify-center min-h-[400px] p-6">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
@@ -472,8 +474,8 @@ const StudySession: React.FC = () => {
   }
 
   // Display the current card
-  const currentCard = dueCards[current].card;
-  if (!currentCard) {
+  const reviewItem = dueCards[current]; // Renamed to avoid confusion with the card object itself
+  if (!reviewItem || !reviewItem.card) { // Check both reviewItem and its card property
     return (
       <div className="p-6 text-center text-red-600">
         <p>Error: Could not load card details for the current review.</p>
@@ -486,6 +488,18 @@ const StudySession: React.FC = () => {
       </div>
     );
   }
+
+  // Prepare the card data for CardView, ensuring fields object exists
+  const cardForView = {
+    ...reviewItem.card, // Spread the rest of the card properties (id, audio_url etc.)
+    fields: {
+      english: reviewItem.card.english || (reviewItem.card.fields && reviewItem.card.fields.english) || '',
+      arabic: reviewItem.card.arabic || (reviewItem.card.fields && reviewItem.card.fields.arabic) || '',
+      transliteration: reviewItem.card.transliteration || (reviewItem.card.fields && reviewItem.card.fields.transliteration),
+      // Add other fields as needed, e.g., imageUrl, clozeText
+      imageUrl: reviewItem.card.image_url || (reviewItem.card.fields && reviewItem.card.fields.imageUrl),
+    }
+  };
 
   return (
     <div
@@ -525,10 +539,12 @@ const StudySession: React.FC = () => {
       {/* Pass the correct card object to CardView */}
       <CardView
         ref={cardViewRef} // ADDED: Pass the ref to CardView
-        card={currentCard} // Pass the nested card object
+        card={cardForView} // Pass the prepared card object
         onQualitySelect={onQualitySelect} // Pass the quality
         onAnswerShown={() => setIsAnswerVisible(true)} // Pass the onAnswerShown function
         selectedQuality={selectedQuality} // ADDED: Pass selectedQuality to CardView
+        studyDirection={studySettings.study_direction}
+        showTransliteration={studySettings.show_transliteration}
       />
       <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
         Card {current + 1} of {dueCards.length}
@@ -622,7 +638,13 @@ const StudySession: React.FC = () => {
       {/* END: Fixed Bottom Bar */}
 
       {/* Settings Modal */}
-      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} /> {/* ADDED: Settings Modal component */}
+      {studySettings && (
+        <SettingsModal 
+          isOpen={showSettingsModal} 
+          onClose={() => setShowSettingsModal(false)} 
+          onSettingsSave={handleSettingsSave} 
+        />
+      )}
       {/* END Settings Modal */}
 
       {/* Exit Confirmation Modal */}
