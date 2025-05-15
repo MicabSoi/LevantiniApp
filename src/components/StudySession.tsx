@@ -71,6 +71,7 @@ const StudySession: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false); // ADDED: State to control settings modal visibility
   const [studySettings, setStudySettings] = useState<StudySettings | null>(null); // ADDED: State for all study settings
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false); // ADDED: State to control exit confirmation modal visibility
+  const [reviewHistory, setReviewHistory] = useState<{cardIdx: number, selected: number | null}[]>([]); // For undo
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
 
@@ -176,10 +177,10 @@ const StudySession: React.FC = () => {
   // 2) Handle quality grading, run SM-2, update review
   const onQualitySelect = async (quality: number) => {
     // Prevent grading if a quality has already been selected
-    if (selectedQuality !== null) {
-      console.log('Quality already selected for this card.');
-      return;
-    }
+    // if (selectedQuality !== null) { // REMOVED: This guard was problematic
+    //   console.log('Quality already selected for this card.');
+    //   return;
+    // }
 
     const review = dueCards[current];
     if (!review) {
@@ -203,11 +204,11 @@ const StudySession: React.FC = () => {
       setError('Failed to update review stats.'); // Set user-friendly error
       // Still advance card to avoid getting stuck? Or stop session?
       // For now, let's advance to not block the user.
-      if (current < dueCards.length - 1) {
-        setCurrent(current + 1);
-      } else {
-        navigate('/flashcards'); // Session complete
-      }
+      // if (current < dueCards.length - 1) { // REMOVED: Advancing logic handled elsewhere
+      //   setCurrent(current + 1);
+      // } else {
+      //   navigate('/flashcards'); // Session complete
+      // }
       return;
     }
 
@@ -236,82 +237,120 @@ const StudySession: React.FC = () => {
     if (updateError) {
       console.error('Supabase update error:', updateError);
       setError('Failed to save review progress.'); // Set user-friendly error
-      // Advance card anyway
+      // Advance card anyway // REMOVED: Advancing logic handled elsewhere
     } else {
-      console.log('Review updated successfully. Displaying post-review options.'); // Debug log
-      setSelectedQuality(quality); // ADDED: Set selected quality state
-      setShowPostReviewButtons(true); // ADDED: Show post-review buttons
+      console.log('Review updated successfully.'); // Debug log
+      // REMOVED: setSelectedQuality(quality);
+      // REMOVED: setShowPostReviewButtons(true);
     }
 
     // REMOVED: Logic to move to next card or finish - this is now handled by handleNextCard
   };
 
-  // ADDED: Function to handle moving to the next card
-  const handleNextCard = () => {
-    // Hide post-review buttons immediately when moving to next card
-    setShowPostReviewButtons(false); 
-    setSelectedQuality(null); // Clear selected quality
-    setIsAnswerVisible(false); // Reset answer visibility for the next card
-
-    if (current < dueCards.length - 1) {
-      setCurrent(current + 1);
+  // Modified: Allow changing selection, submit on double-click/second click
+  const handleRatingClick = async (quality: number) => {
+    if (selectedQuality === quality) {
+      // Second click on the same button: submit the selected quality and move to next card.
+      // handleNextCard will take care of submitting the current selectedQuality.
+      await handleNextCard();
     } else {
-      console.log('Session complete!'); // Debug log
-      navigate('/flashcards'); // Go back to flashcard list or decks page
+      // First click on this button, or changing selection.
+      // Just update the UI selection. Do not submit the review yet.
+      setSelectedQuality(quality);
+      setShowPostReviewButtons(true); // Show "Next Card" and "Undo" buttons.
     }
   };
 
-   // ADDED: Function to handle undoing the last review (UI state only for now)
-   const handleUndoReview = () => {
-      console.log('Undoing last review (UI state only).');
-      // TODO: Implement actual database rollback or state reversal if needed
-      setSelectedQuality(null); // Clear selected quality
-      setShowPostReviewButtons(false); // Hide post-review buttons
-      // Optionally, reset isAnswerVisible to true so they can re-grade immediately
-      // setIsAnswerVisible(true);
-      // Re-enable hotkeys by clearing selectedQuality state
-   };
+  // Modified: Save review history for undo AND submit selected quality if any
+  const handleNextCard = async () => {
+    if (selectedQuality !== null) {
+      // If a quality is selected in the UI, submit it before moving to the next card.
+      await onQualitySelect(selectedQuality);
+    }
+
+    setReviewHistory(prev => [...prev, { cardIdx: current, selected: selectedQuality }]);
+    setShowPostReviewButtons(false);
+    setSelectedQuality(null);
+    setIsAnswerVisible(false);
+    if (current < dueCards.length - 1) {
+      setCurrent(current + 1);
+    } else {
+      navigate('/flashcards');
+    }
+  };
+
+  // Modified: Undo goes back to previous card and restores selection
+  const handleUndoReview = () => {
+    if (reviewHistory.length > 0) {
+      const last = reviewHistory[reviewHistory.length - 1];
+      setCurrent(last.cardIdx);
+      setSelectedQuality(last.selected);
+      setShowPostReviewButtons(!!last.selected);
+      setIsAnswerVisible(true);
+      setReviewHistory(prev => prev.slice(0, -1));
+    } else {
+      setSelectedQuality(null);
+      setShowPostReviewButtons(false);
+      setIsAnswerVisible(false);
+    }
+  };
 
   // Add a useEffect for hotkey listeners
   useEffect(() => {
     if (!studySettings) return; // Don't attach listener if settings not loaded
 
-    const handleKeyPress = (event: KeyboardEvent) => {
-      const key = event.key === ' ' ? 'spacebar' : event.key; // Normalize spacebar key
-
+    const handleKeyPress = async (event: KeyboardEvent) => { // Made async
       if (showSettingsModal || showExitConfirmModal) return;
 
-      if (isAnswerVisible && selectedQuality === null) {
-        switch (key) {
-          case studySettings.hotkeys.quality0:
-            onQualitySelect(0);
-            event.preventDefault();
-            break;
-          case studySettings.hotkeys.quality1:
-            onQualitySelect(1);
-            event.preventDefault();
-            break;
-          case studySettings.hotkeys.quality2:
-            onQualitySelect(2);
-            event.preventDefault();
-            break;
-          case studySettings.hotkeys.quality3:
-            onQualitySelect(3);
-            event.preventDefault();
-            break;
-          default:
-            break;
-        }
-      } else if (!isAnswerVisible && selectedQuality === null && key === studySettings.hotkeys.next) {
+      const key = event.key === ' ' ? 'spacebar' : event.key;
+      const isModifierKey = event.ctrlKey || event.altKey || event.shiftKey || event.metaKey;
+
+      // Priority 1: Flipping the card if it's front-facing and no quality is selected
+      if (!isAnswerVisible && selectedQuality === null && !isModifierKey) {
+        // Prevent flipping if a dialog/input within settings modal might be active,
+        // though showSettingsModal check above should cover this.
+        // This check is broad for "any key".
         cardViewRef.current?.flipCard();
         event.preventDefault();
-      } else if (selectedQuality !== null && key === studySettings.hotkeys.next) {
-        handleNextCard();
-        event.preventDefault();
-      } else if (selectedQuality !== null && key === studySettings.hotkeys.undo) {
-        handleUndoReview();
-        event.preventDefault();
+        return; // Flip action takes precedence, further hotkey processing stops
       }
+
+      // Priority 2: Actions when answer is visible or a quality is already selected (even if answer just became visible)
+      if (isAnswerVisible) {
+        let newSelectedQualityViaHotkey: number | null = null;
+        if (key === studySettings.hotkeys.quality0) newSelectedQualityViaHotkey = 0;
+        else if (key === studySettings.hotkeys.quality1) newSelectedQualityViaHotkey = 1;
+        else if (key === studySettings.hotkeys.quality2) newSelectedQualityViaHotkey = 2;
+        else if (key === studySettings.hotkeys.quality3) newSelectedQualityViaHotkey = 3;
+
+        if (newSelectedQualityViaHotkey !== null) {
+          if (selectedQuality === newSelectedQualityViaHotkey) { // Re-pressed same quality hotkey
+            await handleNextCard(); // This will submit the current selectedQuality
+          } else { // New quality hotkey or changing selection
+            setSelectedQuality(newSelectedQualityViaHotkey);
+            setShowPostReviewButtons(true); // Ensure Next/Undo buttons are shown
+          }
+          event.preventDefault();
+          return; // Rating hotkey handled
+        }
+
+        // "Next Card" hotkey (e.g., spacebar) when a quality IS selected
+        if (key === studySettings.hotkeys.next && selectedQuality !== null) {
+          await handleNextCard(); // This will submit the current selectedQuality
+          event.preventDefault();
+          return; // Next hotkey handled
+        }
+
+        // "Undo" hotkey
+        if (key === studySettings.hotkeys.undo && reviewHistory.length > 0) { // Only allow undo if there's history
+          handleUndoReview();
+          event.preventDefault();
+          return; // Undo hotkey handled
+        }
+      }
+      
+      // Note: The original logic for flipping with the 'next' hotkey when !isAnswerVisible
+      // is now covered by the broader "any non-modifier key" flip logic at the top.
     };
 
     window.addEventListener('keydown', handleKeyPress);
@@ -538,11 +577,11 @@ const StudySession: React.FC = () => {
     >
       {/* Pass the correct card object to CardView */}
       <CardView
-        ref={cardViewRef} // ADDED: Pass the ref to CardView
-        card={cardForView} // Pass the prepared card object
-        onQualitySelect={onQualitySelect} // Pass the quality
-        onAnswerShown={() => setIsAnswerVisible(true)} // Pass the onAnswerShown function
-        selectedQuality={selectedQuality} // ADDED: Pass selectedQuality to CardView
+        ref={cardViewRef}
+        card={cardForView}
+        onQualitySelect={onQualitySelect}
+        onAnswerShown={() => setIsAnswerVisible(true)}
+        selectedQuality={selectedQuality}
         studyDirection={studySettings.study_direction}
         showTransliteration={studySettings.show_transliteration}
       />
@@ -550,59 +589,11 @@ const StudySession: React.FC = () => {
         Card {current + 1} of {dueCards.length}
       </p>
 
-      {/* ADDED: Post-review buttons (Undo and Next) */}
-      {showPostReviewButtons && (
-        <div className="flex justify-center space-x-4 mt-6 post-review-buttons">
-          <button
-            onClick={handleUndoReview}
-            className="px-6 py-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
-          >
-            Undo
-          </button>
-          <button
-            onClick={handleNextCard}
-            className="px-6 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            Next Card
-          </button>
-        </div>
-      )}
-      {/* END ADDED: Post-review buttons */}
-
-      {/* Error message display */}
-      {error && (
-        <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-md">
-          <AlertCircle size={20} className="inline mr-2" />
-          {error}
-        </div>
-      )}
-
-      {/* Settings and Exit buttons container */}
-      <div className="fixed bottom-32 right-6 flex space-x-2 z-50">
-        {/* Settings button */}
-        <button
-          className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
-          onClick={() => setShowSettingsModal(true)}
-          aria-label="Settings"
-        >
-          <Settings size={20} />
-        </button>
-        {/* Exit button */}
-        <button
-          className="p-3 rounded-full shadow-lg transition-colors bg-red-600 text-white hover:bg-red-700"
-          onClick={() => setShowExitConfirmModal(true)}
-          aria-label="Exit study session"
-        >
-          <X size={28} />
-        </button>
-      </div>
-      {/* END Settings and Exit buttons container */}
-
       {/* Fixed Bottom Bar for Review Rating Buttons */}
       {isAnswerVisible && (
         <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-3 px-2 z-50" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}>
           <button
-            onClick={() => onQualitySelect(0)}
+            onClick={() => handleRatingClick(0)}
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 0 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
@@ -610,7 +601,7 @@ const StudySession: React.FC = () => {
             <span className="block font-normal text-gray-200 text-xs sm:text-sm leading-tight">Blackout</span>
           </button>
           <button
-            onClick={() => onQualitySelect(1)}
+            onClick={() => handleRatingClick(1)}
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-orange-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 1 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
@@ -618,7 +609,7 @@ const StudySession: React.FC = () => {
             <span className="block font-normal text-gray-200 text-xs sm:text-sm leading-tight">Wrong but familiar</span>
           </button>
           <button
-            onClick={() => onQualitySelect(2)}
+            onClick={() => handleRatingClick(2)}
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-yellow-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 2 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
@@ -626,7 +617,7 @@ const StudySession: React.FC = () => {
             <span className="block font-normal text-gray-200 dark:text-white text-xs sm:text-sm leading-tight">Hesitation</span>
           </button>
           <button
-            onClick={() => onQualitySelect(3)}
+            onClick={() => handleRatingClick(3)}
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-green-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 3 ? 'border-4 border-black dark:border-white' : ''}`}
             style={{ minWidth: 0 }}
           >
@@ -635,7 +626,47 @@ const StudySession: React.FC = () => {
           </button>
         </div>
       )}
-      {/* END: Fixed Bottom Bar */}
+
+      {/* Bottom controls: Undo (left), Next Card (center), Settings/Exit (right) */}
+      <div className="fixed bottom-40 left-0 w-full flex justify-between items-center px-6 z-50">
+        {/* Undo button bottom left - conditionally rendered */}
+        {reviewHistory.length > 0 && (
+          <button
+            onClick={handleUndoReview}
+            className="p-3 rounded-full shadow-lg bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
+            style={{ position: 'absolute', left: 0 }}
+          >
+            Undo
+          </button>
+        )}
+        {/* Next Card button center */}
+        {showPostReviewButtons && (
+          <button
+            onClick={handleNextCard}
+            className="px-8 py-3 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 mx-auto"
+            style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}
+          >
+            Next Card
+          </button>
+        )}
+        {/* Settings/Exit bottom right */}
+        <div className="flex space-x-2" style={{ position: 'absolute', right: 0 }}>
+          <button
+            className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
+            onClick={() => setShowSettingsModal(true)}
+            aria-label="Settings"
+          >
+            <Settings size={20} />
+          </button>
+          <button
+            className="p-3 rounded-full shadow-lg transition-colors bg-red-600 text-white hover:bg-red-700"
+            onClick={() => setShowExitConfirmModal(true)}
+            aria-label="Exit study session"
+          >
+            <X size={28} />
+          </button>
+        </div>
+      </div>
 
       {/* Settings Modal */}
       {studySettings && (
@@ -645,7 +676,6 @@ const StudySession: React.FC = () => {
           onSettingsSave={handleSettingsSave} 
         />
       )}
-      {/* END Settings Modal */}
 
       {/* Exit Confirmation Modal */}
       {showExitConfirmModal && (
@@ -670,7 +700,6 @@ const StudySession: React.FC = () => {
           </div>
         </div>
       )}
-      {/* END Exit Confirmation Modal */}
     </div>
   );
 };

@@ -15,17 +15,13 @@ interface CardViewProps {
   card: {
     id: string;
     fields: CardFields;
-    audio_url?: string | null; // Add audio_url here
-    // layout?: any; // Assuming we render based on simple fields for now
-    // type?: 'basic' | 'cloze' | 'image'; // Assuming 'basic' for now
-    // ADDED: New props for study direction and transliteration visibility
-    studyDirection: 'en-ar' | 'ar-en';
-    showTransliteration: boolean;
+    audio_url?: string | null;
   };
-  // Corrected prop type to only expect quality
   onQualitySelect: (quality: number) => void;
-  onAnswerShown: () => void; // ADDED: New prop to notify when answer is shown
-  selectedQuality: number | null; // ADDED: Prop to indicate selected quality
+  onAnswerShown: () => void;
+  selectedQuality: number | null;
+  studyDirection: 'en-ar' | 'ar-en';
+  showTransliteration: boolean;
 }
 
 // Define the ref handle type
