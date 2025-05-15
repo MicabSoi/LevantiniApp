@@ -32,10 +32,10 @@ const DEFAULT_STUDY_SETTINGS: StudySettings = {
   hotkeys: {
     undo: 'z',
     next: ' ', // spacebar
-    quality0: '0',
-    quality1: '1',
-    quality2: '2',
-    quality3: '3',
+    quality0: '1',
+    quality1: '2',
+    quality2: '3',
+    quality3: '4',
   },
 };
 

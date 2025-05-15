@@ -5,6 +5,7 @@ import CardView, { CardViewHandle } from './CardView';
 import { AlertCircle, Settings, Loader2, X } from 'lucide-react'; // ✅ Import AlertCircle, ADDED: Settings icon, ADDED: Loader2, ADDED: X
 import SettingsModal, { StudySettings, loadStudySettings as loadInitialStudySettings, HotkeySettings } from './SettingsModal'; // MODIFIED: Removed DEFAULT_HOTKEYS from import
 import ReviewCalendar from './ReviewCalendar'; // ADDED: Import ReviewCalendar component
+import UploadProgressModal from './UploadProgressModal'; // ADDED: Import UploadProgressModal
 
 interface DueCard {
   id: string; // review id
@@ -47,12 +48,25 @@ interface DueCard {
 // Default hotkeys (can define locally or import if exported)
 const DEFAULT_HOTKEYS: HotkeySettings = {
   undo: 'z',
-  next: ' ', // spacebar
-  quality0: '0',
-  quality1: '1',
-  quality2: '2',
-  quality3: '3',
+  next: ' ',
+  quality0: '1',
+  quality1: '2',
+  quality2: '3',
+  quality3: '4',
 };
+
+// ADDED: Interface for the data we will collect for batch update
+interface ReviewUpdateData {
+  id: string;
+  card_id: string;
+  last_review_date: string;
+  next_review_date: string;
+  interval: number;
+  ease_factor: number;
+  repetition_count: number;
+  reviews_count: number;
+  quality_history: number[];
+}
 
 const StudySession: React.FC = () => {
   const navigate = useNavigate();
@@ -72,6 +86,12 @@ const StudySession: React.FC = () => {
   const [studySettings, setStudySettings] = useState<StudySettings | null>(null); // ADDED: State for all study settings
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false); // ADDED: State to control exit confirmation modal visibility
   const [reviewHistory, setReviewHistory] = useState<{cardIdx: number, selected: number | null}[]>([]); // For undo
+
+  // ADDED: State to store completed review data before batch upload
+  const [completedReviewsData, setCompletedReviewsData] = useState<ReviewUpdateData[]>([]);
+  // ADDED: State for upload modal visibility and progress
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
 
@@ -174,25 +194,17 @@ const StudySession: React.FC = () => {
     // This ensures the effect "sees" the correct, stable timestamp for the current parameters.
   }, [decks.join(','), count, dueThresholdTimestamp]); // Updated dependencies
 
-  // 2) Handle quality grading, run SM-2, update review
-  const onQualitySelect = async (quality: number) => {
-    // Prevent grading if a quality has already been selected
-    // if (selectedQuality !== null) { // REMOVED: This guard was problematic
-    //   console.log('Quality already selected for this card.');
-    //   return;
-    // }
-
+  // 2) Handle quality grading, run SM-2, update review - NOW STORES DATA & RETURNS IT
+  const onQualitySelect = async (quality: number): Promise<ReviewUpdateData | null> => {
     const review = dueCards[current];
     if (!review) {
       console.error('No current review to grade.');
-      return;
+      return null;
     }
 
-    console.log(`Grading card ${review.card.id} with quality ${quality}`); // Debug log
+    console.log(`Grading card ${review.card.id} with quality ${quality}`);
 
-    // call sm2_schedule RPC
     const { data: sched, error: rpcErr } = await supabase.rpc('calculate_sm2', {
-      // Use calculate_sm2 as per SQL dump
       p_repetition_count: review.repetition_count,
       p_ease_factor: review.ease_factor,
       p_interval: review.interval,
@@ -201,50 +213,32 @@ const StudySession: React.FC = () => {
 
     if (rpcErr) {
       console.error('SM-2 RPC Error:', rpcErr);
-      setError('Failed to update review stats.'); // Set user-friendly error
-      // Still advance card to avoid getting stuck? Or stop session?
-      // For now, let's advance to not block the user.
-      // if (current < dueCards.length - 1) { // REMOVED: Advancing logic handled elsewhere
-      //   setCurrent(current + 1);
-      // } else {
-      //   navigate('/flashcards'); // Session complete
-      // }
-      return;
+      setError('Failed to update review stats.');
+      return null;
     }
 
-    console.log('SM-2 calculation result:', sched); // Debug log
+    console.log('SM-2 calculation result:', sched);
 
-    const { next_interval, next_ease_factor, next_repetition_count } = (
-      sched as any
-    )[0]; // Match RPC function output names
+    const { next_interval, next_ease_factor, next_repetition_count } = (sched as any)[0];
 
-    // update the review row
-    const { error: updateError } = await supabase
-      .from('reviews')
-      .update({
-        last_review_date: new Date().toISOString(),
-        next_review_date: new Date(
-          Date.now() + next_interval * 86400000 // Use next_interval
-        ).toISOString(),
-        interval: next_interval, // Use next_interval
-        ease_factor: next_ease_factor, // Use next_ease_factor
-        repetition_count: next_repetition_count, // Use next_repetition_count
-        reviews_count: review.reviews_count + 1,
-        quality_history: [...review.quality_history, quality],
-      })
-      .eq('id', review.id);
+    const updatedReviewData: ReviewUpdateData = {
+      id: review.id,
+      card_id: review.card.id,
+      last_review_date: new Date().toISOString(),
+      next_review_date: new Date(Date.now() + next_interval * 86400000).toISOString(),
+      interval: next_interval,
+      ease_factor: next_ease_factor,
+      repetition_count: next_repetition_count,
+      reviews_count: review.reviews_count + 1,
+      quality_history: [...review.quality_history, quality],
+    };
 
-    if (updateError) {
-      console.error('Supabase update error:', updateError);
-      setError('Failed to save review progress.'); // Set user-friendly error
-      // Advance card anyway // REMOVED: Advancing logic handled elsewhere
-    } else {
-      console.log('Review updated successfully.'); // Debug log
-      // REMOVED: setSelectedQuality(quality);
-      // REMOVED: setShowPostReviewButtons(true);
+    // For all cards except the last one, add to state. The last one will be passed directly.
+    if (current < dueCards.length - 1) {
+        setCompletedReviewsData(prevData => [...prevData, updatedReviewData]);
     }
-
-    // REMOVED: Logic to move to next card or finish - this is now handled by handleNextCard
+    
+    return updatedReviewData; // RETURN the data
   };
 
   // Modified: Allow changing selection, submit on double-click/second click
@@ -263,23 +257,74 @@ const StudySession: React.FC = () => {
 
   // Modified: Save review history for undo AND submit selected quality if any
   const handleNextCard = async () => {
-    // If a quality is selected in the UI, submit it before moving to the next card.
-    // onQualitySelect handles the SM-2 calculation and database update.
+    let finalCardDataForUpload: ReviewUpdateData | null = null;
+
     if (selectedQuality !== null) {
-      await onQualitySelect(selectedQuality);
+      finalCardDataForUpload = await onQualitySelect(selectedQuality);
     }
 
-    // Update review history and move to the next card
     setReviewHistory(prev => [...prev, { cardIdx: current, selected: selectedQuality }]);
     setShowPostReviewButtons(false);
     setSelectedQuality(null);
     setIsAnswerVisible(false);
-    if (current < dueCards.length - 1) {
-      setCurrent(current + 1);
+
+    if (current === dueCards.length - 1) {
+      console.log("Study session completed. Preparing to upload results.");
+      // Pass the review data for the final card directly to the upload function
+      await uploadCompletedReviews(finalCardDataForUpload);
     } else {
-      navigate('/flashcards'); // End session if no more cards
+      setCurrent(current + 1);
     }
-    // NOTE: No SM-2 calculation or interval logic needed here; it's in onQualitySelect
+  };
+
+  // ADDED: Function to upload completed reviews in a batch
+  const uploadCompletedReviews = async (finalCardReviewData?: ReviewUpdateData | null) => {
+    let reviewsToUpload = [...completedReviewsData];
+    if (finalCardReviewData) {
+      // Ensure the final card's data isn't duplicated if onQualitySelect already added it
+      // This check might be redundant if onQualitySelect logic is adjusted, but safe for now.
+      if (!reviewsToUpload.find(r => r.id === finalCardReviewData.id)) {
+        reviewsToUpload.push(finalCardReviewData);
+      }
+    }
+
+    if (reviewsToUpload.length === 0) {
+      console.log("No completed reviews to upload.");
+      navigate('/flashcards');
+      return;
+    }
+
+    setUploadProgress(`Preparing to upload ${reviewsToUpload.length} review(s)...`);
+    setShowUploadModal(true);
+
+    console.log(`Attempting to upload ${reviewsToUpload.length} reviews in batch:`, reviewsToUpload);
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    try {
+      setUploadProgress(`Uploading... 0/${reviewsToUpload.length} synced`);
+      const { error } = await supabase
+        .from('reviews')
+        .upsert(reviewsToUpload, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Batch upload error:', error);
+        setUploadProgress(`Upload failed: ${error.message}. Code: ${error.code}. Details: ${error.details}. Hint: ${error.hint}`);
+        setError('Failed to save all review progress.');
+      } else {
+        console.log('Batch upload successful.');
+        setUploadProgress(`Upload complete! ${reviewsToUpload.length}/${reviewsToUpload.length} synced`);
+        setCompletedReviewsData([]); // Clear the accumulated state
+        setTimeout(() => {
+          setShowUploadModal(false);
+          navigate('/flashcards');
+        }, 3000);
+      }
+    } catch (err: any) {
+      console.error('Caught error during batch upload:', err);
+      setUploadProgress(`Upload failed: An unexpected error occurred. ${err.message}`);
+      setError('An unexpected error occurred during upload.');
+    }
   };
 
   // Modified: Undo goes back to previous card and restores selection
@@ -484,6 +529,12 @@ const StudySession: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // ADDED: Check for upload modal state here
+  if (showUploadModal) {
+    // Render only the modal if it's showing
+    return <UploadProgressModal isOpen={showUploadModal} progress={uploadProgress} />;
+  }
 
   if (dueCards.length === 0) {
     return (
