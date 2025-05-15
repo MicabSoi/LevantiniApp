@@ -58,8 +58,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   // ADDED: State for search term
   const [searchTerm, setSearchTerm] = useState('');
 
-  // State for sorting
-  const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
+  // State for sorting (default to sorting by English alphabetically)
+  const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({ key: 'english', direction: 'asc' });
 
   // State for Flashcard Modal
   const [showFlashcardModal, setShowFlashcardModal] = useState(false);

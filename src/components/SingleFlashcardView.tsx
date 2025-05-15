@@ -35,43 +35,45 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editData, setEditData] = useState<Partial<Flashcard> | null>(null);
+  const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
 
-  useEffect(() => {
-    const fetchCardAndDeck = async () => {
-      if (propFlashcard) return;
+  // Fetch card and deck data
+  const fetchCardAndDeck = async () => {
+    if (propFlashcard) return;
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      const { data: cardData, error: cardError } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('id', cardId)
+    const { data: cardData, error: cardError } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('id', cardId)
+      .single();
+
+    if (cardError) {
+      setError(cardError.message);
+      setLoading(false);
+      return;
+    }
+    setFlashcard(cardData as Flashcard);
+
+    if (cardData?.deck_id) {
+      const { data: deckData, error: deckError } = await supabase
+        .from('decks')
+        .select('name')
+        .eq('id', cardData.deck_id)
         .single();
 
-      if (cardError) {
-        setError(cardError.message);
-        setLoading(false);
-        return;
+      if (deckError) {
+        console.error('Error fetching deck name in SingleFlashcardView:', deckError);
       }
-      setFlashcard(cardData as Flashcard);
+      setDeckName(deckData?.name || null);
+    }
 
-      if (cardData?.deck_id) {
-        const { data: deckData, error: deckError } = await supabase
-          .from('decks')
-          .select('name')
-          .eq('id', cardData.deck_id)
-          .single();
+    setLoading(false);
+  };
 
-        if (deckError) {
-          console.error('Error fetching deck name in SingleFlashcardView:', deckError);
-        }
-        setDeckName(deckData?.name || null);
-      }
-
-      setLoading(false);
-    };
-
+  useEffect(() => {
     if (!propFlashcard && deckId && cardId) fetchCardAndDeck();
   }, [propFlashcard, deckId, cardId]);
 
@@ -109,6 +111,10 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
         navigate(`/flashcard/${flashcard.deck_id}`);
       }
     }
+  };
+
+  const handleCloseCreateFlashcardModal = () => {
+    setShowCreateFlashcardModal(false);
   };
 
   if (loading) {
@@ -198,31 +204,26 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Flashcard Modal (using FlashcardForm) */}
       {showEditModal && flashcard && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg">
-            <FlashcardForm
-              deckId={flashcard.deck_id}
-              onClose={() => setShowEditModal(false)}
-              onSubmit={() => {
-                setShowEditModal(false);
-                setLoading(true);
-                // Refetch card data
-                supabase
-                  .from('cards')
-                  .select('*')
-                  .eq('id', flashcard.id)
-                  .single()
-                  .then(({ data }) => {
-                    setFlashcard(data as Flashcard);
-                    setLoading(false);
-                  });
-              }}
-              // Optionally, pass initial values if FlashcardForm supports it
-            />
-          </div>
-        </div>
+        <FlashcardForm
+          deckId={flashcard.deck_id}
+          flashcard={flashcard}
+          onClose={() => setShowEditModal(false)}
+          onSubmit={() => {
+            setShowEditModal(false);
+            fetchCardAndDeck();
+          }}
+        />
+      )}
+
+      {/* Create New Flashcard Modal (using FlashcardForm) - Keep this if creating from this view is needed */}
+      {showCreateFlashcardModal && deckId && (
+        <FlashcardForm
+          deckId={deckId}
+          onClose={handleCloseCreateFlashcardModal}
+          onSubmit={handleCloseCreateFlashcardModal}
+        />
       )}
 
       {/* Delete Confirmation Modal */}

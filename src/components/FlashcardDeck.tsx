@@ -262,16 +262,10 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     return counts;
   }, [defaultFlashcards]);
 
-  // Combine user and default decks for display
+  // Only show user decks (not defaultDecks) in the UI
   const combinedDecks = React.useMemo(() => {
-    const userDecks = decks.map(deck => ({ ...deck, isDefault: false, card_count: deck.cards?.[0]?.count || 0 }));
-    const defDecks = defaultDecks.map(deck => ({
-      ...deck,
-      isDefault: true,
-      card_count: defaultDeckCardCounts[deck.id] || 0,
-    }));
-    return [...userDecks, ...defDecks];
-  }, [decks, defaultDecks, defaultDeckCardCounts]);
+    return decks.map(deck => ({ ...deck, isDefault: false, card_count: deck.cards?.[0]?.count || 0 }));
+  }, [decks]);
 
   // Combine all flashcards for search
   const combinedFlashcards = React.useMemo(() => {

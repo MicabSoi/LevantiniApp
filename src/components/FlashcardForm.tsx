@@ -6,13 +6,22 @@ interface FlashcardFormProps {
   deckId: string;
   onSubmit: () => void;
   onClose: () => void;
+  flashcard?: {
+    id: string;
+    english: string;
+    arabic: string;
+    transliteration?: string;
+    image_url?: string;
+    audio_url?: string;
+    tags?: string[];
+  };
 }
 
-const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSubmit, onClose }) => {
-  const [english, setEnglish] = useState('');
-  const [arabic, setArabic] = useState('');
-  const [transliteration, setTransliteration] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSubmit, onClose, flashcard }) => {
+  const [english, setEnglish] = useState(flashcard?.english || '');
+  const [arabic, setArabic] = useState(flashcard?.arabic || '');
+  const [transliteration, setTransliteration] = useState(flashcard?.transliteration || '');
+  const [tags, setTags] = useState<string[]>(flashcard?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -115,8 +124,8 @@ const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSubmit, onClose
     setError(null);
     
     try {
-      let imageUrl = null;
-      let audioUrl = null;
+      let imageUrl = flashcard?.image_url || null;
+      let audioUrl = flashcard?.audio_url || null;
       
       // Get the current user session
       const {
@@ -126,7 +135,7 @@ const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSubmit, onClose
       if (sessionError) throw sessionError;
       if (!session?.user) throw new Error('No authenticated user');
 
-      // Upload image if exists
+      // Upload image if exists and is a new file
       if (imageFile) {
         const imagePath = `flashcard-images/${Date.now()}-${imageFile.name}`;
         const { error: uploadError } = await supabase.storage
@@ -142,7 +151,7 @@ const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSubmit, onClose
         imageUrl = publicUrl;
       }
       
-      // Upload audio if exists
+      // Upload audio if exists and is a new file
       if (audioFile) {
         const audioPath = `flashcard-audio/${Date.now()}-${audioFile.name}`;
         const { error: uploadError } = await supabase.storage
@@ -158,69 +167,93 @@ const FlashcardForm: React.FC<FlashcardFormProps> = ({ deckId, onSubmit, onClose
         audioUrl = publicUrl;
       }
       
-const { data: newCardData, error: insertError } = await supabase
-  .from('cards')
-  .insert({
-    deck_id: deckId,
-    english: english,
-    arabic: arabic,
-    transliteration: transliteration,
-    image_url: imageUrl,
-    audio_url: audioUrl,
-    tags: tags,
-    user_id: session.user.id,
-    fields: { // Populate the fields JSONB column
-      english: english,
-      arabic: arabic,
-      transliteration: transliteration,
-      imageUrl: imageUrl, // Use imageUrl key as expected by CardView
-      // Add other fields like clozeText if applicable in the future
-    },
-    // review_stats_id will be linked after creating the review entry
-  })
-  .select('id') // Select the ID of the newly created card
-  .single();
+      if (flashcard) { // Edit existing card
+        const { error: updateError } = await supabase
+          .from('cards')
+          .update({
+            english: english,
+            arabic: arabic,
+            transliteration: transliteration,
+            image_url: imageUrl,
+            audio_url: audioUrl,
+            tags: tags,
+            fields: { // Update the fields JSONB column
+              english: english,
+              arabic: arabic,
+              transliteration: transliteration,
+              imageUrl: imageUrl,
+            },
+          })
+          .eq('id', flashcard.id)
+          .eq('user_id', session.user.id); // Ensure user owns the card
+          
+        if (updateError) throw updateError;
+        
+      } else { // Create new card
+        const { data: newCardData, error: insertError } = await supabase
+          .from('cards')
+          .insert({
+            deck_id: deckId,
+            english: english,
+            arabic: arabic,
+            transliteration: transliteration,
+            image_url: imageUrl,
+            audio_url: audioUrl,
+            tags: tags,
+            user_id: session.user.id,
+            fields: { // Populate the fields JSONB column
+              english: english,
+              arabic: arabic,
+              transliteration: transliteration,
+              imageUrl: imageUrl, // Use imageUrl key as expected by CardView
+              // Add other fields like clozeText if applicable in the future
+            },
+            // review_stats_id will be linked after creating the review entry
+          })
+          .select('id') // Select the ID of the newly created card
+          .single();
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
 
-      const newCardId = newCardData.id;
+        const newCardId = newCardData.id;
 
-      // Create a corresponding entry in the 'reviews' table
-      const { data: newReviewData, error: reviewError } = await supabase
-        .from('reviews')
-        .insert({
-          card_id: newCardId,
-          // Set initial review statistics to make it due for review
-          last_review_date: new Date().toISOString(), // Set to now
-          next_review_date: new Date().toISOString(), // Set to now
-          interval: 0,
-          ease_factor: 2.5,
-          repetition_count: 0,
-          streak: 0,
-          reviews_count: 0,
-          quality_history: [],
-        })
-        .select('id') // Select the ID of the newly created review entry
-        .single();
+        // Create a corresponding entry in the 'reviews' table
+        const { data: newReviewData, error: reviewError } = await supabase
+          .from('reviews')
+          .insert({
+            card_id: newCardId,
+            // Set initial review statistics to make it due for review
+            last_review_date: new Date().toISOString(), // Set to now
+            next_review_date: new Date().toISOString(), // Set to now
+            interval: 0,
+            ease_factor: 2.5,
+            repetition_count: 0,
+            streak: 0,
+            reviews_count: 0,
+            quality_history: [],
+          })
+          .select('id') // Select the ID of the newly created review entry
+          .single();
 
-      if (reviewError) throw reviewError;
+        if (reviewError) throw reviewError;
 
-      if (!newReviewData) {
-        throw new Error('Failed to get new review ID.');
+        if (!newReviewData) {
+          throw new Error('Failed to get new review ID.');
+        }
+
+        // Update the card with the new review_stats_id
+        const { error: updateCardError } = await supabase
+          .from('cards')
+          .update({ review_stats_id: newReviewData.id })
+          .eq('id', newCardId);
+
+        if (updateCardError) throw updateCardError;
       }
-
-      // Update the card with the new review_stats_id
-      const { error: updateCardError } = await supabase
-        .from('cards')
-        .update({ review_stats_id: newReviewData.id })
-        .eq('id', newCardId);
-
-      if (updateCardError) throw updateCardError;
 
       onSubmit();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create flashcard');
-      console.error('Error creating flashcard:', err);
+      setError(err instanceof Error ? err.message : flashcard ? 'Failed to update flashcard' : 'Failed to create flashcard');
+      console.error(flashcard ? 'Error updating flashcard:' : 'Error creating flashcard:', err);
     } finally {
       setLoading(false);
     }
@@ -229,7 +262,7 @@ const { data: newCardData, error: insertError } = await supabase
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white dark:bg-dark-200 rounded-lg shadow-xl max-w-xs w-full p-6 relative max-h-[90vh]">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Create New Flashcard</h2>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">{flashcard ? 'Edit Flashcard' : 'Create New Flashcard'}</h2>
         <form onSubmit={handleSubmit} className="space-y-6 overflow-y-auto pr-2">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-3 rounded-md">
@@ -467,7 +500,7 @@ const { data: newCardData, error: insertError } = await supabase
               type="submit" // Keep as type='submit' to trigger form submission
               className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              {loading ? <Loader2 size={20} className="animate-spin" /> : 'Create Flashcard'}
+              {loading ? <Loader2 size={20} className="animate-spin" /> : flashcard ? 'Save Changes' : 'Create Flashcard'}
             </button>
           </div>
         </form>
