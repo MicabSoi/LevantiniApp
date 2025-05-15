@@ -96,7 +96,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
     <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
       <p 
         dir={isRtlFront ? 'rtl' : 'ltr'}
-        className={`text-2xl font-bold text-center text-gray-900 dark:text-white ${isRtlFront ? 'font-arabic' : ''}`}>
+        className={`text-2xl font-bold text-center text-gray-900 dark:text-white ${isRtlFront ? '' : ''}`}>
         {frontText || (studyDirection === 'en-ar' ? 'No English text' : 'No Arabic text')}
       </p>
       {/* Render transliteration on the front if Arabic is on the front and showTransliteration is true */}
@@ -115,7 +115,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
     <div className="flex flex-col items-center justify-center p-6 bg-gray-50 dark:bg-dark-200 rounded-b-lg">
       <p 
         dir={isRtlBack ? 'rtl' : 'ltr'}
-        className={`text-3xl font-bold text-center text-gray-900 dark:text-white ${isRtlBack ? 'font-arabic' : ''}`}>
+        className={`text-3xl font-bold text-center text-gray-900 dark:text-white ${isRtlBack ? '' : ''}`}>
         {backText || (studyDirection === 'en-ar' ? 'No Arabic text' : 'No English text')}
       </p>
       {/* Render transliteration on the back if Arabic is on the back and showTransliteration is true */}

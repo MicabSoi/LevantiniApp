@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient'; // Import Supabase client
 import { User } from '@supabase/supabase-js'; // Import User type
 
@@ -200,7 +200,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8">Loading settings...</div>
+          <div className="flex flex-col items-center justify-center h-48"> {/* Added h-48 for height */}
+            <Loader2 className="animate-spin h-8 w-8 text-emerald-500 mb-4" /> {/* Added mb-4 */}
+            <p className="text-gray-700 dark:text-white">Loading settings...</p> {/* Found the text */}
+          </div>
         ) : (
           <div className="space-y-6"> {/* Increased spacing */}
             {/* Study Direction Setting */}

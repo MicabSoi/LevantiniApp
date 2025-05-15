@@ -263,11 +263,13 @@ const StudySession: React.FC = () => {
 
   // Modified: Save review history for undo AND submit selected quality if any
   const handleNextCard = async () => {
+    // If a quality is selected in the UI, submit it before moving to the next card.
+    // onQualitySelect handles the SM-2 calculation and database update.
     if (selectedQuality !== null) {
-      // If a quality is selected in the UI, submit it before moving to the next card.
       await onQualitySelect(selectedQuality);
     }
 
+    // Update review history and move to the next card
     setReviewHistory(prev => [...prev, { cardIdx: current, selected: selectedQuality }]);
     setShowPostReviewButtons(false);
     setSelectedQuality(null);
@@ -275,8 +277,9 @@ const StudySession: React.FC = () => {
     if (current < dueCards.length - 1) {
       setCurrent(current + 1);
     } else {
-      navigate('/flashcards');
+      navigate('/flashcards'); // End session if no more cards
     }
+    // NOTE: No SM-2 calculation or interval logic needed here; it's in onQualitySelect
   };
 
   // Modified: Undo goes back to previous card and restores selection
@@ -634,7 +637,7 @@ const StudySession: React.FC = () => {
           <button
             onClick={handleUndoReview}
             className="p-3 rounded-full shadow-lg bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
-            style={{ position: 'absolute', left: 0 }}
+            style={{ position: 'absolute', left: '1.5rem' }}
           >
             Undo
           </button>
@@ -650,9 +653,9 @@ const StudySession: React.FC = () => {
           </button>
         )}
         {/* Settings/Exit bottom right */}
-        <div className="flex space-x-2" style={{ position: 'absolute', right: 0 }}>
+        <div className="flex space-x-2" style={{ position: 'absolute', right: '1.5rem' }}>
           <button
-            className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-dark-200"
+            className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-gray-200"
             onClick={() => setShowSettingsModal(true)}
             aria-label="Settings"
           >
