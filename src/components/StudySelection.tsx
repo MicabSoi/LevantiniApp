@@ -87,7 +87,7 @@ const StudySelection: React.FC = () => {
           min={1}
           value={cardCount}
           onChange={(e) => setCardCount(Number(e.target.value))}
-          className="w-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-dark-100 text-gray-800 dark:text-gray-200"
+          className="w-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-dark-100 text-gray-800 dark:text-gray-200 outline-none focus:border-black dark:focus:border-white focus:ring-0"
         />
       </div>
 
@@ -102,6 +102,7 @@ const StudySelection: React.FC = () => {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        onSettingsSave={() => {}}
       />
     </div>
   );
