@@ -752,7 +752,15 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && deckToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDeleteConfirm(false);
+              setDeckToDelete(null);
+            }
+          }}
+        >
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg">
             <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Confirm Deletion</h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
@@ -781,7 +789,18 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
       {/* Edit Deck Modal */}
       {showEditModal && deckToEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowEditModal(false);
+              setDeckToEdit(null);
+              setEditedDeckName('');
+              setEditedDeckDescription('');
+              setEditedDeckEmoji('');
+            }
+          }}
+        >
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-96">
             <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Edit Deck</h3>
 

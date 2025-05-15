@@ -111,7 +111,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-sm">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Settings</h3>
