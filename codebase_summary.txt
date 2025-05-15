@@ -30,7 +30,5 @@ Supabase Integration:
 - Used for authentication, database (PostgreSQL), and serverless functions (Edge Functions).
 - Key tables likely include `progress` and `learned_words`.
 
-OpenAI Integration:
-- Integrated, likely for language-related tasks (translation, grammar checks, generating examples).
 
 The codebase includes standard files like package.json, .gitignore, vite.config.ts, tsconfig.json, and README.md. 

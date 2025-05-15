@@ -271,19 +271,23 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const combinedFlashcards = React.useMemo(() => {
     const userCards = allFlashcards.map(card => ({ ...card, isDefault: false }));
     const defCards = defaultFlashcards.map(card => ({ ...card, isDefault: true }));
-    return [...userCards, ...defCards];
+    return [...userCards, ...defCards]; // Keep this for now, though the filter will ignore default cards
   }, [allFlashcards, defaultFlashcards]);
 
-  // Update search logic to include both user and default flashcards
-  const filteredFlashcards = combinedFlashcards.filter((card) => {
+  // Update search logic to ONLY include user flashcards
+  const filteredFlashcards = React.useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return (
-      card.english.toLowerCase().includes(term) ||
-      card.arabic.toLowerCase().includes(term) ||
-      (card.transliteration && card.transliteration.toLowerCase().includes(term)) ||
-      (card.tags && card.tags.join(' ').toLowerCase().includes(term))
-    );
-  });
+    // Filter only userCards based on the search term
+    const userCards = allFlashcards.map(card => ({ ...card, isDefault: false }));
+    return userCards.filter((card) => {
+      return (
+        card.english.toLowerCase().includes(term) ||
+        card.arabic.toLowerCase().includes(term) ||
+        (card.transliteration && card.transliteration.toLowerCase().includes(term)) ||
+        (card.tags && card.tags.join(' ').toLowerCase().includes(term))
+      );
+    });
+  }, [searchTerm, allFlashcards]); // Depend on searchTerm and allFlashcards
 
   // Function to handle saving a new deck
   const handleSaveNewDeck = async () => {
