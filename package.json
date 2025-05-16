@@ -12,6 +12,7 @@
     "unbundle": "node unbundle-codebase.cjs"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.49.1",
     "@types/react-calendar": "^3.9.0",
     "date-fns": "^3.3.1",
