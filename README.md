@@ -1,5 +1,7 @@
 # Levantini
 
+Project ID: mnfxcqpwvsprsrxmaxxt
+
 A modern, interactive platform for learning Levantine Arabic, built with React, TypeScript, and Supabase.
 
 ## 🌟 Features
