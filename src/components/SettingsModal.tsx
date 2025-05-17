@@ -14,6 +14,7 @@ export interface StudySettings {
   study_direction: 'en-ar' | 'ar-en';
   show_transliteration: boolean;
   hotkeys: HotkeySettings;
+  hotkey_behavior: 'double-press' | 'single-press';
 }
 
 export interface HotkeySettings {
@@ -37,6 +38,7 @@ const DEFAULT_STUDY_SETTINGS: StudySettings = {
     quality2: '3',
     quality3: '4',
   },
+  hotkey_behavior: 'double-press',
 };
 
 // Helper function to load study settings from Supabase or return defaults
@@ -59,6 +61,7 @@ export async function loadStudySettings(user: User | null): Promise<StudySetting
         study_direction: data.study_direction || DEFAULT_STUDY_SETTINGS.study_direction,
         show_transliteration: typeof data.show_transliteration === 'boolean' ? data.show_transliteration : DEFAULT_STUDY_SETTINGS.show_transliteration,
         hotkeys: validHotkeys,
+        hotkey_behavior: data.hotkey_behavior || DEFAULT_STUDY_SETTINGS.hotkey_behavior,
       };
     }
   } catch (err) {
@@ -83,6 +86,7 @@ const saveStudySettingsToSupabase = async (user: User | null, settings: StudySet
         study_direction: settings.study_direction,
         show_transliteration: settings.show_transliteration,
         hotkeys: settings.hotkeys,
+        hotkey_behavior: settings.hotkey_behavior,
         updated_at: new Date().toISOString(),
       });
     if (error) throw error;
@@ -202,7 +206,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-48"> {/* Added h-48 for height */}
             <Loader2 className="animate-spin h-8 w-8 text-emerald-500 mb-4" /> {/* Added mb-4 */}
-            <p className="text-gray-700 dark:text-white">Loading settings...</p> {/* Found the text */}
+            <p className="text-gray-700 dark:text-white">Loading settings...</p>
           </div>
         ) : (
           <div className="space-y-6"> {/* Increased spacing */}
@@ -217,7 +221,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
                     value="en-ar"
                     checked={currentSettings.study_direction === 'en-ar'}
                     onChange={() => handleSettingChange('study_direction', 'en-ar')}
-                    className="form-radio text-emerald-600"
+                    className="form-radio text-emerald-600 focus:ring-emerald-500 border-emerald-400 dark:border-emerald-600"
                   />
                   <span className="text-gray-800 dark:text-gray-200">English → Arabic</span>
                 </label>
@@ -228,7 +232,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
                     value="ar-en"
                     checked={currentSettings.study_direction === 'ar-en'}
                     onChange={() => handleSettingChange('study_direction', 'ar-en')}
-                    className="form-radio text-emerald-600"
+                    className="form-radio text-emerald-600 focus:ring-emerald-500 border-emerald-400 dark:border-emerald-600"
                   />
                   <span className="text-gray-800 dark:text-gray-200">Arabic → English</span>
                 </label>
@@ -243,12 +247,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
                   type="checkbox"
                   checked={currentSettings.show_transliteration}
                   onChange={(e) => handleSettingChange('show_transliteration', e.target.checked)}
-                  className="form-checkbox text-emerald-600 h-5 w-5" // Tailwind classes for styling
+                  className="form-checkbox text-emerald-600 h-5 w-5 focus:ring-emerald-500 border-emerald-400 dark:border-emerald-600"
                 />
                 <span className="text-gray-800 dark:text-gray-200">Show Transliteration</span>
               </label>
             </div>
             
+            {/* ADDED: Hotkey Behavior Setting - MOVED POSITION */}
+            <div>
+              <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Review Rating Hotkey Behavior</h4>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="hotkey_behavior"
+                    value="double-press"
+                    checked={currentSettings.hotkey_behavior === 'double-press'}
+                    onChange={() => handleSettingChange('hotkey_behavior', 'double-press')}
+                    className="form-radio text-emerald-600 focus:ring-emerald-500 border-emerald-400 dark:border-emerald-600"
+                  />
+                  <span className="text-gray-800 dark:text-gray-200">Double Press to Submit</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="hotkey_behavior"
+                    value="single-press"
+                    checked={currentSettings.hotkey_behavior === 'single-press'}
+                    onChange={() => handleSettingChange('hotkey_behavior', 'single-press')}
+                    className="form-radio text-emerald-600 focus:ring-emerald-500 border-emerald-400 dark:border-emerald-600"
+                  />
+                  <span className="text-gray-800 dark:text-gray-200">Single Press to Submit</span>
+                </label>
+              </div>
+            </div>
+
             {/* Hotkeys Settings */}
             <div>
               <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Hotkeys</h4>
@@ -259,16 +292,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
                     if (hotkeyName.startsWith('quality')) {
                       const qualityMatch = hotkeyName.match(/^quality(\d+)$/);
                       if (qualityMatch && qualityMatch[1]) {
-                        const qualityNumber = parseInt(qualityMatch[1], 10) + 1;
+                        const qualityNumber = parseInt(qualityMatch[1], 10) + 1; // Assuming quality0 is Rating 1
                         hotkeyName = `Review Rating ${qualityNumber}`;
                       } else {
-                        hotkeyName = hotkeyName.replace('quality', 'Review Rating');
+                        hotkeyName = hotkeyName.replace('quality', 'Review Rating ');
                       }
+                    } else {
+                      // Capitalize first letter for other hotkeys like undo, next
+                       hotkeyName = hotkeyName.charAt(0).toUpperCase() + hotkeyName.slice(1);
                     }
+
                     const displayValue = currentSettings.hotkeys[key as keyof HotkeySettings] === ' ' ? 'spacebar' : currentSettings.hotkeys[key as keyof HotkeySettings];
                     return (
                       <div key={key} className="flex justify-between items-center">
-                        <label htmlFor={key} className="text-gray-800 dark:text-gray-200 capitalize">{hotkeyName}</label>
+                        <label htmlFor={key} className="text-gray-800 dark:text-gray-200">{hotkeyName}</label>
                         <div className="flex items-center">
                           <input
                             ref={capturingKeyFor === key ? inputRef : null}
@@ -276,8 +313,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
                             id={key}
                             value={displayValue}
                             readOnly
-                            className={`w-28 p-2 text-center border rounded-md mr-2 cursor-pointer text-gray-900 dark:text-white ${capturingKeyFor === key ? 'ring-2 ring-emerald-500' : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-dark-100'}`}
+                            className={`w-28 p-2 text-center border rounded-md mr-2 cursor-pointer ${capturingKeyFor === key ? 'ring-2 ring-emerald-500' : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-dark-100'} text-emerald-800 dark:text-emerald-300`}
                             onClick={() => setCapturingKeyFor(key as keyof HotkeySettings)}
+                            onBlur={() => { if (capturingKeyFor === key) setCapturingKeyFor(null);}} // Stop capturing if blurred
                           />
                           {capturingKeyFor === key && <span className="text-sm text-emerald-600 dark:text-emerald-400">Press a key...</span>}
                         </div>
@@ -287,6 +325,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
                 }
               </div>
             </div>
+
           </div>
         )}
 
@@ -312,8 +351,4 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
   );
 };
 
-// Hotkeys are loaded in StudySession.tsx and passed if needed, or StudySession loads them directly.
-// This export is kept if other components might need to load hotkeys independently, but for study session settings,
-// they are part of the larger StudySettings object.
-// export { loadHotkeys }; // loadHotkeys is now part of loadStudySettings
-export default SettingsModal; 
+export default SettingsModal;

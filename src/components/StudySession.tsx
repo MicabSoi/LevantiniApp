@@ -68,6 +68,14 @@ interface ReviewUpdateData {
   quality_history: number[];
 }
 
+// ADDED: Interface for SM-2 results for type safety
+// Assuming the RPC returns an array of objects with these properties
+interface SM2Result {
+  next_interval: number;
+  next_ease_factor: number;
+  next_repetition_count: number;
+}
+
 const StudySession: React.FC = () => {
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -348,9 +356,11 @@ const StudySession: React.FC = () => {
     if (!studySettings) return; // Don't attach listener if settings not loaded
 
     const handleKeyPress = async (event: KeyboardEvent) => { // Made async
+      console.log('Key pressed:', event.key, 'isAnswerVisible:', isAnswerVisible, 'selectedQuality:', selectedQuality);
       if (showSettingsModal || showExitConfirmModal) return;
 
-      const key = event.key === ' ' ? 'spacebar' : event.key;
+      // FIXED: Use event.key directly for spacebar
+      const key = event.key;
       const isModifierKey = event.ctrlKey || event.altKey || event.shiftKey || event.metaKey;
 
       // Priority 1: Flipping the card if it's front-facing and no quality is selected
@@ -372,18 +382,29 @@ const StudySession: React.FC = () => {
         else if (key === studySettings.hotkeys.quality3) newSelectedQualityViaHotkey = 3;
 
         if (newSelectedQualityViaHotkey !== null) {
-          if (selectedQuality === newSelectedQualityViaHotkey) { // Re-pressed same quality hotkey
-            await handleNextCard(); // This will submit the current selectedQuality
-          } else { // New quality hotkey or changing selection
-            setSelectedQuality(newSelectedQualityViaHotkey);
-            setShowPostReviewButtons(true); // Ensure Next/Undo buttons are shown
+          // Always set the quality on first press, regardless of behavior setting
+          setSelectedQuality(newSelectedQualityViaHotkey);
+          setShowPostReviewButtons(true); // Ensure Next/Undo buttons are shown
+
+          // NEW LOGIC: Handle submission based on hotkey_behavior setting
+          if (studySettings.hotkey_behavior === 'single-press') {
+            console.log('Single-press hotkey behavior: Submitting review.');
+            await handleNextCard(); // Immediately submit on single press
+          } else { // double-press behavior
+             console.log('Double-press hotkey behavior: Selected quality.', newSelectedQualityViaHotkey);
+             // The second press/spacebar will trigger handleNextCard via the next hotkey logic below
           }
+
           event.preventDefault();
           return; // Rating hotkey handled
         }
 
-        // "Next Card" hotkey (e.g., spacebar) when a quality IS selected
-        if (key === studySettings.hotkeys.next && selectedQuality !== null) {
+        // "Next Card" hotkey (e.g., spacebar)
+        // This is used for submission ONLY in double-press mode AFTER a quality is selected.
+        // In single-press mode, quality hotkeys handle submission.
+        console.log('Checking next hotkey (with quality) for double-press mode:', 'key=', key, 'expected=', studySettings.hotkeys.next, 'selectedQuality=', selectedQuality, 'behavior=', studySettings.hotkey_behavior);
+        if (studySettings.hotkey_behavior === 'double-press' && key === studySettings.hotkeys.next && selectedQuality !== null) {
+          console.log('Double-press Next hotkey condition met. Calling handleNextCard().');
           await handleNextCard(); // This will submit the current selectedQuality
           event.preventDefault();
           return; // Next hotkey handled
@@ -394,6 +415,14 @@ const StudySession: React.FC = () => {
           handleUndoReview();
           event.preventDefault();
           return; // Undo hotkey handled
+        }
+
+        // NEW: Prevent default scroll for spacebar if answer is visible, no quality selected, and not handled by above.
+        // This condition is met if key is the 'next' hotkey (spacebar) and selectedQuality was null (otherwise previous block handled it).
+        if (key === studySettings.hotkeys.next) { 
+          console.log('Spacebar pressed (or configured \'next\' hotkey) with answer visible, and no quality selected or other action taken. Preventing scroll.');
+          event.preventDefault();
+          return; // Spacebar does nothing else in this specific state beyond preventing scroll.
         }
       }
       
@@ -533,7 +562,8 @@ const StudySession: React.FC = () => {
   // ADDED: Check for upload modal state here
   if (showUploadModal) {
     // Render only the modal if it's showing
-    return <UploadProgressModal isOpen={showUploadModal} progress={uploadProgress} />;
+    // FIXED: Pass uploadProgress to the message prop
+    return <UploadProgressModal isOpen={showUploadModal} message={uploadProgress} />;
   }
 
   if (dueCards.length === 0) {
@@ -596,52 +626,53 @@ const StudySession: React.FC = () => {
 
   return (
     <div
-      className="p-6 max-w-xl mx-auto relative pb-20 min-h-screen"
-      onClick={(e) => {
-        // Only flip if answer is not visible and no quality selected, and not clicking on a button
-        if (!isAnswerVisible && selectedQuality === null) {
-          // Prevent if click is on a button or inside the bottom bar/post-review buttons
-          const target = e.target as HTMLElement;
-          if (
-            target.closest('button') ||
-            target.closest('.fixed.bottom-0') ||
-            target.closest('.fixed.bottom-32') ||
-            target.closest('.post-review-buttons')
-          ) {
-            return;
-          }
-          cardViewRef.current?.flipCard();
-        }
-      }}
-      onTouchStart={(e) => {
-        // Only flip if answer is not visible and no quality selected, and not touching a button
-        if (!isAnswerVisible && selectedQuality === null) {
-          const touch = e.target as HTMLElement;
-          if (
-            touch.closest('button') ||
-            touch.closest('.fixed.bottom-0') ||
-            touch.closest('.fixed.bottom-32') ||
-            touch.closest('.post-review-buttons')
-          ) {
-            return;
-          }
-          cardViewRef.current?.flipCard();
-        }
-      }}
+      className="h-screen overflow-hidden flex flex-col max-w-xl mx-auto"
     >
-      {/* Pass the correct card object to CardView */}
-      <CardView
-        ref={cardViewRef}
-        card={cardForView}
-        onQualitySelect={onQualitySelect}
-        onAnswerShown={() => setIsAnswerVisible(true)}
-        selectedQuality={selectedQuality}
-        studyDirection={studySettings.study_direction}
-        showTransliteration={studySettings.show_transliteration}
-      />
-      <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
-        Card {current + 1} of {dueCards.length}
-      </p>
+      <div 
+        className="flex-grow overflow-y-auto p-6 relative pb-44" // pb-44 for bottom fixed bars
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => { // Added type for e
+          if (!isAnswerVisible && selectedQuality === null) {
+            const target = e.target as HTMLElement;
+            if (
+              target.closest('button') ||
+              target.closest('.fixed.bottom-0') ||
+              target.closest('.fixed.bottom-40') ||
+              target.closest('.post-review-buttons')
+            ) {
+              return;
+            }
+            cardViewRef.current?.flipCard();
+          }
+        }}
+        onTouchStart={(e: React.TouchEvent<HTMLDivElement>) => { // Added type for e
+          if (!isAnswerVisible && selectedQuality === null) {
+            const touch = e.target as HTMLElement;
+            if (
+              touch.closest('button') ||
+              touch.closest('.fixed.bottom-0') ||
+              touch.closest('.fixed.bottom-40') ||
+              touch.closest('.post-review-buttons')
+            ) {
+              return;
+            }
+            cardViewRef.current?.flipCard();
+          }
+        }}
+      >
+        {/* CardView and its sibling paragraph are direct children of this div */}
+        <CardView
+          ref={cardViewRef}
+          card={cardForView}
+          onQualitySelect={onQualitySelect} // This prop is part of CardViewProps
+          onAnswerShown={() => setIsAnswerVisible(true)} // This prop is part of CardViewProps
+          selectedQuality={selectedQuality} // This prop is part of CardViewProps
+          studyDirection={studySettings.study_direction} // This prop is part of CardViewProps
+          showTransliteration={studySettings.show_transliteration} // This prop is part of CardViewProps
+        />
+        <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
+          Card {current + 1} of {dueCards.length}
+        </p>
+      </div> {/* End of scrollable content area */}
 
       {/* Fixed Bottom Bar for Review Rating Buttons */}
       {isAnswerVisible && (
@@ -759,11 +790,3 @@ const StudySession: React.FC = () => {
 };
 
 export default StudySession;
-
-// ADDED: Interface for SM-2 results for type safety
-// Assuming the RPC returns an array of objects with these properties
-interface SM2Result {
-  next_interval: number;
-  next_ease_factor: number;
-  next_repetition_count: number;
-}

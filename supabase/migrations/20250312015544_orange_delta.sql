@@ -38,6 +38,7 @@
       - `level` (int)
       - `order` (int)
       - `type` (text) - Lesson type (grammar, vocabulary, pronunciation)
+      - `lesson_group` (integer)
 
     - `lesson_progress`
       - `id` (uuid, primary key)
@@ -104,6 +105,7 @@ CREATE TABLE lessons (
   level int NOT NULL,
   order_num int NOT NULL,
   type text NOT NULL CHECK (type IN ('grammar', 'vocabulary', 'pronunciation')),
+  lesson_group integer,
   created_at timestamptz DEFAULT now(),
   UNIQUE (level, order_num)
 );

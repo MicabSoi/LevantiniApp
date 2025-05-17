@@ -169,6 +169,29 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
     return grouped;
   }, [reviews]);
 
+  const completedOnSelectedDay = useMemo(() => {
+    if (!selectedDay) return [];
+    return reviews.filter(
+      (review) =>
+        review.last_review_date &&
+        isSameDay(new Date(review.last_review_date), selectedDay)
+    );
+  }, [selectedDay, reviews]);
+
+  // Reviews that were scheduled for the selectedDay but not completed on selectedDay
+  const incompleteForSelectedDay = useMemo(() => {
+    if (!selectedDay) return [];
+    return reviews.filter((review) => {
+      const isScheduledForDay = review.next_review_date && isSameDay(new Date(review.next_review_date), selectedDay);
+      // A review is incomplete if it was scheduled for the day and not completed on that day,
+      // OR if it was scheduled for a day in the past and still shows this next_review_date (meaning it was missed)
+      // and it's not yet completed on a later date before selectedDay.
+      // For simplicity here: scheduled for selectedDay AND not completed on selectedDay.
+      const isCompletedOnDay = review.last_review_date && isSameDay(new Date(review.last_review_date), selectedDay);
+      return isScheduledForDay && !isCompletedOnDay;
+    });
+  }, [selectedDay, reviews]);
+
   // Determine the day of the week for the first day of the month (0 for Sunday, 6 for Saturday)
   const startingDayIndex = startDate.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
 
@@ -401,9 +424,7 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
           <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                {/* Dynamic Title */}
-                {isPast(selectedDay) && !isToday(selectedDay) ? 'Reviews Completed' : 'Reviews Due'}
-                <span className="sm:hidden"><br/></span> {selectedDay ? format(selectedDay, 'dd MMMM yyyy') : ''}
+                Details for {selectedDay ? format(selectedDay, 'PPP') : ''}
               </h3>
               <button
                 onClick={() => setSelectedDay(null)}
@@ -414,77 +435,85 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
               </button>
             </div>
 
-            {/* Determine which list of reviews to show */}
-            {((isPast(selectedDay) && !isToday(selectedDay)) ? completedReviewsByDay[format(selectedDay, 'yyyy-MM-dd')] || [] : reviewsForSelectedDay).length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400">
-                {/* Dynamic Message */}
-                {isPast(selectedDay) && !isToday(selectedDay) ? 'No reviews completed on this day.' : 'No cards scheduled for review on this day.'}
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {(
-                  (isPast(selectedDay) && !isToday(selectedDay))
-                    ? completedReviewsByDay[format(selectedDay, 'yyyy-MM-dd')] || []
-                    : reviewsForSelectedDay
-                ).length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {/* Dynamic Message */}
-                    {isPast(selectedDay) && !isToday(selectedDay) ? 'No reviews completed on this day.' : 'No cards scheduled for review on this day.'}
-                  </p>
-                ) : (
-                  <>
-                    {/* Add Column Titles for Completed Reviews only */}
-                    {isPast(selectedDay) && !isToday(selectedDay) && (
-                      <div className="grid grid-cols-[2fr_2fr_1fr] gap-3 items-center text-gray-900 dark:text-gray-100 font-bold mb-2 border-b border-gray-300 dark:border-dark-100 pb-1 text-xs">
-                        <div className="col-span-1">English</div>
-                        <div className="col-span-1">Arabic</div>
-                        <div className="col-span-1">Transliteration</div>
-                      </div>
-                    )}
-                    <ul className="space-y-1">
-                      {(isPast(selectedDay) && !isToday(selectedDay)
-                        ? completedReviewsByDay[format(selectedDay, 'yyyy-MM-dd')] || []
-                        : reviewsForSelectedDay
-                      ).map((review) => {
-                        if (!review.card) {
-                          return (
-                            <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
-                              <p className="text-red-600">Card details unavailable.</p>
-                            </li>
-                          );
-                        }
-                        // Completed reviews (past days)
-                        if (isPast(selectedDay) && !isToday(selectedDay)) {
-                          return (
-                            <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
-                              <div className="grid grid-cols-[2fr_2fr_1fr] gap-3 items-center text-gray-900 dark:text-gray-100 text-xs">
-                                <div className="col-span-1 font-medium overflow-hidden text-ellipsis whitespace-nowrap">{review.card.english}</div>
-                                <div className="col-span-1 text-gray-700 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{review.card.arabic}</div>
-                                <div className="col-span-1 text-gray-600 dark:text-gray-400 italic overflow-hidden text-ellipsis whitespace-nowrap">{review.card.transliteration || ''}</div>
-                              </div>
-                            </li>
-                          );
-                        }
-                        // Upcoming reviews (future/today)
-                        return (
-                          <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <p className="text-xs font-medium text-gray-900 dark:text-gray-100">{review.card.english}</p>
-                                <p className="text-xs text-gray-700 dark:text-gray-300">{review.card.arabic}</p>
-                                {review.card.transliteration && (
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 italic">{review.card.transliteration}</p>
-                                )}
-                              </div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                )}
-              </ul>
+            {/* Display Completed Reviews */}
+            {completedOnSelectedDay.length > 0 && (
+              <>
+                <h4 className="text-md font-semibold mt-3 mb-1 text-gray-700 dark:text-gray-300">
+                  {completedOnSelectedDay.length} Review{completedOnSelectedDay.length !== 1 ? 's' : ''} Completed
+                </h4>
+                <ul className="space-y-2 max-h-60 overflow-y-auto">
+                  {completedOnSelectedDay.map((review) => {
+                    if (!review.card) {
+                      return (
+                        <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2">
+                          <p className="text-red-600">Card details unavailable.</p>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-xs font-medium text-gray-900 dark:text-gray-100">{review.card.english}</p>
+                            <p className="text-xs text-gray-700 dark:text-gray-300">{review.card.arabic}</p>
+                            {review.card.transliteration && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 italic">{review.card.transliteration}</p>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
+
+            {/* Display Incomplete Reviews */}
+            {incompleteForSelectedDay.length > 0 && (
+              <>
+                <h4 className="text-md font-semibold mt-3 mb-1 text-gray-700 dark:text-gray-300">
+                  {incompleteForSelectedDay.length} Review{incompleteForSelectedDay.length !== 1 ? 's' : ''} Due But Not Completed
+                </h4>
+                <ul className="space-y-2 max-h-60 overflow-y-auto">
+                  {incompleteForSelectedDay.map((review) => {
+                    if (!review.card) {
+                      return (
+                        <li key={review.id} className="border border-gray-200 dark:border-dark-100 rounded-md p-2">
+                          <p className="text-red-600">Card details unavailable.</p>
+                        </li>
+                      );
+                    }
+                    // Use base classes for normal readability
+                    const itemClass = "border border-gray-200 dark:border-dark-100 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-dark-300 transition-colors duration-200";
+                    const textClass = "text-gray-900 dark:text-gray-100";
+                    const subTextClass = "text-gray-700 dark:text-gray-300";
+                    const italicTextClass = "text-gray-600 dark:text-gray-400";
+
+                    return (
+                      <li key={review.id} className={itemClass}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className={`text-xs font-medium ${textClass}`}>{review.card.english}</p>
+                            <p className={`text-xs ${subTextClass}`}>{review.card.arabic}</p>
+                            {review.card.transliteration && (
+                              <p className={`text-xs italic ${italicTextClass}`}>{review.card.transliteration}</p>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+
+            {/* No reviews message if both lists are empty */}
+            {completedOnSelectedDay.length === 0 && incompleteForSelectedDay.length === 0 && (
+              <p className="text-gray-600 dark:text-gray-400 mt-4">
+                No scheduled or completed reviews for this day.
+              </p>
+            )}
+            
           </div>
         </div>
       )}
