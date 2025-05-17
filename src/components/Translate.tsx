@@ -14,6 +14,8 @@ interface TranslationResult {
   transliteration: string;
   transliterationSentence: string;
   audioUrl: string;
+  contextArabic?: string;
+  contextTransliteration?: string;
 }
 
 // Define the structure of a row from user_translation_history table
@@ -23,6 +25,8 @@ interface UserTranslationHistoryRow {
   context_text: string | null;
   arabic_text: string;
   transliteration_text: string | null;
+  context_arabic?: string | null;
+  context_transliteration?: string | null;
   created_at: string; // Supabase typically returns timestamps as strings
 }
 
@@ -151,6 +155,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
            - "transliteration": string (transliteration using Arabic chat alphabet)
            - "arabicSentence": string (if context provided, a sentence using the word in Arabic script, otherwise an empty string)
            - "transliterationSentence": string (if context provided, transliteration of the sentence, otherwise an empty string)
+           ${contextText ? `           - "contextArabic": string (the Arabic translation of the context text)
+           - "contextTransliteration": string (transliteration of the context text using Arabic chat alphabet)` : ''}
         
         English word/phrase: "${text}"
         ${contextText ? `Context or example: "${contextText}"` : ''}
@@ -180,6 +186,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             transliteration: parsedResponse.transliteration || '',
             transliterationSentence: parsedResponse.transliterationSentence || '',
             audioUrl: '', // No audio URL for Gemini translations yet
+            contextArabic: parsedResponse.contextArabic || '',
+            contextTransliteration: parsedResponse.contextTransliteration || '',
           };
 
           // Insert the translation into the user_translation_history table
@@ -192,6 +200,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                 context_text: contextText,
                 arabic_text: parsedResponse.arabic || 'مش موجود',
                 transliteration_text: parsedResponse.transliteration || '',
+                context_arabic: parsedResponse.contextArabic || null,
+                context_transliteration: parsedResponse.contextTransliteration || null,
                 // created_at is automatically set by the database default value
               });
 
@@ -253,6 +263,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
           transliteration: 'mish mawjood',
           transliterationSentence: 'hay il-kilme mish mawjoode bil-2amoos',
           audioUrl: '',
+          contextArabic: '',
+          contextTransliteration: '',
         };
 
         setResult(fallbackResult);
@@ -305,10 +317,10 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
     setIsHistoryLoading(true);
     const { data, error } = await supabase
       .from('user_translation_history')
-      .select('id, english_text, context_text, arabic_text, transliteration_text, created_at') // Select necessary columns
+      .select('id, english_text, context_text, arabic_text, transliteration_text, context_arabic, context_transliteration, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(20); // Limit to the most recent 20 translations
+      .limit(20);
 
     if (error) {
       console.error('Error fetching history:', error);
@@ -325,6 +337,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
         transliteration: item.transliteration_text || '',
         transliterationSentence: '', // Not stored in this table yet
         audioUrl: '', // Not stored in this table yet
+        contextArabic: item.context_arabic || '',
+        contextTransliteration: item.context_transliteration || '',
       }));
       setSupabaseHistory(historyData);
     } else {
@@ -583,9 +597,28 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                 <div className="flex justify-between">
                   <div>
                     <p className="font-medium">{item.english}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {item.context}
-                    </p>
+                    {item.context && (
+                      <div className="mt-1 pl-2 border-l-2 border-gray-300 dark:border-gray-500">
+                        <p className="text-xs text-gray-600 dark:text-gray-300 italic">
+                          Context translation:
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                          {item.context}
+                        </p>
+                        {item.contextArabic && (
+                          <>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              {arabicTextToShow(item.contextArabic)}
+                            </p>
+                            {item.contextTransliteration && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {item.contextTransliteration}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold">{arabicTextToShow(item.arabic)}</p>
