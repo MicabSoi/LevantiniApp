@@ -32,7 +32,7 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
 
         const mapped = sorted.map((topic: any) => ({
           id: topic.level.toString(), // for use in routing
-          label: topic.label,
+          label: topic.label.replace('Lessons for ', ''),
           description: topic.description,
           icon:
             topic.label.toLowerCase() === 'alphabet' ? (
