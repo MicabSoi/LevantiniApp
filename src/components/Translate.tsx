@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Volume2, Settings, X, Check, Loader2 } from 'lucide-react';
+import { Send, Volume2, Settings, X, Check, Loader2, FolderPlus, Plus } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useSupabase } from '../context/SupabaseContext';
 import { supabase } from '../lib/supabaseClient';
@@ -28,6 +28,16 @@ interface UserTranslationHistoryRow {
   context_arabic?: string | null;
   context_transliteration?: string | null;
   created_at: string; // Supabase typically returns timestamps as strings
+}
+
+// Define the structure for a Deck
+interface Deck {
+  id: string;
+  name: string;
+  user_id: string;
+  created_at: string;
+  icon?: string; // Optional: path to icon or icon name
+  description?: string; // Optional: description of the deck
 }
 
 // Sample translations as fallback (Restoring this constant)
@@ -70,6 +80,13 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   const [modalShowDiacriticsState, setModalShowDiacriticsState] = useState(showDiacritics);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAddToDeckModal, setShowAddToDeckModal] = useState(false);
+  const [translationItemToAdd, setTranslationItemToAdd] = useState<TranslationResult | null>(null);
+  const [userDecks, setUserDecks] = useState<Deck[]>([]);
+  const [newDeckName, setNewDeckName] = useState('');
+  const [newDeckIcon, setNewDeckIcon] = useState('');
+  const [newDeckDescription, setNewDeckDescription] = useState('');
+  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
 
   const { user } = useSupabase();
   const saveSettingsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -348,14 +365,39 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
     setIsHistoryLoading(false);
   };
 
+  // Function to fetch user's decks from Supabase
+  const fetchUserDecks = async () => {
+    if (!user) {
+      setUserDecks([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('decks') // Assuming your decks table is named 'decks'
+      .select('id, name, user_id, created_at')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error fetching user decks:', error);
+      // Optionally, set an error state for the user
+      setUserDecks([]);
+    } else if (data) {
+      setUserDecks(data);
+    } else {
+      setUserDecks([]);
+    }
+  };
+
   // Fetch history when the component mounts or the user changes
   useEffect(() => {
     // Only fetch history if user is available
     if (user) {
       fetchHistory();
+      fetchUserDecks(); // Fetch decks when user is available
     } else {
       // Clear history if user logs out
       setSupabaseHistory([]);
+      setUserDecks([]); // Clear decks if user logs out
     }
 
   }, [user]); // Depend on user to refetch history
@@ -455,6 +497,98 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   const handleCloseSettingsModal = () => {
     // Simply close the modal, main state is unchanged
     setShowDiacriticsSettingsModal(false);
+  };
+
+  const handleAddToDeck = (item: TranslationResult) => {
+    // Implementation of adding the translation to a deck
+    console.log('Adding to deck:', item);
+    // Set the item to be added and open the modal
+    setTranslationItemToAdd(item);
+    setShowAddToDeckModal(true);
+    // Reset selected deck and new deck name when opening the modal
+    setSelectedDeckId(null);
+    setNewDeckName('');
+    setNewDeckIcon('');
+    setNewDeckDescription('');
+  };
+
+  const handleCloseAddToDeckModal = () => {
+    setShowAddToDeckModal(false);
+    setTranslationItemToAdd(null);
+    setNewDeckName(''); // Clear new deck name on close
+    setNewDeckIcon('');
+    setNewDeckDescription('');
+    setSelectedDeckId(null); // Clear selected deck on close
+  };
+
+  const handleCreateAndAddToDeck = async () => {
+    if (!newDeckName.trim() || !user || !translationItemToAdd) return;
+
+    const newDeckPayload: { name: string; user_id: string; icon?: string; description?: string } = {
+      name: newDeckName,
+      user_id: user.id,
+    };
+    if (newDeckIcon.trim()) newDeckPayload.icon = newDeckIcon.trim();
+    if (newDeckDescription.trim()) newDeckPayload.description = newDeckDescription.trim();
+
+    // Create new deck
+    const { data: newDeckData, error: createDeckError } = await supabase
+      .from('decks')
+      .insert(newDeckPayload)
+      .select(); // Select the newly created deck to get its ID
+
+    if (createDeckError || !newDeckData || newDeckData.length === 0) {
+      console.error('Error creating new deck:', createDeckError);
+      // Optionally, show an error to the user
+      return;
+    }
+
+    const createdDeck = newDeckData[0];
+    console.log('New deck created:', createdDeck);
+
+    // Add translation to the new deck
+    await addTranslationToDeck(createdDeck.id, translationItemToAdd);
+
+    // Close modal and refresh decks
+    handleCloseAddToDeckModal();
+    fetchUserDecks(); // Refresh the list of decks
+  };
+
+  const handleAddToExistingDeck = async () => {
+    if (!selectedDeckId || !translationItemToAdd) return;
+
+    // Add translation to the selected existing deck
+    await addTranslationToDeck(selectedDeckId, translationItemToAdd);
+
+    // Close modal
+    handleCloseAddToDeckModal();
+  };
+
+  // Helper function to add translation to a specific deck
+  const addTranslationToDeck = async (deckId: string, translation: TranslationResult) => {
+    // Assuming you have a table like 'deck_translations' to link translations to decks
+    const { error: addTranslationError } = await supabase
+      .from('deck_translations') // Replace with your actual table name
+      .insert({
+        deck_id: deckId,
+        translation_id: translation.id, // Assuming translation history has a unique ID
+        // You might also want to store the word, translation, etc. directly here
+        // depending on your schema design.
+        english_text: translation.english,
+        arabic_text: translation.arabic,
+        transliteration_text: translation.transliteration,
+        context_text: translation.context,
+        context_arabic: translation.contextArabic,
+        context_transliteration: translation.contextTransliteration,
+      });
+
+    if (addTranslationError) {
+      console.error('Error adding translation to deck:', addTranslationError);
+      // Optionally, show an error to the user
+    } else {
+      console.log('Translation added to deck:', deckId);
+      // Optionally, show a success message
+    }
   };
 
   return (
@@ -627,6 +761,15 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                     </p>
                   </div>
                 </div>
+                {/* Add to Deck button */}
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={() => handleAddToDeck(item)}
+                    className="flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 p-2 rounded-md"
+                  >
+                    <Plus size={24} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -686,6 +829,102 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
               >
                 Save changes
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add to Deck Modal Placeholder */}
+      {showAddToDeckModal && translationItemToAdd && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out">
+          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Add to Deck</h3>
+              <button
+                onClick={handleCloseAddToDeckModal}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Close modal"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <p className="text-gray-700 dark:text-gray-300 mb-4">
+              Translation: <strong>{translationItemToAdd.english}</strong> - <strong>{arabicTextToShow(translationItemToAdd.arabic)}</strong>
+            </p>
+
+            {/* Existing Decks */}
+            {userDecks.length > 0 && (
+              <div className="mb-4">
+                <label htmlFor="deck-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select existing deck:</label>
+                <select
+                  id="deck-select"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100"
+                  value={selectedDeckId || ''}
+                  onChange={(e) => setSelectedDeckId(e.target.value)}
+                >
+                  <option value="" disabled>-- Select a deck --</option>
+                  {userDecks.map((deck) => (
+                    <option key={deck.id} value={deck.id}>{deck.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Create New Deck */}
+            <div className="mb-4">
+              <label htmlFor="new-deck-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Or create a new deck:</label>
+              <input
+                type="text"
+                id="new-deck-name"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100 mb-2"
+                placeholder="New deck name"
+                value={newDeckName}
+                onChange={(e) => setNewDeckName(e.target.value)}
+              />
+              <input
+                type="text"
+                id="new-deck-icon"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100 mb-2"
+                placeholder="Deck icon (e.g., emoji or icon name)"
+                value={newDeckIcon}
+                onChange={(e) => setNewDeckIcon(e.target.value)}
+              />
+              <textarea
+                id="new-deck-description"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100"
+                placeholder="Deck description (optional)"
+                value={newDeckDescription}
+                onChange={(e) => setNewDeckDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={handleCloseAddToDeckModal}
+                className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-700 mr-2"
+              >
+                Cancel
+              </button>
+              {newDeckName.trim() !== '' ? (
+                <button
+                  onClick={handleCreateAndAddToDeck}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:bg-emerald-400"
+                  disabled={!newDeckName.trim()}
+                >
+                  Create and Add
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddToExistingDeck}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:bg-emerald-400"
+                  disabled={!selectedDeckId}
+                >
+                  Add to Selected Deck
+                </button>
+              )}
             </div>
           </div>
         </div>
