@@ -142,7 +142,7 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
         ← Back to Topics
       </button>
       <h2 className="text-2xl font-bold mb-6">
-        Lessons for {topics.find((t) => t.id === selectedTopic)?.label}
+        {topics.find((t) => t.id === selectedTopic)?.label}
       </h2>
 
       {loading && (
