@@ -39,7 +39,7 @@ const Alphabet: React.FC<AlphabetProps> = ({ setSubTab }) => {
   const [alphabetData, setAlphabetData] = useState<AlphabetItem[]>([]);
   const [specialLettersData, setSpecialLettersData] = useState<AlphabetItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const audioRefs = useRef({});
+  const audioRefs = useRef<Record<number, HTMLAudioElement>>({});
 
   useEffect(() => {
     async function fetchAlphabet() {
@@ -109,52 +109,82 @@ const Alphabet: React.FC<AlphabetProps> = ({ setSubTab }) => {
         setAlphabetData(mainAlphabet);
         setSpecialLettersData(specialLetters);
 
+        // Preload audio for each letter
+        const allLetters = [...mainAlphabet, ...specialLetters];
+        allLetters.forEach(async (letter) => {
+          if (letter.audio_url) {
+            try {
+              const { data, error: signedUrlError } = await supabase.storage
+                .from('audio') // Make sure "audio" is your actual bucket name
+                .createSignedUrl(letter.audio_url, 3600); // URL valid for 1 hour (adjust as needed)
+
+              if (signedUrlError) {
+                console.error(`Error creating signed URL for preloading ${letter.letter}:`, signedUrlError);
+                return;
+              }
+
+              // Fetch the audio file as a Blob
+              const response = await fetch(data.signedUrl);
+              if (!response.ok) {
+                console.error(`Failed to fetch audio blob for ${letter.letter}: ${response.statusText}`);
+                return;
+              }
+
+              const blob = await response.blob();
+              const blobUrl = URL.createObjectURL(blob); // Create a local object URL from the blob
+
+              // Store the Audio object initialized with the blob URL directly in audioRefs
+              const audioElement = new Audio(blobUrl);
+              audioElement.onerror = (e) => {
+                console.error(`Audio loading error for ${letter.letter}:`, e);
+              };
+              // No need for preload/load calls here as we are using a blob URL
+
+              // Use letter id as key
+              audioRefs.current[letter.id] = audioElement;
+
+            } catch (error) {
+              console.error(`Error preloading audio for ${letter.letter}:`, error);
+            }
+          }
+        });
+
         setSpecialLettersData(specialLetters);
+
+        // Cleanup function to revoke object URLs
+        return () => {
+          allLetters.forEach(letter => {
+            const audioElement = audioRefs.current[letter.id];
+            if (audioElement && audioElement.src && audioElement.src.startsWith('blob:')) {
+              URL.revokeObjectURL(audioElement.src);
+              console.log(`Revoked object URL for letter ID: ${letter.id}`);
+            }
+          });
+        };
       }
       setLoading(false);
     }
     fetchAlphabet();
   }, []);
 
-  const playAudio = async (filePath: string | null | undefined, letter: string) => {
+  // Modified playAudio function to use preloaded audio
+  const playAudio = (letterId: number) => {
     try {
-      // Ensure the file path is correct (Check Supabase Storage for actual path)
-      if (!filePath) {
-        console.warn('No audio file path provided for letter:', letter);
-        return; // Exit if no file path
+      const audioElement = audioRefs.current[letterId] as HTMLAudioElement | undefined;
+
+      if (audioElement) {
+        console.log(`Playing audio for letter ID: ${letterId}`);
+        // Reset playback to the beginning
+        audioElement.currentTime = 0;
+        audioElement.play().catch((err) => {
+          console.error(`Error playing preloaded audio for ID ${letterId}:`, err);
+        });
+      } else {
+        console.warn(`No preloaded audio found for letter ID: ${letterId}`);
+        // Fallback or error handling if audio was not preloaded
       }
-      console.log(`Requesting signed URL for file: ${filePath}`);
-
-      // Get a signed URL from Supabase
-      const { data, error } = await supabase.storage
-        .from('audio') // Make sure "audio" is your actual bucket name
-        .createSignedUrl(filePath, 60); // URL expires in 60 seconds
-
-      if (error) {
-        console.error(`Error creating signed URL for ${letter}:`, error);
-        return;
-      }
-
-      console.log(`Signed URL for ${letter}: ${data.signedUrl}`);
-
-      // Fetch the audio file as a Blob
-      const response = await fetch(data.signedUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audio: ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob); // Convert blob to local object URL
-
-      console.log(`Playing audio from local blob URL: ${blobUrl}`);
-
-      // Play the audio
-      let audioElement = new Audio(blobUrl);
-      audioElement.play().catch((err) => {
-        console.error(`Error playing audio for ${letter}:`, err);
-      });
     } catch (error) {
-      console.error(`Error in playAudio function for ${letter}:`, error);
+      console.error(`Error in playAudio function for letter ID ${letterId}:`, error);
     }
   };
 
@@ -185,7 +215,7 @@ const Alphabet: React.FC<AlphabetProps> = ({ setSubTab }) => {
                   </div>
                 </div>
                 <button
-                  onClick={() => playAudio(letter.audio_url, letter.letter)}
+                  onClick={() => playAudio(letter.id)}
                   className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
                 >
                   <Volume2 size={16} />
@@ -259,7 +289,7 @@ const Alphabet: React.FC<AlphabetProps> = ({ setSubTab }) => {
                   </div>
                 </div>
                 <button
-                  onClick={() => playAudio(letter.audio_url, letter.letter)}
+                  onClick={() => playAudio(letter.id)}
                   className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
                 >
                   <Volume2 size={16} />

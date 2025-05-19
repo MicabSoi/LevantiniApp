@@ -227,8 +227,25 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
               // Optionally, set an error state for the user
             } else {
               console.log('Translation saved to history:', data);
-              // After successful insertion, refetch the history
-              fetchHistory();
+              // After successful insertion, update the history state locally
+              // Explicitly type the data to resolve linter errors
+              const insertedData = data as UserTranslationHistoryRow[] | null;
+              if (insertedData && insertedData.length > 0) {
+                const newHistoryItem: TranslationResult = {
+                  id: insertedData[0].id,
+                  english: insertedData[0].english_text || '',
+                  context: insertedData[0].context_text || '',
+                  arabic: insertedData[0].arabic_text || '',
+                  arabicSentence: '', // Not stored in this table yet
+                  transliteration: insertedData[0].transliteration_text || '',
+                  transliterationSentence: '', // Not stored in this table yet
+                  audioUrl: '', // Not stored in this table yet
+                  contextArabic: insertedData[0].context_arabic || '',
+                  contextTransliteration: insertedData[0].context_transliteration || '',
+                };
+                // Prepend the new item to the history, keeping the limit if necessary
+                setSupabaseHistory(currentHistory => [newHistoryItem, ...currentHistory].slice(0, 20)); // Assuming a limit of 20 as in fetchHistory
+              }
             }
           }
 
@@ -597,7 +614,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
         onClick={() => setSubTab('landing')}
         className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
       >
-        ← Back to Learn
+        ← Back to Fluency
       </button>
 
       {/* Header and Settings Icon for the Translate page */}
@@ -689,6 +706,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
         <div className="mb-6 border border-emerald-200 dark:border-emerald-700 rounded-lg p-4 bg-emerald-50 dark:bg-emerald-900/20">
           <div className="flex justify-between items-start">
             <div>
+              {/* Display English word/phrase */}
+              <p className="font-medium text-gray-800 dark:text-gray-200 mb-1">{result.english}</p>
               <h3 className="font-bold text-lg">{arabicTextToShow(result.arabic)}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
                 {result.transliteration}
@@ -713,6 +732,16 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
               </p>
             </div>
           )}
+
+          {/* Add to Deck button for the latest translation */}
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={() => handleAddToDeck(result)}
+              className="flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 p-2 rounded-md"
+            >
+              <Plus size={24} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -780,8 +809,14 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
 
       {/* Diacritics Settings Modal */}
       {showDiacriticsSettingsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out">
-          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out"
+          onClick={handleCloseSettingsModal}
+        >
+          <div
+            className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Display Settings</h3>
               <button
@@ -836,8 +871,14 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
 
       {/* Add to Deck Modal Placeholder */}
       {showAddToDeckModal && translationItemToAdd && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out">
-          <div className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out"
+          onClick={handleCloseAddToDeckModal}
+        >
+          <div
+            className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Add to Deck</h3>
               <button
