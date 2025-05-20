@@ -14,12 +14,7 @@ import {
   AlignLeft,
 } from 'lucide-react';
 import { useLearnedWords } from '../context/LearnedWordsContext';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client (replace with your actual Supabase URL and Anon Key)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '../lib/supabaseClient';
 
 interface HomePageProps {
   setActiveTab: (tab: string) => void;

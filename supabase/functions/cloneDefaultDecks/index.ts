@@ -2,7 +2,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://your-app-domain.com',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -13,12 +13,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { user } = await req.json();
-    
-    if (!user?.id) {
-      throw new Error('User data not provided');
-    }
-
+    // Initialize Supabase client with environment variables for admin access
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -26,8 +21,7 @@ Deno.serve(async (req) => {
       throw new Error('Supabase URL or Service Role Key not provided in environment variables.');
     }
 
-    // Initialize Supabase client with environment variables
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       supabaseUrl,
       supabaseServiceRoleKey,
       {
@@ -38,8 +32,16 @@ Deno.serve(async (req) => {
       }
     );
 
+    // Get the user from the Authorization header
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser();
+
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(JSON.stringify({ error: 'User not authenticated' }), { status: 401, headers: corsHeaders });
+    }
+
     // Check if user already has decks
-    const { data: existingDecks, error: checkError } = await supabase
+    const { data: existingDecks, error: checkError } = await supabaseAdmin
       .from('decks')
       .select('id')
       .eq('user_id', user.id);
@@ -53,7 +55,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch default decks
-    const { data: defaultDecks, error: defaultDecksError } = await supabase
+    const { data: defaultDecks, error: defaultDecksError } = await supabaseAdmin
       .from('default_decks')
       .select('*');
 
@@ -68,7 +70,7 @@ Deno.serve(async (req) => {
     // Clone each default deck and its cards
     for (const defaultDeck of defaultDecks) {
       // Create new deck
-      const { data: newDeck, error: deckError } = await supabase
+      const { data: newDeck, error: deckError } = await supabaseAdmin
         .from('decks')
         .insert({
           user_id: user.id,
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
       if (!newDeck) continue;
 
       // Fetch default cards for this deck
-      const { data: defaultCards, error: cardsError } = await supabase
+      const { data: defaultCards, error: cardsError } = await supabaseAdmin
         .from('default_flashcards')
         .select('*')
         .eq('default_deck_id', defaultDeck.id);
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
         tags: card.tags,
       }));
 
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseAdmin
         .from('flashcards')
         .insert(cardsToInsert);
 
