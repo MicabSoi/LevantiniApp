@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Volume2, Settings, X, Check, Loader2, FolderPlus, Plus } from 'lucide-react';
+import { Send, Volume2, Settings, X, Check, Loader2, FolderPlus, Plus, HelpCircle } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useSupabase } from '../context/SupabaseContext';
 import { supabase } from '../lib/supabaseClient';
@@ -87,6 +87,13 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   const [newDeckIcon, setNewDeckIcon] = useState('');
   const [newDeckDescription, setNewDeckDescription] = useState('');
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
+
+  // State for asking a question about a translation
+  const [showQuestionInput, setShowQuestionInput] = useState(false);
+  const [selectedTranslationForQuestion, setSelectedTranslationForQuestion] = useState<TranslationResult | null>(null);
+  const [questionText, setQuestionText] = useState('');
+  const [answerText, setAnswerText] = useState('');
+  const [isAnsweringQuestion, setIsAnsweringQuestion] = useState(false);
 
   const { user } = useSupabase();
   const saveSettingsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -419,6 +426,27 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
 
   }, [user]); // Depend on user to refetch history
 
+  // Effect to close modals on Escape key press
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (showDiacriticsSettingsModal) {
+          setShowDiacriticsSettingsModal(false);
+        } else if (showQuestionInput) {
+          setShowQuestionInput(false);
+        } else if (showAddToDeckModal) {
+          setShowAddToDeckModal(false);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showDiacriticsSettingsModal, showQuestionInput, showAddToDeckModal]); // Re-run effect if modal states change
+
   // Effect to LOAD user-specific settings when the user changes
   useEffect(() => {
     const loadSettings = async () => {
@@ -608,6 +636,61 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
     }
   };
 
+  // Handler for clicking the "Ask a Question" button
+  const handleAskQuestionClick = (item: TranslationResult) => {
+    setSelectedTranslationForQuestion(item);
+    setShowQuestionInput(true);
+    setQuestionText(''); // Clear previous question text
+    setAnswerText(''); // Clear previous answer text
+  };
+
+  const handleSendQuestion = async () => {
+    if (!questionText || !selectedTranslationForQuestion || !geminiApiKey) {
+      setError('Missing question, translation, or API key.');
+      return;
+    }
+
+    setIsAnsweringQuestion(true);
+    setAnswerText('');
+    setError('');
+
+    try {
+      const genAI = new GoogleGenerativeAI(geminiApiKey as string);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17"});
+
+      const prompt = `
+        You are a professional tutor in Arabic, specializing ONLY in the Levantine dialect (Lebanon, Syria, Jordan, and Palestine).
+        Your responses should be helpful, informative, and focused on explaining the provided English-Levantine Arabic translation.
+
+        Here is the translation the user is asking about:
+        English: "${selectedTranslationForQuestion.english}"
+        Arabic: "${selectedTranslationForQuestion.arabic}"
+        ${selectedTranslationForQuestion.context ? `Context: "${selectedTranslationForQuestion.context}"` : ''}
+
+        The user's question is: "${questionText}"
+
+        Please answer the user's question based on the provided translation, acting as a Levantine Arabic tutor.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const responseText = response.text();
+
+      if (responseText) {
+        setAnswerText(responseText);
+      } else {
+        setAnswerText('Could not get an answer from the tutor.');
+      }
+
+    } catch (apiError) {
+      console.error('Error calling Gemini API for question:', apiError);
+      setError('Failed to get an answer. Please try again.');
+      setAnswerText('Error getting answer.');
+    } finally {
+      setIsAnsweringQuestion(false);
+    }
+  };
+
   return (
     <div className="p-4">
       <button
@@ -790,13 +873,19 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                     </p>
                   </div>
                 </div>
-                {/* Add to Deck button */}
-                <div className="flex justify-end mt-2">
+                {/* Add to Deck button and Ask Question button */}
+                <div className="flex justify-end mt-2 space-x-2">
                   <button
                     onClick={() => handleAddToDeck(item)}
                     className="flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 p-2 rounded-md"
                   >
                     <Plus size={24} />
+                  </button>
+                  <button
+                    onClick={() => handleAskQuestionClick(item)}
+                    className="flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 p-2 rounded-md text-2xl"
+                  >
+                    ?
                   </button>
                 </div>
               </div>
@@ -865,6 +954,67 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                 Save changes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Question and Answer Section/Modal */}
+      {showQuestionInput && selectedTranslationForQuestion && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out"
+          onClick={() => setShowQuestionInput(false)}
+        >
+          <div
+            className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Ask a Question about Translation</h3>
+              <button
+                onClick={() => setShowQuestionInput(false)}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Close question modal"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700 dark:text-gray-300 mb-2">Translation:</p>
+              <p className="font-medium text-lg mb-1">{selectedTranslationForQuestion.english}</p>
+              <p className="font-bold text-lg mb-1">{arabicTextToShow(selectedTranslationForQuestion.arabic)}</p>
+              {selectedTranslationForQuestion.transliteration && (
+                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{selectedTranslationForQuestion.transliteration}</p>
+              )}
+              {selectedTranslationForQuestion.context && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">Context: {selectedTranslationForQuestion.context}</p>
+              )}
+            </div>
+
+            <textarea
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md mb-4 bg-gray-50 dark:bg-dark-100 text-gray-800 dark:text-gray-200"
+              rows={4}
+              placeholder="Type your question here..."
+              value={questionText}
+              onChange={(e) => setQuestionText(e.target.value)}
+            ></textarea>
+
+            <button
+              onClick={handleSendQuestion}
+              className="w-full px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 flex items-center justify-center disabled:opacity-50"
+              disabled={!questionText || isAnsweringQuestion}
+            >
+              {isAnsweringQuestion ? <Loader2 className="animate-spin mr-2" size={20} /> : <Send size={20} className="mr-2" />}
+              {isAnsweringQuestion ? 'Getting Answer...' : 'Send Question'}
+            </button>
+
+            {answerText && (
+              <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-800">
+                <h4 className="font-semibold mb-2 text-gray-800 dark:text-gray-100">Answer:</h4>
+                <p className="text-gray-700 dark:text-gray-300">{answerText}</p>
+              </div>
+            )}
+
           </div>
         </div>
       )}
