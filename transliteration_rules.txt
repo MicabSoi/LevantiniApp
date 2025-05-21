@@ -1,0 +1,33 @@
+Arabic Letter | Transliteration
+------------ | ---------------
+د | d
+ش | sh
+ض | D
+ط | T
+غ | gh
+ى | a
+و | w or uu
+ة | a/eh
+ء | 2
+ت | t
+ج | j
+ح | 7
+خ | kh
+ث | th
+س | s
+ن | n
+ه | h
+ب | b
+ز | z
+ف | f
+ك | k
+ا | a
+ع | 3
+ي | y or ii
+ص | S
+ذ | d or z
+ر | r
+ل | l
+م | m
+ظ | z or D
+ق | 2 
