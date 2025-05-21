@@ -753,7 +753,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             htmlFor="context"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Context or Example (optional)
+            Example (optional)
           </label>
           <textarea
             id="context"
@@ -846,7 +846,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                     {item.context && (
                       <div className="mt-1 pl-2 border-l-2 border-gray-300 dark:border-gray-500">
                         <p className="text-xs text-gray-600 dark:text-gray-300 italic">
-                          Context translation:
+                          Translation:
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                           {item.context}
