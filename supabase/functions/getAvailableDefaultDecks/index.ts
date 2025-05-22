@@ -4,12 +4,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.2';
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin') || '';
   const isLocalhost = origin.startsWith('http://localhost:');
-  const corsHeaders = {
+const corsHeaders = {
     'Access-Control-Allow-Origin': isLocalhost ? origin : 'https://YOUR_PRODUCTION_DOMAIN.com', // IMPORTANT: For production, replace with your app's domain(s)
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS', // Added OPTIONS for preflight requests
     'Content-Type': 'application/json' // Ensure Content-Type is set
-  };
+};
 
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
        console.log('No default decks found in the database.');
        // Return an empty array and a 200 status if no decks are found, as this is a valid state.
        // Returning 404 here was causing the frontend error previously.
-       return new Response(
+      return new Response(
         JSON.stringify([]), // Return an empty array of decks
         { 
           headers: corsHeaders, 
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
       const verbCount = deck.default_verb_flashcards?.[0]?.count || 0;
 
       const totalCardCount = genericCount + verbCount;
-
+                        
       // Exclude nested structures before spreading
       const { default_flashcards, default_verb_flashcards, ...rest } = deck;
 
