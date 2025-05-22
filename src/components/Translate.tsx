@@ -743,7 +743,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             value={word}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWord(e.target.value)}
             className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100"
-            placeholder="Enter a word or phrase"
+            placeholder="e.g. Throw"
             required
           />
         </div>
@@ -760,7 +760,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             value={context}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContext(e.target.value)}
             className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100"
-            placeholder="e.g., 'I want to eat lunch'"
+            placeholder="e.g. Throw the ball to the dog"
             rows={2}
           />
         </div>

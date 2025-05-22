@@ -52,6 +52,7 @@ interface Deck {
   archived: boolean;
   created_at: string;
   cards?: { count: number }[];
+  card_count?: number;
 }
 
 // Define type for cards fetched from the 'reviews' table
@@ -136,19 +137,39 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Add state for default decks and default flashcards
-  const [defaultDecks, setDefaultDecks] = useState<Deck[]>([]);
+  const [defaultDecks, setDefaultDecks] = useState<Deck[]>([]); // This will now store decks from getAvailableDefaultDecks
+  const [loadingDefaultDecks, setLoadingDefaultDecks] = useState(true); // Renamed for clarity from loadingAvailableDefaultDecks
   const [defaultFlashcards, setDefaultFlashcards] = useState<Flashcard[]>([]);
 
-  // Fetch default decks
-  const loadDefaultDecks = async () => {
-    const { data, error } = await supabase
-      .from('default_decks')
-      .select('*')
-      .order('name');
-    if (error) {
-      console.error('Error loading default decks:', error);
-    } else {
-      setDefaultDecks(data as Deck[]);
+  // New state variables for download feature
+  const [downloadingDeckId, setDownloadingDeckId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadSuccessMessage, setDownloadSuccessMessage] = useState<string | null>(null);
+
+  // Fetch default decks (available for download)
+  const loadAvailableDefaultDecks = async () => { // Renamed function for clarity
+    setLoadingDefaultDecks(true);
+    setDownloadError(null);
+    setDownloadSuccessMessage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('getAvailableDefaultDecks');
+      
+      if (error) {
+        console.error('Error loading available default decks:', error);
+        setError('Failed to load available decks. Please try again.'); // Use existing error state or a new one
+        setDefaultDecks([]);
+      } else {
+        // The data from getAvailableDefaultDecks should be an array of Decks with card_count
+        // Ensure the Deck interface matches this structure (it has an optional cards field, let's make card_count explicit)
+        setDefaultDecks(data as Deck[]); 
+        console.log('Loaded available default decks:', data);
+      }
+    } catch (e) {
+      console.error('Catch block error loading available default decks:', e);
+      setError('An unexpected error occurred while loading available decks.');
+      setDefaultDecks([]);
+    } finally {
+      setLoadingDefaultDecks(false);
     }
   };
 
@@ -198,6 +219,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     const { data, error } = await supabase
       .from('decks')
       .select('*, cards(count)')
+      .eq('is_default', false) // Only fetch decks that are NOT default copies
       .order('created_at', { ascending: true });
     if (error) {
       console.error('Error loading decks:', error);
@@ -205,7 +227,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     } else {
       setDecks(data as Deck[]);
       // ADDED: Log fetched data
-      console.log('Fetched deck data:', data);
+      console.log('Fetched deck data (user-specific):', data);
     }
     setLoadingDecks(false); // End loading
   };
@@ -213,8 +235,8 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   // Fetch both user and default decks/flashcards on mount
   useEffect(() => {
     loadUserDecks();
-    loadDefaultDecks();
-    loadDefaultFlashcards();
+    loadAvailableDefaultDecks(); // Changed from loadDefaultDecks
+    // loadDefaultFlashcards(); // Consider if this is still needed, or if it should be triggered differently
   }, []);
 
   // ADDED: Effect to load all flashcards after decks are loaded
@@ -249,6 +271,34 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   useEffect(() => {
     console.log('Loaded decks:', decks);
   }, [decks]);
+
+  const handleDownloadDefaultDeck = async (defaultDeckId: string) => {
+    setDownloadingDeckId(defaultDeckId);
+    setDownloadError(null);
+    setDownloadSuccessMessage(null);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('downloadDefaultDeck', {
+        body: { default_deck_id: defaultDeckId },
+      });
+
+      if (invokeError) {
+        throw invokeError;
+      }
+
+      if (data?.error) { // Handle errors returned in the function's JSON response
+        throw new Error(data.error);
+      }
+
+      setDownloadSuccessMessage(`Successfully downloaded "${defaultDecks.find(d => d.id === defaultDeckId)?.name || 'deck'}"! It's now in your decks list.`);
+      loadUserDecks(); // Refresh the user's decks list
+    } catch (err) {
+      console.error('Error downloading default deck:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setDownloadError(`Failed to download deck: ${errorMessage}`);
+    } finally {
+      setDownloadingDeckId(null);
+    }
+  };
 
   // Calculate card counts for default decks
   const defaultDeckCardCounts = React.useMemo(() => {
@@ -872,6 +922,69 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
           </div>
         </div>
       )}
+
+      {/* Section for Available Default Decks */}
+      {!selectedDeckId && ( // Only show this section on the main deck overview
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-dark-100">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-100 flex items-center">
+            <LibraryBig size={28} className="mr-3 text-emerald-600" />
+            Discover & Download Default Decks
+          </h2>
+          {loadingDefaultDecks && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              <p className="ml-2">Loading available decks...</p>
+            </div>
+          )}
+          {downloadError && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
+              Error: {downloadError}
+            </div>
+          )}
+          {downloadSuccessMessage && (
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg">
+              {downloadSuccessMessage}
+            </div>
+          )}
+          {!loadingDefaultDecks && defaultDecks.length === 0 && !error && ( // Added !error check
+            <p className="text-gray-500 dark:text-gray-400">No default decks are currently available for download.</p>
+          )}
+          {!loadingDefaultDecks && defaultDecks.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {defaultDecks.map((deck) => (
+                <div
+                  key={deck.id}
+                  className="bg-white dark:bg-dark-200 p-5 rounded-lg shadow-md border border-gray-200 dark:border-dark-300 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <span className="text-3xl mr-3">{deck.emoji || '📚'}</span>
+                      <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{deck.name}</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 h-16 overflow-y-auto">{deck.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
+                      Cards: {deck.card_count !== undefined ? deck.card_count : 'N/A'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadDefaultDeck(deck.id)}
+                    disabled={downloadingDeckId === deck.id}
+                    className="w-full mt-3 py-2 px-4 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:bg-gray-400 dark:disabled:bg-gray-600 transition-colors flex items-center justify-center"
+                  >
+                    {downloadingDeckId === deck.id ? (
+                      <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                    ) : (
+                      <Plus className="h-5 w-5 mr-2" /> // Using Plus, consider Download icon
+                    )}
+                    {downloadingDeckId === deck.id ? 'Downloading...' : 'Download Deck'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {/* END Section for Available Default Decks */}
     </div>
   );
 };
