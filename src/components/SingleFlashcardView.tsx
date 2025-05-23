@@ -353,9 +353,9 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                     <table className="min-w-full border border-gray-300 dark:border-gray-600">
                       <thead>
                         <tr className="bg-gray-100 dark:bg-dark-100">
-                          <th className="px-2 py-1 border text-center font-bold" colSpan={3}>Past</th>
-                          <th className="px-2 py-1 border text-center font-bold" colSpan={3}>Present</th>
-                          <th className="px-2 py-1 border text-center font-bold" colSpan={3}>Imperative</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-center font-bold" colSpan={3}>Past</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-center font-bold" colSpan={3}>Present</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-center font-bold" colSpan={3}>Imperative</th>
                         </tr>
                         <tr className="bg-gray-100 dark:bg-dark-100">
                           <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
