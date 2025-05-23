@@ -1,90 +1,123 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, Star, Trophy, BookOpen, GraduationCap } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient'; // Corrected import path
-import EditProfileModal from './EditProfileModal'; // Import the new modal component
-import SuccessNotificationModal from './SuccessNotificationModal'; // Import the success modal
+import { User, MapPin, Star, Trophy, BookOpen, GraduationCap, LucideIcon } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import EditProfileModal, { UserProfile } from './EditProfileModal'; // Corrected import for UserProfile
+import SuccessNotificationModal from './SuccessNotificationModal';
 
 // Define a type for the updatedProfile parameter in handleSaveProfile
 interface UpdatedProfileData {
-  name: string;
+  name?: string;
+  email?: string;
+  country?: string;
   password?: string;
 }
 
 const Profile = () => {
   // This would come from your user context/state management
-  const [userProfile, setUserProfile] = useState({
-    name: "John Doe",
-    email: "", // Initialize email as empty
-    country: "United States",
-    level: 12,
-    joinDate: "2024-01-15",
-    totalXP: 2450,
-    nextLevelXP: 3000,
-    achievements: [
-      { id: 1, name: "First Word", description: "Added your first word to your ocabulary", icon: BookOpen },
-      { id: 2, name: "Grammar Master", description: "Completed all basic grammar lessons", icon: GraduationCap },
-    ]
-  });
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState(userProfile);
-  const [showEditModal, setShowEditModal] = useState(false); // State to control modal visibility
-  const [showNotificationModal, setShowNotificationModal] = useState(false); // Use a more general name
+  const [editedProfile, setEditedProfile] = useState<Partial<UserProfile> | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const [notificationTitle, setNotificationTitle] = useState(''); // State for notification title
+  const [notificationTitle, setNotificationTitle] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Update both userProfile and editedProfile with fetched data
-        const profileData = {
-          name: user.user_metadata.name || "User", // Fallback if name is not set
+        // Construct a UserProfile object from fetched data and existing profile data
+        const profileData: UserProfile = {
+          name: user.user_metadata?.name || "User",
           email: user.email || "",
-          country: userProfile.country, // Country is not in Supabase auth user by default
-          level: userProfile.level,
-          joinDate: user.created_at || userProfile.joinDate,
-          totalXP: userProfile.totalXP,
-          nextLevelXP: userProfile.nextLevelXP,
-          achievements: userProfile.achievements,
+          country: user.user_metadata?.country || userProfile?.country || "",
+          level: userProfile?.level || 12,
+          joinDate: user.created_at || userProfile?.joinDate || "",
+          totalXP: userProfile?.totalXP || 0,
+          nextLevelXP: userProfile?.nextLevelXP || 100,
+          achievements: userProfile?.achievements || [],
+          user_metadata: user.user_metadata || {},
         };
         setUserProfile(profileData);
-        setEditedProfile(profileData); 
+        setEditedProfile(profileData);
+      } else {
+        setUserProfile(null);
+        setEditedProfile(null);
       }
     };
 
     fetchUser();
-  }, []); // Empty dependency array means this effect runs once on mount
+  }, [userProfile]); // Added userProfile to dependency array
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setEditedProfile({ ...editedProfile, [name]: value });
+    setEditedProfile((prev: Partial<UserProfile> | null) => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleSaveProfile = async (updatedProfile: UpdatedProfileData) => {
-    let nameUpdateError = null;
-    let passwordUpdateError = null;
+  const handleSaveProfile = async (updatedProfile: Partial<UserProfile>) => {
+    let nameUpdateError: any = null; // Use any for error types for now
+    let emailUpdateError: any = null;
+    let countryUpdateError: any = null;
+    let passwordUpdateError: any = null;
+
     let nameUpdated = false;
+    let emailUpdated = false;
+    let countryUpdated = false;
     let passwordUpdated = false;
 
-    // Update name if it has changed
-    if (updatedProfile.name !== userProfile.name) {
+    // Update name if it has changed and is provided
+    if (updatedProfile.name !== undefined && userProfile?.name !== updatedProfile.name) {
       const { data, error } = await supabase.auth.updateUser({
-        data: { name: updatedProfile.name } // Supabase uses 'data' for non-password updates
+        data: { ...userProfile?.user_metadata, name: updatedProfile.name } // Preserve other metadata
       });
       if (error) {
         nameUpdateError = error;
         console.error('Error updating user name:', error);
       } else {
         console.log('User name updated successfully:', data);
-        setUserProfile(prevState => ({ ...prevState, name: updatedProfile.name }));
-        setEditedProfile(prevState => ({...prevState, name: updatedProfile.name}));
+        // Update userProfile state with new name
+        setUserProfile(prev => prev ? { ...prev, name: updatedProfile.name as string } : null);
         nameUpdated = true;
       }
     }
 
-    // Update password if provided
-    if (updatedProfile.password) {
+    // Update email if provided and has changed
+    if (updatedProfile.email !== undefined && userProfile?.email !== updatedProfile.email) {
+      const { data, error } = await supabase.auth.updateUser({
+        email: updatedProfile.email
+      });
+      if (error) {
+        emailUpdateError = error;
+        console.error('Error updating user email:', error);
+      } else {
+        console.log('User email updated successfully:', data);
+        // Update userProfile state with new email
+        setUserProfile(prev => prev ? { ...prev, email: updatedProfile.email as string } : null);
+        emailUpdated = true;
+      }
+    }
+
+    // Update country if provided and has changed (assuming country is stored in user_metadata)
+    if (updatedProfile.country !== undefined && userProfile?.country !== updatedProfile.country) {
+        const { data, error } = await supabase.auth.updateUser({
+            data: { ...userProfile?.user_metadata, country: updatedProfile.country } // Add or update country in metadata
+        });
+        if (error) {
+            countryUpdateError = error;
+            console.error('Error updating user country:', error);
+          } else {
+            console.log('User country updated successfully:', data);
+             // Update userProfile state with new country
+            setUserProfile(prev => prev ? { ...prev, country: updatedProfile.country as string } : null);
+            countryUpdated = true;
+          }
+    }
+
+    // Update password if provided and not empty
+    if (updatedProfile.password && updatedProfile.password !== '') {
       const { error } = await supabase.auth.updateUser({
         password: updatedProfile.password
       });
@@ -97,35 +130,40 @@ const Profile = () => {
       }
     }
 
+
     setShowEditModal(false); // Close the edit modal first
 
-    if (!nameUpdateError && !passwordUpdateError) {
-      if (nameUpdated || passwordUpdated) { // Check if at least one field was updated successfully
-        if (nameUpdated && passwordUpdated) {
-          setNotificationMessage('Your name and password have been updated successfully!');
-        } else if (nameUpdated) {
-          setNotificationMessage('Your name has been updated successfully!');
-        } else if (passwordUpdated) {
-          setNotificationMessage('Your password has been updated successfully!');
-        }
-        setNotificationTitle('Success!');
-      } else {
-        setNotificationMessage('No changes were made to your profile.');
-        setNotificationTitle('Info'); // Or a different title for no changes
-      }
-    } else {
+    // Show notification based on results
+    if (nameUpdateError || emailUpdateError || countryUpdateError || passwordUpdateError) {
       // Handle errors
       let errorMessage = "Profile update failed:\n\n";
       if (nameUpdateError) {
         errorMessage += `Name update error: ${nameUpdateError.message}\n`;
       }
+      if (emailUpdateError) {
+        errorMessage += `Email update error: ${emailUpdateError.message}\n`;
+      }
+      if (countryUpdateError) {
+        errorMessage += `Country update error: ${countryUpdateError.message}\n`;
+      }
       if (passwordUpdateError) {
-        errorMessage += `${passwordUpdateError.message}\n`;
+        errorMessage += `Password update error: ${passwordUpdateError.message}\n`;
       }
       errorMessage += "\nPlease try again.";
       setNotificationMessage(errorMessage);
       setNotificationTitle('Error'); // Set title to Error
-      console.error("Profile update failed:", nameUpdateError, passwordUpdateError);
+      console.error("Profile update failed:", nameUpdateError, passwordUpdateError, emailUpdateError, countryUpdateError);
+    } else if (nameUpdated || emailUpdated || countryUpdated || passwordUpdated) {
+       let successMessage = '';
+        if(nameUpdated) successMessage += 'Name updated. \n';
+        if(emailUpdated) successMessage += 'Email updated. \n';
+        if(countryUpdated) successMessage += 'Country updated. \n';
+        if(passwordUpdated) successMessage += 'Password updated. \n';
+        setNotificationMessage(successMessage.trim());
+        setNotificationTitle('Success!');
+    } else {
+      setNotificationMessage('No changes were made to your profile.');
+      setNotificationTitle('Info'); // Or a different title for no changes
     }
 
     setShowNotificationModal(true); // Show the notification modal (success or error)
@@ -133,23 +171,33 @@ const Profile = () => {
 
   const handleCloseEditModal = () => {
     setShowEditModal(false);
-    setEditedProfile(userProfile); // Revert changes if modal is closed without saving
+    // Revert changes if modal is closed without saving, only if userProfile is loaded
+    if (userProfile) {
+      setEditedProfile(userProfile); 
+    }
   };
 
   const handleCloseNotificationModal = () => {
     setShowNotificationModal(false);
-    // If the notification was an error, reopen the edit modal
+    // If the notification was an error, reopen the edit modal with current editedProfile state
     if (notificationTitle === 'Error') {
-      // No need to reset editedProfile here, as the user might want to fix the existing input
-      // setEditedProfile(userProfile); // Only reset if you want to clear the form on error close
-      setShowEditModal(true);
+       setShowEditModal(true);
     }
     setNotificationMessage('');
     setNotificationTitle('');
   };
 
-  // Calculate level progress percentage
-  const levelProgress = (userProfile.totalXP / userProfile.nextLevelXP) * 100;
+  // Calculate level progress percentage only if userProfile is loaded
+  const levelProgress = userProfile ? (userProfile.totalXP / userProfile.nextLevelXP) * 100 : 0;
+
+  // Render nothing or a loading state if userProfile is null
+  if (!userProfile) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-300">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      </div>
+    ); // Or a loading spinner
+  }
 
   return (
     <div className="space-y-6">
@@ -173,7 +221,7 @@ const Profile = () => {
               </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => {
               setEditedProfile(userProfile); // Ensure modal opens with current profile data
               setShowEditModal(true);
@@ -193,7 +241,7 @@ const Profile = () => {
           <span>Next Level: {userProfile.nextLevelXP}</span>
         </div>
         <div className="w-full bg-gray-200 dark:bg-dark-100 rounded-full h-2.5">
-          <div 
+          <div
             className="bg-emerald-600 h-2.5 rounded-full"
             style={{ width: `${levelProgress}%` }}
           ></div>
@@ -203,50 +251,46 @@ const Profile = () => {
       {/* Achievements */}
       <div className="bg-white dark:bg-dark-200 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-dark-100">
         <h3 className="font-bold mb-4">Achievements</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {userProfile.achievements.map(achievement => {
-            const Icon = achievement.icon;
-            return (
-              <div key={achievement.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-dark-100 rounded-lg">
-                <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-full">
-                  <Icon size={20} className="text-emerald-600 dark:text-emerald-400" />
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {userProfile.achievements.length > 0 ? (
+            userProfile.achievements.map((achievement: { id: number; name: string; description: string; icon: LucideIcon }, index: number) => (
+              <div key={index} className="flex items-center p-4 bg-gray-50 dark:bg-dark-100 rounded-md">
+                {/* Use React.createElement to render the Lucide icon component */}
+                {React.createElement(achievement.icon, { size: 24, className: 'text-yellow-500 mr-3' })}
                 <div>
-                  <h4 className="font-medium">{achievement.name}</h4>
+                  <h4 className="font-medium text-gray-800 dark:text-gray-100">{achievement.name}</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.description}</p>
                 </div>
               </div>
-            );
-          })}
+            ))
+          ) : (
+            <p className="text-gray-600 dark:text-gray-400">No achievements yet.</p>
+          )}
         </div>
       </div>
 
-      {/* Join Date */}
-      <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-        Member since {new Date(userProfile.joinDate).toLocaleDateString()}
-      </div>
-
-      {showEditModal && (
+      {/* Edit Profile Modal */}
+      {showEditModal && userProfile && editedProfile && (
         <EditProfileModal
           isOpen={showEditModal}
           onClose={handleCloseEditModal}
+          userProfile={userProfile}
           onSave={handleSaveProfile}
-          initialProfile={editedProfile}
         />
       )}
 
-      {showNotificationModal && (
-        <SuccessNotificationModal
-          isOpen={showNotificationModal}
-          onClose={handleCloseNotificationModal}
-          message={notificationMessage}
-          title={notificationTitle}
-        />
-      )}
+      {/* Notification Modal */}
+      <SuccessNotificationModal
+        isOpen={showNotificationModal}
+        onClose={handleCloseNotificationModal}
+        title={notificationTitle}
+        message={notificationMessage}
+      />
     </div>
   );
 };
 
 export default Profile;
+
 
 

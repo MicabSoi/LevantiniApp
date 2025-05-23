@@ -26,7 +26,6 @@ import DailyWordsSection from './components/dashboard/DailyWordsSection'; // Imp
 // Feature components
 import VocabularyLanding from './components/VocabularyLanding';
 
-import Dictionary from './components/Dictionary';
 import Alphabet from './components/Alphabet';
 import Pronunciation from './components/Pronunciation';
 import Grammar from './components/Grammar';
@@ -65,7 +64,6 @@ function App() {
 
   // Add last sub-tab memory for each tab
   const [lastLearnSubTab, setLastLearnSubTab] = useState('landing');
-  const [lastWordBankSubTab, setLastWordBankSubTab] = useState('add words');
   const [lastFluencySubTab, setLastFluencySubTab] = useState('landing');
 
   // Handlers to update sub-tabs and last sub-tabs
@@ -75,7 +73,6 @@ function App() {
   };
   const handleSetWordBankSubTab = (tab: string) => {
     setWordBankSubTab(tab);
-    setLastWordBankSubTab(tab);
   };
   const handleSetFluencySubTab = (tab: string) => {
     setSubTab(tab);
@@ -106,7 +103,7 @@ function App() {
         return () => resizeObserver.disconnect();
       }
     });
-  }, [activeTab, subTab, homeSubTab, wordBankSubTab, communitySubTab]);
+  }, [activeTab, subTab, homeSubTab, wordBankSubTab]);
 
   useEffect(() => {
     if (isDarkMode) {

@@ -1272,9 +1272,6 @@ const Grammar: React.FC<GrammarProps> = ({ setSubTab }) => {
                     <button
                       className="flex items-center bg-emerald-100 text-emerald-800 px-4 py-2 rounded-md transition-colors duration-200 hover:bg-emerald-200"
                       onClick={() => {
-                        /* ... */
-                      }}
-                      onClick={() => {
                         setExpandedLesson(lesson.id + 1);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
