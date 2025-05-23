@@ -42,6 +42,23 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
+  // Effect to close modal on Escape key press
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (selectedDay) { // Check if the modal is open
+          setSelectedDay(null); // Close the modal
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [selectedDay]); // Re-run effect if selectedDay (modal state) changes
+
   // Calculate the start and end dates for the currently displayed month
   const startDate = startOfMonth(currentMonth);
   const endDate = endOfMonth(currentMonth);

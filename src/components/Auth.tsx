@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 import { Loader2, LogIn, UserPlus } from 'lucide-react';
-import { initUserDecks } from '../lib/initUserDecks';
+import { useNavigate } from 'react-router-dom';
 
 const Auth: React.FC = () => {
   const { signIn, signUp } = useSupabase();
@@ -10,6 +10,7 @@ const Auth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,12 +19,16 @@ const Auth: React.FC = () => {
 
     try {
       if (isSignUp) {
-        const { data: { user } } = await signUp(email, password);
-        if (user) {
-          await initUserDecks(user.id);
-        }
+        await signUp(email, password);
+        // If signUp is successful, onAuthStateChange in SupabaseContext will update the user state.
+        // The initUserDecks call is now removed.
+        // console.log('User signed up successfully. Navigation should be handled by onAuthStateChange or App.tsx');
+        navigate('/', { replace: true }); // Navigate to home page as a fallback or if immediate navigation is desired
       } else {
         await signIn(email, password);
+        // If signIn is successful, onAuthStateChange will update user state.
+        // console.log('User signed in successfully. Navigation should be handled by onAuthStateChange or App.tsx');
+        navigate('/', { replace: true }); // Navigate to home page as a fallback
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -124,4 +129,4 @@ const Auth: React.FC = () => {
 
 export default Auth
 
-
+

@@ -169,6 +169,28 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
     setSortConfig({ key, direction });
   };
 
+  // Function to parse verb card data for proper display
+  const parseVerbCardDisplay = (card: Flashcard) => {
+    // Check if this is a verb deck and if the card has the consolidated format
+    if (deck?.name?.toLowerCase() === 'verbs' && card.english.includes(' - ')) {
+      // Parse the consolidated format: "to come - إِجَا - ija"
+      const parts = card.english.split(' - ');
+      if (parts.length >= 3) {
+        return {
+          english: parts[0].trim(), // "to come"
+          arabic: parts[1].trim(),  // "إِجَا"
+          transliteration: parts[2].trim() // "ija"
+        };
+      }
+    }
+    // Return original data for non-verb cards or cards that don't match the pattern
+    return {
+      english: card.english,
+      arabic: card.arabic,
+      transliteration: card.transliteration
+    };
+  };
+
   const sortedFlashcards = React.useMemo(() => {
     let sortableItems = [...filteredFlashcards];
     if (sortConfig.key !== null) {
@@ -178,18 +200,24 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
 
         switch (sortConfig.key) {
           case 'english':
-            valA = a.english.toLowerCase();
-            valB = b.english.toLowerCase();
+            const displayDataA = parseVerbCardDisplay(a);
+            const displayDataB = parseVerbCardDisplay(b);
+            valA = displayDataA.english.toLowerCase();
+            valB = displayDataB.english.toLowerCase();
             break;
           case 'arabic':
-            valA = a.arabic;
-            valB = b.arabic;
+            const displayDataA_ar = parseVerbCardDisplay(a);
+            const displayDataB_ar = parseVerbCardDisplay(b);
+            valA = displayDataA_ar.arabic;
+            valB = displayDataB_ar.arabic;
             if (valA.localeCompare(valB, 'ar') < 0) return sortConfig.direction === 'asc' ? -1 : 1;
             if (valA.localeCompare(valB, 'ar') > 0) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
           case 'transliteration':
-            valA = (a.transliteration || '').toLowerCase();
-            valB = (b.transliteration || '').toLowerCase();
+            const displayDataA_tr = parseVerbCardDisplay(a);
+            const displayDataB_tr = parseVerbCardDisplay(b);
+            valA = (displayDataA_tr.transliteration || '').toLowerCase();
+            valB = (displayDataB_tr.transliteration || '').toLowerCase();
             break;
           case 'reviewCount':
             valA = reviewCounts[a.id] || 0;
@@ -213,7 +241,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       });
     }
     return sortableItems;
-  }, [filteredFlashcards, sortConfig, reviewCounts]);
+  }, [filteredFlashcards, sortConfig, reviewCounts, deck]);
 
   // Handler to open edit modal (now using FlashcardForm)
   const handleEditFlashcardClick = (card: Flashcard) => {
@@ -385,7 +413,9 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         </div>
       ) : (
         <div className="flex flex-col h-[60vh] overflow-y-auto mt-4">
-          {sortedFlashcards.map((card) => (
+          {sortedFlashcards.map((card) => {
+            const displayData = parseVerbCardDisplay(card);
+            return (
             <div
               key={card.id}
               className="grid grid-cols-12 items-center px-2 py-3 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer mb-2"
@@ -395,10 +425,10 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
               }}
             >
               <div className="col-span-5 flex flex-col items-start md:flex-row md:items-baseline md:space-x-3">
-                <span className="font-semibold text-gray-800 dark:text-gray-100 text-left md:w-1/2 break-words">{card.english}</span>
-                <span className="text-sm text-gray-600 dark:text-gray-300 text-left md:w-1/4 md:text-center break-words">{card.arabic}</span>
-                {card.transliteration && (
-                  <span className="text-xs italic text-gray-500 dark:text-gray-400 text-left md:w-1/4 md:text-right break-words">{card.transliteration}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-100 text-left md:w-1/2 break-words">{displayData.english}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300 text-left md:w-1/4 md:text-center break-words">{displayData.arabic}</span>
+                {displayData.transliteration && (
+                  <span className="text-xs italic text-gray-500 dark:text-gray-400 text-left md:w-1/4 md:text-right break-words">{displayData.transliteration}</span>
                 )}
               </div>
               <div className="col-span-2 text-center">
@@ -423,7 +453,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                 ) : null}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
