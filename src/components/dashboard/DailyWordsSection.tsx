@@ -59,7 +59,7 @@ const DailyWordsSection: React.FC = () => {
                   <span className="font-medium text-gray-900 dark:text-gray-100">{word.english}</span>
                   {word.learned && <Star size={14} className="text-emerald-600 fill-current" />}
                 </div>
-                <div className="text-lg font-arabic text-emerald-700 dark:text-emerald-300 mb-1">{word.arabic}</div>
+                <div className="text-lg text-emerald-700 dark:text-emerald-300 mb-1">{word.arabic}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400 italic">{word.transliteration}</div>
               </div>
               <button
