@@ -612,6 +612,25 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     setError(null); // Clear error when canceling
   };
 
+  // Function to check if a default deck has already been downloaded
+  const isDefaultDeckDownloaded = (defaultDeckId: string, defaultDeckName: string): boolean => {
+    // Check if user has a deck with the same name (regardless of is_default flag)
+    // This is more reliable since the download process might not set is_default correctly
+    const result = decks.some(userDeck => 
+      userDeck.name.toLowerCase() === defaultDeckName.toLowerCase()
+    );
+    
+    // Debug logging
+    console.log('Checking if default deck is downloaded:', {
+      defaultDeckId,
+      defaultDeckName,
+      userDecks: decks.map(d => ({ id: d.id, name: d.name, is_default: d.is_default })),
+      result
+    });
+    
+    return result;
+  };
+
   return (
     <div className="p-4">
       {/* Back button to Vocabulary */}
@@ -1119,15 +1138,27 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   </div>
                   <button
                     onClick={() => handleDownloadDefaultDeck(deck.id)}
-                    disabled={downloadingDeckId === deck.id}
-                    className="w-full mt-3 py-2 px-4 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:bg-gray-400 dark:disabled:bg-gray-600 transition-colors flex items-center justify-center"
+                    disabled={downloadingDeckId === deck.id || isDefaultDeckDownloaded(deck.id, deck.name)}
+                    className={`w-full mt-3 py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors flex items-center justify-center ${
+                      isDefaultDeckDownloaded(deck.id, deck.name)
+                        ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
+                        : downloadingDeckId === deck.id
+                        ? 'bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    }`}
                   >
                     {downloadingDeckId === deck.id ? (
                       <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                    ) : isDefaultDeckDownloaded(deck.id, deck.name) ? (
+                      <GraduationCap className="h-5 w-5 mr-2" />
                     ) : (
-                      <Plus className="h-5 w-5 mr-2" /> // Using Plus, consider Download icon
+                      <Plus className="h-5 w-5 mr-2" />
                     )}
-                    {downloadingDeckId === deck.id ? 'Downloading...' : 'Download Deck'}
+                    {downloadingDeckId === deck.id 
+                      ? 'Downloading...' 
+                      : isDefaultDeckDownloaded(deck.id, deck.name) 
+                      ? 'Already Added' 
+                      : 'Download Deck'}
                   </button>
                 </div>
               ))}
