@@ -149,6 +149,64 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   // Add success message state for deck operations
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Function to calculate correct card count for verb decks by grouping conjugations
+  const getVerbCardCount = (cards: Flashcard[], deckName: string): number => {
+    // Only apply grouping logic for Verbs deck
+    if (deckName?.toLowerCase() !== 'verbs') {
+      return cards.length;
+    }
+
+    const verbGroups: { [key: string]: Flashcard[] } = {};
+    let nonVerbCards = 0;
+
+    // Group cards by base verb (extract from English field)
+    cards.forEach(card => {
+      // Check if this looks like a verb conjugation card
+      if (card.english.includes(' - ') || 
+          (card.english.includes('I ') || card.english.includes('You ') || 
+           card.english.includes('He ') || card.english.includes('She ') || 
+           card.english.includes('We ') || card.english.includes('They '))) {
+        
+        // Extract base verb - try different patterns
+        let baseVerb = '';
+        
+        if (card.english.includes(' - ')) {
+          // Format: "to come - إِجَا - ija" 
+          baseVerb = card.english.split(' - ')[0].trim();
+        } else {
+          // Format: "I ask", "You ask", etc. - extract the verb part
+          const words = card.english.split(' ');
+          if (words.length >= 2) {
+            baseVerb = words.slice(1).join(' '); // Everything after the pronoun
+          }
+        }
+        
+        if (baseVerb) {
+          if (!verbGroups[baseVerb]) {
+            verbGroups[baseVerb] = [];
+          }
+          verbGroups[baseVerb].push(card);
+        } else {
+          nonVerbCards++;
+        }
+      } else {
+        nonVerbCards++;
+      }
+    });
+
+    // Count groups: each verb group counts as 1, regardless of conjugations
+    let groupCount = 0;
+    Object.entries(verbGroups).forEach(([, conjugations]) => {
+      if (conjugations.length > 1) {
+        groupCount += 1; // Count the whole group as 1
+      } else {
+        groupCount += conjugations.length; // Single conjugations count normally
+      }
+    });
+
+    return groupCount + nonVerbCards;
+  };
+
   // Fetch default decks (available for download)
   const loadAvailableDefaultDecks = async () => { // Renamed function for clarity
     setLoadingDefaultDecks(true);
@@ -350,8 +408,18 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
   // Only show user decks (not defaultDecks) in the UI
   const combinedDecks = React.useMemo(() => {
-    return decks.map(deck => ({ ...deck, isDefault: false, card_count: deck.cards?.[0]?.count || 0 }));
-  }, [decks]);
+    return decks.map(deck => {
+      let cardCount = deck.cards?.[0]?.count || 0;
+      
+      // For Verbs deck, calculate the correct count by grouping conjugations
+      if (deck.name?.toLowerCase() === 'verbs' && allFlashcards.length > 0) {
+        const deckCards = allFlashcards.filter(card => card.deck_id === deck.id);
+        cardCount = getVerbCardCount(deckCards, deck.name);
+      }
+      
+      return { ...deck, isDefault: false, card_count: cardCount };
+    });
+  }, [decks, allFlashcards]);
 
   // Combine all flashcards for search
   const combinedFlashcards = React.useMemo(() => {

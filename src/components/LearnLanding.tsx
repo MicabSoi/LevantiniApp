@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, AlignLeft, Volume2, GraduationCap } from 'lucide-react';
+import { BookOpen, AlignLeft, Volume2, GraduationCap, Keyboard } from 'lucide-react';
 
 interface LearnLandingProps {
   setSubTab: (tab: string) => void;
@@ -31,6 +31,12 @@ const LearnLanding: React.FC<LearnLandingProps> = ({ setSubTab }) => {
       label: 'Grammar',
       description: 'Master Arabic grammar rules',
       icon: <GraduationCap size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'typing',
+      label: 'Typing Practice',
+      description: 'Learn Arabic keyboard and typing',
+      icon: <Keyboard size={24} className="text-emerald-600" />,
     },
   ];
 
@@ -67,7 +73,7 @@ const LearnLanding: React.FC<LearnLandingProps> = ({ setSubTab }) => {
       <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
         Materials
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {supplementaryOptions.map((option) => (
           <div
             key={option.id}

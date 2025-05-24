@@ -29,9 +29,13 @@ import VocabularyLanding from './components/VocabularyLanding';
 import Alphabet from './components/Alphabet';
 import Pronunciation from './components/Pronunciation';
 import Grammar from './components/Grammar';
+import TypingPractice from './components/TypingPractice';
 import HomePage from './components/HomePage';
 import Translate from './components/Translate';
 import Comprehension from './components/Comprehension';
+import ConversationPractice from './components/ConversationPractice';
+import ListeningSkills from './components/ListeningSkills';
+import Community from './components/Community';
 import FluencyLanding from './components/FluencyLanding';
 import FindTutor from './components/FindTutor';
 import LearnLanding from './components/LearnLanding';
@@ -65,6 +69,7 @@ function App() {
   // Add last sub-tab memory for each tab
   const [lastLearnSubTab, setLastLearnSubTab] = useState('landing');
   const [lastFluencySubTab, setLastFluencySubTab] = useState('landing');
+  const [lastWordBankSubTab, setLastWordBankSubTab] = useState('landing');
 
   // Handlers to update sub-tabs and last sub-tabs
   const handleSetLearnSubTab = (tab: string) => {
@@ -73,6 +78,7 @@ function App() {
   };
   const handleSetWordBankSubTab = (tab: string) => {
     setWordBankSubTab(tab);
+    setLastWordBankSubTab(tab);
   };
   const handleSetFluencySubTab = (tab: string) => {
     setSubTab(tab);
@@ -300,6 +306,9 @@ function App() {
                         {subTab === 'grammar' && (
                           <Grammar setSubTab={handleSetLearnSubTab} />
                         )}
+                        {subTab === 'typing' && (
+                          <TypingPractice setSubTab={handleSetLearnSubTab} />
+                        )}
                         {/* {subTab === 'quizzes' && <AlphabetLessonsQuizzes />} */} {/* Commented out due to undefined component */}
                       </div>
                     )}
@@ -338,6 +347,15 @@ function App() {
                         )}
                         {subTab === 'comprehension' && (
                           <Comprehension setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'conversation' && (
+                          <ConversationPractice setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'listening' && (
+                          <ListeningSkills setSubTab={handleSetFluencySubTab} />
+                        )}
+                        {subTab === 'community' && (
+                          <Community setSubTab={handleSetFluencySubTab} />
                         )}
                         {subTab === 'tutor' && (
                           <FindTutor setSubTab={handleSetFluencySubTab} />
@@ -418,10 +436,14 @@ function App() {
                       : 'text-gray-500 dark:text-gray-400'
                   }`}
                   onClick={() => {
-                    // Always navigate to the base vocabulary landing page
-                    setActiveTab('wordbank');
                     navigate('/');
-                    setWordBankSubTab('landing');
+                    if (activeTab === 'wordbank') {
+                      setWordBankSubTab('landing');
+                      setLastWordBankSubTab('landing');
+                    } else {
+                      setActiveTab('wordbank');
+                      setWordBankSubTab(lastWordBankSubTab);
+                    }
                   }}
                 >
                   <button className="w-20 py-3 flex flex-col items-center">

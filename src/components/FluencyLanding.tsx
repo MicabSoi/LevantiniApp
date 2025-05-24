@@ -4,6 +4,8 @@ import {
   BookOpen,
   Users,
   GraduationCap,
+  MessageCircle,
+  Headphones,
 } from 'lucide-react';
 
 interface FluencyLandingProps {
@@ -11,19 +13,33 @@ interface FluencyLandingProps {
 }
 
 const FluencyLanding: React.FC<FluencyLandingProps> = ({ setSubTab }) => {
-  // Combined options into a single array
-  const options = [
-    {
-      id: 'translate',
-      label: 'Translate',
-      description: 'Translate between English and Arabic',
-      icon: <Languages size={24} className="text-emerald-600" />,
-    },
+  // Main feature
+  const mainOption = {
+    id: 'translate',
+    label: 'Translate',
+    description: 'Translate between English and Arabic',
+    icon: <Languages size={24} className="text-emerald-600" />,
+  };
+
+  // Supplementary options
+  const supplementaryOptions = [
     {
       id: 'comprehension',
       label: 'Comprehension',
       description: 'Practice reading and listening',
       icon: <BookOpen size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'conversation',
+      label: 'Conversation Practice',
+      description: 'Role-play and dialogue exercises',
+      icon: <MessageCircle size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'listening',
+      label: 'Listening Skills',
+      description: 'Audio stories and listening exercises',
+      icon: <Headphones size={24} className="text-emerald-600" />,
     },
     {
       id: 'community',
@@ -48,9 +64,31 @@ const FluencyLanding: React.FC<FluencyLandingProps> = ({ setSubTab }) => {
         Practice your Levantine Arabic skills
       </p>
 
-      {/* Render all options in a single grid */}
+      {/* Main Focus: Translate */}
+      <div
+        key={mainOption.id}
+        onClick={() => setSubTab(mainOption.id)}
+        className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 mb-8"
+      >
+        <div className="flex items-center justify-center mb-3">
+          <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+            {mainOption.icon}
+          </div>
+        </div>
+        <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
+          {mainOption.label}
+        </h3>
+        <p className="text-sm text-center text-gray-600 dark:text-gray-300">
+          {mainOption.description}
+        </p>
+      </div>
+
+      {/* Supplementary Tools Section */}
+      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+        Practice Tools
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        {options.map((option) => (
+        {supplementaryOptions.map((option) => (
           <div
             key={option.id}
             onClick={() => setSubTab(option.id)}

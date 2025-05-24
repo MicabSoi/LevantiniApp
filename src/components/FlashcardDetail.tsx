@@ -17,7 +17,11 @@ interface Flashcard {
   deck_id?: string;
   default_deck_id?: string;
   metadata?: {
-    createdAt: string;
+    createdAt?: string;
+    isVerbGroup?: boolean;
+    conjugations?: Flashcard[];
+    totalConjugations?: number;
+    [key: string]: any; // Allow additional properties
   };
 }
 
@@ -68,80 +72,93 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
     setLoading(true);
     setError(null);
 
-    let deckData = null;
-    let deckError = null;
-    let flashcardsData = null;
-    let flashcardsError = null;
+    try {
+      let deckData: Deck | null = null;
+      let flashcardsData: Flashcard[] = [];
 
-    if (deckType === 'user') {
-      const { data: userDeckData, error: userDeckError } = await supabase
-        .from('decks')
-        .select('*')
-        .eq('id', deckId)
-        .single();
-      deckData = userDeckData;
-      deckError = userDeckError;
+      if (deckType === 'user') {
+        // Fetch user deck details
+        const { data: deckResult, error: deckError } = await supabase
+          .from('decks')
+          .select('id, name, description, emoji')
+          .eq('id', deckId)
+          .single();
 
-      if (!deckError) {
-        const { data: userFlashcardsData, error: userFlashcardsError } = await supabase
+        if (deckError) throw deckError;
+        deckData = deckResult as Deck;
+
+        // Fetch flashcards for user deck
+        const { data: flashcardsResult, error: flashcardsError } = await supabase
           .from('cards')
           .select('*')
-          .eq('deck_id', deckId);
-        flashcardsData = userFlashcardsData;
-        flashcardsError = userFlashcardsError;
-      }
+          .eq('deck_id', deckId)
+          .order('created_at', { ascending: true });
 
-    } else {
-      const { data: defaultDeckData, error: defaultDeckError } = await supabase
-        .from('default_decks')
-        .select('*')
-        .eq('id', deckId)
-        .single();
-      deckData = defaultDeckData;
-      deckError = defaultDeckError;
+        if (flashcardsError) throw flashcardsError;
+        flashcardsData = flashcardsResult as Flashcard[];
+        
+        // Group verb cards by base verb for Verbs deck
+        if (deckData?.name?.toLowerCase() === 'verbs') {
+          flashcardsData = groupVerbCards(flashcardsData);
+        }
 
-      if (!deckError) {
-        const { data: defaultFlashcardsData, error: defaultFlashcardsError } = await supabase
+      } else if (deckType === 'default') {
+        // Fetch default deck details
+        const { data: defaultDeckResult, error: defaultDeckError } = await supabase
+          .from('default_decks')
+          .select('id, name, description, emoji')
+          .eq('id', deckId)
+          .single();
+
+        if (defaultDeckError) throw defaultDeckError;
+        deckData = { ...defaultDeckResult, is_default: true, archived: false, created_at: '' } as Deck;
+
+        // Fetch default flashcards
+        const { data: defaultFlashcardsResult, error: defaultFlashcardsError } = await supabase
           .from('default_flashcards')
           .select('*')
-          .eq('default_deck_id', deckId);
-        flashcardsData = defaultFlashcardsData;
-        flashcardsError = defaultFlashcardsError;
-      }
-    }
+          .eq('default_deck_id', deckId)
+          .order('created_at', { ascending: true });
 
-    if (deckError) {
-      setError(deckError.message);
-      setLoading(false);
-      return;
-    }
-    setDeck(deckData as Deck);
-
-    if (flashcardsError) {
-      setError(flashcardsError.message);
-      setLoading(false);
-      return;
-    }
-    setFlashcards(flashcardsData as Flashcard[]);
-
-    if (deckType === 'user') {
-      const cardIds = (flashcardsData as Flashcard[]).map(card => card.id);
-      if (cardIds.length > 0) {
-        const { data: reviewData, error: reviewError } = await supabase
-          .from('reviews')
-          .select('card_id, reviews_count')
-          .in('card_id', cardIds);
-        if (!reviewError && reviewData) {
-          const counts: { [cardId: string]: number } = {};
-          reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
-            if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
-              counts[row.card_id] = row.reviews_count;
-            }
-          });
-          setReviewCounts(counts);
+        if (defaultFlashcardsError) throw defaultFlashcardsError;
+        flashcardsData = defaultFlashcardsResult as Flashcard[];
+        
+        // Group verb cards by base verb for Verbs deck
+        if (deckData?.name?.toLowerCase() === 'verbs') {
+          flashcardsData = groupVerbCards(flashcardsData);
         }
       }
+
+      setDeck(deckData);
+      setFlashcards(flashcardsData);
+
+      console.log('Fetched flashcards:', flashcardsData);
+      console.log('Total flashcards after grouping:', flashcardsData.length);
+
+      // Fetch review counts for user decks
+      if (deckType === 'user') {
+        const cardIds = flashcardsData.map(card => card.id);
+        if (cardIds.length > 0) {
+          const { data: reviewData, error: reviewError } = await supabase
+            .from('reviews')
+            .select('card_id, reviews_count')
+            .in('card_id', cardIds);
+          if (!reviewError && reviewData) {
+            const counts: { [cardId: string]: number } = {};
+            reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
+              if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
+                counts[row.card_id] = row.reviews_count;
+              }
+            });
+            setReviewCounts(counts);
+          }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load deck data');
+      console.error('Error fetching deck and flashcards:', err);
     }
+
     setLoading(false);
   };
 
@@ -167,6 +184,75 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
+  };
+
+  // Function to group verb cards by their base verb
+  const groupVerbCards = (cards: Flashcard[]): Flashcard[] => {
+    const verbGroups: { [key: string]: Flashcard[] } = {};
+    const nonVerbCards: Flashcard[] = [];
+
+    // Group cards by base verb (extract from English field)
+    cards.forEach(card => {
+      // Check if this looks like a verb conjugation card
+      if (card.english.includes(' - ') || 
+          (card.english.includes('I ') || card.english.includes('You ') || 
+           card.english.includes('He ') || card.english.includes('She ') || 
+           card.english.includes('We ') || card.english.includes('They '))) {
+        
+        // Extract base verb - try different patterns
+        let baseVerb = '';
+        
+        if (card.english.includes(' - ')) {
+          // Format: "to come - إِجَا - ija" 
+          baseVerb = card.english.split(' - ')[0].trim();
+        } else {
+          // Format: "I ask", "You ask", etc. - extract the verb part
+          const words = card.english.split(' ');
+          if (words.length >= 2) {
+            baseVerb = words.slice(1).join(' '); // Everything after the pronoun
+          }
+        }
+        
+        if (baseVerb) {
+          if (!verbGroups[baseVerb]) {
+            verbGroups[baseVerb] = [];
+          }
+          verbGroups[baseVerb].push(card);
+        } else {
+          nonVerbCards.push(card);
+        }
+      } else {
+        nonVerbCards.push(card);
+      }
+    });
+
+    // Create representative cards for each verb group
+    const groupedCards: Flashcard[] = [];
+    
+    Object.entries(verbGroups).forEach(([baseVerb, conjugations]) => {
+      if (conjugations.length > 1) {
+        // Create a representative card for this verb group
+        const representative = conjugations[0];
+        const groupedCard: Flashcard = {
+          ...representative,
+          id: `grouped-${baseVerb.replace(/\s+/g, '-')}`, // Create a unique ID for the group
+          english: baseVerb,
+          // Store all conjugations in metadata for detailed view
+          metadata: {
+            ...representative.metadata,
+            isVerbGroup: true,
+            conjugations: conjugations,
+            totalConjugations: conjugations.length
+          }
+        };
+        groupedCards.push(groupedCard);
+      } else {
+        // Single conjugation, keep as is
+        groupedCards.push(conjugations[0]);
+      }
+    });
+
+    return [...groupedCards, ...nonVerbCards];
   };
 
   // Function to parse verb card data for proper display

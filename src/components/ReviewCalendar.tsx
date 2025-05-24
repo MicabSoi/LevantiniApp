@@ -248,9 +248,9 @@ const ReviewCalendar: React.FC<ReviewCalendarProps> = ({ onCardClick }) => {
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 text-emerald-600 dark:text-emerald-400 flex items-center"
+        className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
       >
-        ← Back
+        ← Back to Flashcard Decks
       </button>
 
       <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
