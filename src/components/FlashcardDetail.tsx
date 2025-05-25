@@ -76,13 +76,13 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       let deckData: Deck | null = null;
       let flashcardsData: Flashcard[] = [];
 
-      if (deckType === 'user') {
+    if (deckType === 'user') {
         // Fetch user deck details
         const { data: deckResult, error: deckError } = await supabase
-          .from('decks')
+        .from('decks')
           .select('id, name, description, emoji')
-          .eq('id', deckId)
-          .single();
+        .eq('id', deckId)
+        .single();
 
         if (deckError) throw deckError;
         deckData = deckResult as Deck;
@@ -100,15 +100,15 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         // Group verb cards by base verb for Verbs deck
         if (deckData?.name?.toLowerCase() === 'verbs') {
           flashcardsData = groupVerbCards(flashcardsData);
-        }
+      }
 
       } else if (deckType === 'default') {
         // Fetch default deck details
         const { data: defaultDeckResult, error: defaultDeckError } = await supabase
-          .from('default_decks')
+        .from('default_decks')
           .select('id, name, description, emoji')
-          .eq('id', deckId)
-          .single();
+        .eq('id', deckId)
+        .single();
 
         if (defaultDeckError) throw defaultDeckError;
         deckData = { ...defaultDeckResult, is_default: true, archived: false, created_at: '' } as Deck;
@@ -126,7 +126,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
         // Group verb cards by base verb for Verbs deck
         if (deckData?.name?.toLowerCase() === 'verbs') {
           flashcardsData = groupVerbCards(flashcardsData);
-        }
+    }
       }
 
       setDeck(deckData);
@@ -136,24 +136,24 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       console.log('Total flashcards after grouping:', flashcardsData.length);
 
       // Fetch review counts for user decks
-      if (deckType === 'user') {
+    if (deckType === 'user') {
         const cardIds = flashcardsData.map(card => card.id);
-        if (cardIds.length > 0) {
-          const { data: reviewData, error: reviewError } = await supabase
-            .from('reviews')
-            .select('card_id, reviews_count')
-            .in('card_id', cardIds);
-          if (!reviewError && reviewData) {
-            const counts: { [cardId: string]: number } = {};
-            reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
-              if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
-                counts[row.card_id] = row.reviews_count;
-              }
-            });
-            setReviewCounts(counts);
-          }
+      if (cardIds.length > 0) {
+        const { data: reviewData, error: reviewError } = await supabase
+          .from('reviews')
+          .select('card_id, reviews_count')
+          .in('card_id', cardIds);
+        if (!reviewError && reviewData) {
+          const counts: { [cardId: string]: number } = {};
+          reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
+            if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
+              counts[row.card_id] = row.reviews_count;
+            }
+          });
+          setReviewCounts(counts);
         }
       }
+    }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load deck data');
       console.error('Error fetching deck and flashcards:', err);
