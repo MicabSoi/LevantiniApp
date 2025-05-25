@@ -9,6 +9,7 @@ import { JSX } from 'react/jsx-runtime'; // Import JSX
 interface LessonDetailProps {
   lessonId: string;
   onBack: () => void;
+  onNavigateToTopic?: (topicId: string) => void;
 }
 
 // Map lesson IDs to their corresponding letters ALPHABET topic
@@ -56,6 +57,7 @@ const lessonLettersMap: { [key: string]: string[] } = {
 const LessonDetailPage: React.FC<LessonDetailProps> = ({
   lessonId,
   onBack,
+  onNavigateToTopic,
 }) => {
   const [lesson, setLesson] = useState<any>(null);
   const [questionCount, setQuestionCount] = useState(30);
@@ -283,6 +285,7 @@ const LessonDetailPage: React.FC<LessonDetailProps> = ({
         quizData={quiz}
         onComplete={() => setShowQuiz(false)}
         onBack={() => setShowQuiz(false)}
+        onNavigateToTopic={onNavigateToTopic}
         questionCount={questionCount}
       />
     );

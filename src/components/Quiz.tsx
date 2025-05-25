@@ -44,6 +44,7 @@ interface QuizProps {
   quizData: any;
   onComplete: () => void;
   onBack: () => void;
+  onNavigateToTopic?: (topicId: string) => void;
   questionCount: number;
 }
 
@@ -53,6 +54,7 @@ const Quiz: React.FC<QuizProps> = ({
   quizData,
   onComplete,
   onBack,
+  onNavigateToTopic,
   questionCount, // ← Add this here
 }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -406,7 +408,7 @@ const Quiz: React.FC<QuizProps> = ({
       return;
     }
 
-    // Fall back to audioData map (if that’s what you're using elsewhere)
+    // Fall back to audioData map (if that's what you're using elsewhere)
     const audioUrl = audioData[key || ''];
     if (audioUrl) {
       console.log(`🔊 Replaying from audioData: ${audioUrl}`);
@@ -461,7 +463,7 @@ const Quiz: React.FC<QuizProps> = ({
     }
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (currentQuestionIndex < questions.length - 1) {
       const nextIndex = currentQuestionIndex + 1;
       console.log('➡ Moving to next question:', nextIndex + 1);
@@ -475,9 +477,15 @@ const Quiz: React.FC<QuizProps> = ({
       
       // Track progress when quiz is completed
       if (lessonId) {
-        completeLessonWithScore(lessonId, finalScore);
+        console.log('📊 Marking lesson complete:', lessonId, 'Score:', finalScore);
+        console.log('📊 Lesson object:', lesson);
+        try {
+          await completeLessonWithScore(lessonId, finalScore);
+          console.log('✅ Lesson completion recorded successfully');
+        } catch (error) {
+          console.error('❌ Error recording lesson completion:', error);
+        }
       }
-      
       setQuizCompleted(true);
     }
   };
@@ -622,13 +630,27 @@ const Quiz: React.FC<QuizProps> = ({
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back to Lesson
           </button>
-          <button
-            onClick={handleRetry}
-            className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Try Again
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                // Navigate to topic page
+                if (lesson && lesson.level && onNavigateToTopic) {
+                  onNavigateToTopic(lesson.level.toString());
+                }
+              }}
+              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
+            <button
+              onClick={handleRetry}
+              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Try Again
+            </button>
+          </div>
         </div>
       </motion.div>
     );

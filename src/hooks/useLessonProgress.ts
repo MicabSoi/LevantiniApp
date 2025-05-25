@@ -31,7 +31,9 @@ export const useLessonProgress = () => {
 
   const isLessonCompleted = useCallback((lessonId: string) => {
     const progress = getLessonProgress(lessonId);
-    return progress?.completed || false;
+    const completed = progress?.completed || false;
+    console.log(`🔍 Checking if lesson ${lessonId} is completed:`, { progress, completed });
+    return completed;
   }, [getLessonProgress]);
 
   const getLessonScore = useCallback((lessonId: string) => {

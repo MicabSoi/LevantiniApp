@@ -389,6 +389,8 @@ export const ProgressProvider: React.FC<ProgressProviderProps> = ({ children }) 
     if (!user) return;
 
     try {
+      console.log('🔄 Marking lesson complete in database:', { lessonId, score, userId: user.id });
+      
       const { data, error } = await supabase
         .from('lesson_progress')
         .upsert({
@@ -403,22 +405,32 @@ export const ProgressProvider: React.FC<ProgressProviderProps> = ({ children }) 
 
       if (error) throw error;
 
+      console.log('✅ Lesson progress saved to database:', data);
+
       // Update local state
       setLessonProgress(prev => {
         const existing = prev.find(p => p.lesson_id === lessonId);
-        if (existing) {
-          return prev.map(p => p.lesson_id === lessonId ? data : p);
-        } else {
-          return [...prev, data];
-        }
+        const newProgress = existing 
+          ? prev.map(p => p.lesson_id === lessonId ? data : p)
+          : [...prev, data];
+        
+        console.log('📊 Updated lesson progress state:', newProgress);
+        return newProgress;
       });
 
       // Award XP based on score
       const xpGained = Math.floor(score / 10) * 5; // 5 XP per 10% score
+      console.log('🎯 Awarding XP:', xpGained);
       await updateProgress(xpGained);
 
       // Update streak if this is a new completion today
       await updateStreak();
+
+      // Recalculate stats
+      await calculateStats();
+      
+      // Refresh all progress data to ensure context consumers have the latest information
+      await refreshProgress();
 
     } catch (err) {
       console.error('Error marking lesson complete:', err);

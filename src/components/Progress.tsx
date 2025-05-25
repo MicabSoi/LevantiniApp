@@ -16,6 +16,7 @@ import {
 import { useProgress } from '../context/ProgressContext';
 import { getWeeklyProgress, getRecentActivity, ActivityItem, WeeklyProgress } from '../lib/progressService';
 import { useSupabase } from '../context/SupabaseContext';
+import ProgressDebug from './ProgressDebug';
 
 const Progress = () => {
   const { user } = useSupabase();
@@ -449,6 +450,9 @@ const Progress = () => {
           </div>
         </div>
       )}
+
+      {/* Debug Section */}
+      <ProgressDebug />
     </div>
   );
 };
