@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronRight, BookOpen, AlignLeft } from 'lucide-react';
 import { fetchLessonTopics, fetchLessonsByLevel } from '../lib/lessonService';
+import { useProgress } from '../context/ProgressContext';
+import { useLessonProgress } from '../hooks/useLessonProgress';
 
 import LessonDetailPage from './LessonDetailPage';
 
@@ -21,6 +23,16 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  
+  const { stats } = useProgress();
+  const { isLessonCompleted, getLessonScore } = useLessonProgress();
+
+  const calculateTopicProgress = (level: number) => {
+    if (!stats) return 0;
+    // For now, use overall completion rate
+    // In a more sophisticated system, you'd calculate per-topic progress
+    return Math.round((stats.completedLessons / Math.max(stats.totalLessons, 1)) * 100);
+  };
 
   useEffect(() => {
     async function loadTopics() {
@@ -40,7 +52,7 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
             ) : (
               <BookOpen size={24} />
             ),
-          progress: 65, // placeholder for now
+          progress: calculateTopicProgress(topic.level),
           type: topic.label,
         }));
 
@@ -158,32 +170,52 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
       )}
 
       <div className="grid grid-cols-1 gap-4">
-        {lessons.map((lesson) => (
-          <div
-            key={lesson.id}
-            onClick={() => setSelectedLessonId(String(lesson.id))}
-            className="
-              bg-gray-50 dark:bg-[#2D2D2D] p-4 rounded-lg cursor-pointer transition-colors
-              border border-gray-200 dark:border-[#121212]
-              hover:!border-emerald-500 dark:hover:!border-emerald-500
-            "
-          >
-            <div className="flex items-center justify-between group">
-              <div>
-                <h4 className="font-bold mb-1 text-gray-800 dark:text-white">
-                  {lesson.title}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {lesson.preview_text || lesson.description}
-                </p>
+        {lessons.map((lesson) => {
+          const completed = isLessonCompleted(lesson.id);
+          const score = getLessonScore(lesson.id);
+          
+          return (
+            <div
+              key={lesson.id}
+              onClick={() => setSelectedLessonId(String(lesson.id))}
+              className={`
+                p-4 rounded-lg cursor-pointer transition-colors border
+                ${completed 
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' 
+                  : 'bg-gray-50 dark:bg-[#2D2D2D] border-gray-200 dark:border-[#121212]'
+                }
+                hover:!border-emerald-500 dark:hover:!border-emerald-500
+              `}
+            >
+              <div className="flex items-center justify-between group">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-bold text-gray-800 dark:text-white">
+                      {lesson.title}
+                    </h4>
+                    {completed && (
+                      <span className="text-emerald-600 dark:text-emerald-400 text-sm">
+                        ✓ Completed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {lesson.preview_text || lesson.description}
+                  </p>
+                  {score !== null && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                      Best Score: {score}%
+                    </p>
+                  )}
+                </div>
+                <ChevronRight
+                  className="text-gray-400 transform transition-transform group-hover:translate-x-1"
+                  size={20}
+                />
               </div>
-              <ChevronRight
-                className="text-gray-400 transform transition-transform group-hover:translate-x-1"
-                size={20}
-              />
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

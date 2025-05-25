@@ -10,6 +10,8 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import { useProgress } from '../context/ProgressContext';
+import { useLessonProgress } from '../hooks/useLessonProgress';
 import { Volume2 } from 'lucide-react';
 
 interface QuizQuestion {
@@ -24,6 +26,7 @@ interface QuizQuestion {
   audio_url?: string;
   arabic_letter?: string;
   correct_letter?: string; // from subquery on quiz_options
+  correctAnswer?: string; // Add this property
 }
 
 interface QuizOption {
@@ -69,6 +72,9 @@ const Quiz: React.FC<QuizProps> = ({
   const { audioData } = useAudio();
   const [quizAudio, setQuizAudio] = useState<Map<string, string>>(new Map());
   const [quizSounds, setQuizSounds] = useState<Map<string, string>>(new Map());
+  
+  const { updateProgress } = useProgress();
+  const { completeLessonWithScore } = useLessonProgress();
 
   const playAudio = (letter: string) => {
     const audioUrl = quizAudio.get(`${letter}.mp3`);
@@ -465,6 +471,13 @@ const Quiz: React.FC<QuizProps> = ({
       hasPlayedAudio.current = false;
     } else {
       console.log('🎉 Quiz Completed!');
+      const finalScore = Math.round((score / questions.length) * 100);
+      
+      // Track progress when quiz is completed
+      if (lessonId) {
+        completeLessonWithScore(lessonId, finalScore);
+      }
+      
       setQuizCompleted(true);
     }
   };
