@@ -347,26 +347,26 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                    {(allConjugations[0] as any)?.english || (flashcard as any).fields?.word_english || flashcard.english} {/* Display the common word */}
                 </h1>
 
-                {/* Combined Table for Medium and Larger Screens (sm and up) */}
-                <div className="hidden sm:block">
+                {/* Combined Table for Medium and Larger Screens (lg and up) */}
+                <div className="hidden lg:block">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-300 dark:border-gray-600">
+                    <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                       <thead>
                         <tr className="bg-gray-100 dark:bg-dark-100">
-                          <th className="px-2 py-1 border dark:border-gray-600 text-center font-bold" colSpan={3}>Past</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-center font-bold" colSpan={3}>Present</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-center font-bold" colSpan={3}>Imperative</th>
+                          <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>Past</th>
+                          <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>Present</th>
+                          <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>Imperative</th>
                         </tr>
-                        <tr className="bg-gray-100 dark:bg-dark-100">
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">Arabic</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">Translit.</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">Arabic</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">Translit.</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">Arabic</th>
-                          <th className="px-2 py-1 border dark:border-gray-600 text-left">Translit.</th>
+                        <tr className="bg-gray-50 dark:bg-dark-200">
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                          <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -376,16 +376,16 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                           const impArb = (row.fields as any)?.imperative_tense?.arabic || '-';
                           const impTrans = (row.fields as any)?.imperative_tense?.transliteration || '-';
                           return (
-                            <tr key={row.id || idx} className="border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['English Past'] || row.english_past || (row.fields as any)?.past_tense?.english || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Arabic Past'] || row.arabic_past || (row.fields as any)?.past_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Transliteration Past'] || row.transliteration_past || (row.fields as any)?.past_tense?.transliteration || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['English Present'] || row.english_present || (row.fields as any)?.present_tense?.english || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Arabic Present'] || row.arabic_present || (row.fields as any)?.present_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Transliteration Present'] || row.transliteration_present || (row.fields as any)?.present_tense?.transliteration || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{impEng}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{impArb}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{impTrans}</td>
+                            <tr key={row.id || idx} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Past'] || row.english_past || (row.fields as any)?.past_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Past'] || row.arabic_past || (row.fields as any)?.past_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Past'] || row.transliteration_past || (row.fields as any)?.past_tense?.transliteration || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Present'] || row.english_present || (row.fields as any)?.present_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Present'] || row.arabic_present || (row.fields as any)?.present_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Present'] || row.transliteration_present || (row.fields as any)?.present_tense?.transliteration || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{impEng}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{impArb}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{impTrans}</td>
                             </tr>
                           );
                         })}
@@ -394,26 +394,26 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                   </div>
                 </div>
 
-                {/* Separate Tables for Small Screens (default, hidden on sm and up) */}
-                <div className="block sm:hidden space-y-6">
+                {/* Separate Tables for Small Screens (default, hidden on lg and up) */}
+                <div className="block lg:hidden space-y-6">
                   {/* Past Tense Table */}
                   <div>
-                    <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Past</h2>
+                    <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Past</h2>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-300 dark:border-gray-600">
+                      <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                         <thead>
-                          <tr className="bg-gray-100 dark:bg-dark-100">
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">Arabic</th>
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">Translit.</th>
+                          <tr className="bg-gray-50 dark:bg-dark-200">
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
                           </tr>
                         </thead>
                         <tbody>
                           {allConjugations.map((row, idx) => (
-                            <tr key={`${row.id || idx}-past`} className="border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['English Past'] || row.english_past || (row.fields as any)?.past_tense?.english || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Arabic Past'] || row.arabic_past || (row.fields as any)?.past_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Transliteration Past'] || row.transliteration_past || (row.fields as any)?.past_tense?.transliteration || '-'}</td>
+                            <tr key={`${row.id || idx}-past`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Past'] || row.english_past || (row.fields as any)?.past_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Past'] || row.arabic_past || (row.fields as any)?.past_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Past'] || row.transliteration_past || (row.fields as any)?.past_tense?.transliteration || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -423,22 +423,22 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
                   {/* Present Tense Table */}
                   <div>
-                    <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Present</h2>
+                    <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Present</h2>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-300 dark:border-gray-600">
+                      <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                         <thead>
-                          <tr className="bg-gray-100 dark:bg-dark-100">
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">Arabic</th>
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">Translit.</th>
+                          <tr className="bg-gray-50 dark:bg-dark-200">
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
                           </tr>
                         </thead>
                         <tbody>
                           {allConjugations.map((row, idx) => (
-                            <tr key={`${row.id || idx}-present`} className="border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['English Present'] || row.english_present || (row.fields as any)?.present_tense?.english || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Arabic Present'] || row.arabic_present || (row.fields as any)?.present_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-1 border dark:border-gray-600">{row['Transliteration Present'] || row.transliteration_present || (row.fields as any)?.present_tense?.transliteration || '-'}</td>
+                            <tr key={`${row.id || idx}-present`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Present'] || row.english_present || (row.fields as any)?.present_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Present'] || row.arabic_present || (row.fields as any)?.present_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Present'] || row.transliteration_present || (row.fields as any)?.present_tense?.transliteration || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -448,14 +448,14 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
                   {/* Imperative Table */}
                   <div>
-                    <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Imperative</h2>
+                    <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Imperative</h2>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-300 dark:border-gray-600">
+                      <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                         <thead>
-                          <tr className="bg-gray-100 dark:bg-dark-100">
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">English</th>
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">Arabic</th>
-                            <th className="px-2 py-1 border dark:border-gray-600 text-left">Translit.</th>
+                          <tr className="bg-gray-50 dark:bg-dark-200">
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                            <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -466,10 +466,10 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                             // Only show row if at least one imperative field is not '-'
                             if (impEng !== '-' || impArb !== '-' || impTrans !== '-') {
                               return (
-                                <tr key={`${row.id || idx}-imp`} className="border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-100">
-                                  <td className="px-2 py-1 border dark:border-gray-600">{impEng}</td>
-                                  <td className="px-2 py-1 border dark:border-gray-600">{impArb}</td>
-                                  <td className="px-2 py-1 border dark:border-gray-600">{impTrans}</td>
+                                <tr key={`${row.id || idx}-imp`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                                  <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{impEng}</td>
+                                  <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{impArb}</td>
+                                  <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{impTrans}</td>
                                 </tr>
                               );
                             }

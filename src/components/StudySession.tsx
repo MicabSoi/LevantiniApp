@@ -17,6 +17,7 @@ interface DueCard {
       transliteration?: string;
       clozeText?: string;
       imageUrl?: string;
+      [key: string]: any; // Allow additional fields for verb cards
     };
     audio_url?: string | null;
     // Include other fields fetched in the select query for type accuracy
@@ -29,6 +30,7 @@ interface DueCard {
     layout?: string;
     metadata?: any; // Use a more specific type if possible
     review_stats_id?: string; // Assuming this is a string UUID
+    deck_id: string;
   };
   last_review_date: string;
   next_review_date: string;
@@ -87,6 +89,7 @@ const StudySession: React.FC = () => {
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null); // Add error state
+  const [deckNames, setDeckNames] = useState<Record<string, string>>({});
   const [isAnswerVisible, setIsAnswerVisible] = useState(false); // State to track if answer is visible
   const [selectedQuality, setSelectedQuality] = useState<number | null>(null); // ADDED: State for selected quality
   const [showPostReviewButtons, setShowPostReviewButtons] = useState(false); // ADDED: State to show Undo/Next buttons
@@ -100,6 +103,10 @@ const StudySession: React.FC = () => {
   // ADDED: State for upload modal visibility and progress
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [uploadProgressPercent, setUploadProgressPercent] = useState(0);
+  const [totalUploads, setTotalUploads] = useState(0);
+  const [completedUploads, setCompletedUploads] = useState(0);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
 
@@ -132,58 +139,115 @@ const StudySession: React.FC = () => {
       ); // Debug log
       setLoading(true);
 
-      console.log('DEBUG: Initiating Supabase fetch...'); // Add this log
-      const { data, error } = await supabase
-        .from('reviews') // Use the correct table name 'reviews'
-        .select(
-          `
-          id,
-          last_review_date,
-          next_review_date,
-          interval,
-          ease_factor,
-          repetition_count,
-          reviews_count,
-          quality_history,
-          card:cards!reviews_card_fk (
+      try {
+        console.log('DEBUG: Initiating Supabase fetch...'); // Add this log
+        
+        // Step 1: Get card IDs from the selected decks
+        const { data: cardIds, error: cardError } = await supabase
+          .from('cards')
+          .select('id')
+          .in('deck_id', decks);
+
+        if (cardError) {
+          throw cardError;
+        }
+
+        if (!cardIds || cardIds.length === 0) {
+          console.log('No cards found in selected decks');
+          setDueCards([]);
+          setLoading(false);
+          return;
+        }
+
+        const cardIdList = cardIds.map(card => card.id);
+
+        // Step 2: Get due reviews for those cards
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select(`
+            id,
+            card_id,
+            last_review_date,
+            next_review_date,
+            interval,
+            ease_factor,
+            repetition_count,
+            reviews_count,
+            quality_history
+          `)
+          .in('card_id', cardIdList)
+          .lte('next_review_date', dueThresholdTimestamp)
+          .limit(count)
+          .order('next_review_date', { ascending: true });
+
+        if (reviewsError) {
+          throw reviewsError;
+        }
+
+        if (!reviewsData || reviewsData.length === 0) {
+          console.log('No due reviews found');
+          setDueCards([]);
+          setLoading(false);
+          return;
+        }
+
+        // Step 3: Get card details for the due reviews
+        const reviewCardIds = reviewsData.map(review => review.card_id);
+        const { data: cardsData, error: cardsError } = await supabase
+          .from('cards')
+          .select(`
             id,
             english,
             arabic,
             transliteration,
             image_url,
             audio_url,
-            tags,
-            type,
-            layout,
-            metadata
-          )
-        `
-        )
-        // Use the stable timestamp from useMemo
-        .lte('next_review_date', dueThresholdTimestamp)
-        .in('card.deck_id', decks)
-        .limit(count)
-        .order('next_review_date', { ascending: true });
+            fields,
+            deck_id
+          `)
+          .in('id', reviewCardIds);
 
-      console.log('DEBUG: Supabase fetch attempt finished.'); // Add this log
+        if (cardsError) {
+          throw cardsError;
+        }
 
-      if (error) {
-        console.error('Error fetching due cards:', error);
-        setError('Failed to load cards for study session.'); // Set user-friendly error
-        console.log('DEBUG: Error path taken, setting loading false.'); // Add this log
-      } else {
-        console.log('Successfully fetched due cards:', data); // Debug log
-        // Filter out any potential null cards just in case
-        // Cast to unknown first to satisfy TypeScript
-        setDueCards(
-          (data || []).filter((review: any) => review.card !== null) as unknown as DueCard[]
-        );
-        if (data && data.length > 0) {
+        // Step 4: Combine the data
+        const cardMap = new Map(cardsData?.map(card => [card.id, card]) || []);
+        const combinedData = reviewsData.map(review => ({
+          ...review,
+          card: cardMap.get(review.card_id)
+        })).filter(item => item.card !== undefined);
+
+        console.log('Successfully fetched due cards:', combinedData); // Debug log
+        setDueCards(combinedData as unknown as DueCard[]);
+        
+        // Fetch deck names for the cards
+        if (combinedData.length > 0) {
+          const uniqueDeckIds = [...new Set(combinedData.map(item => item.card!.deck_id))];
+          const { data: deckData, error: deckError } = await supabase
+            .from('decks')
+            .select('id, name')
+            .in('id', uniqueDeckIds);
+          
+          if (!deckError && deckData) {
+            const deckNameMap = deckData.reduce((acc, deck) => {
+              acc[deck.id] = deck.name;
+              return acc;
+            }, {} as Record<string, string>);
+            setDeckNames(deckNameMap);
+          }
+          
           setCurrent(0); // Reset to the first card if cards are loaded
         }
         console.log('DEBUG: Success path taken, setting loading false.'); // Add this log
+
+      } catch (error) {
+        console.error('Error fetching due cards:', error);
+        setError('Failed to load cards for study session.'); // Set user-friendly error
+        console.log('DEBUG: Error path taken, setting loading false.'); // Add this log
+      } finally {
+        setLoading(false);
       }
-      setLoading(false); // This should run in finally, but putting here too for extra check
     }
 
     // Only fetch if decks are selected
@@ -303,6 +367,10 @@ const StudySession: React.FC = () => {
     }
 
     setUploadProgress(`Preparing to upload ${reviewsToUpload.length} review(s)...`);
+    setTotalUploads(reviewsToUpload.length);
+    setCompletedUploads(0);
+    setUploadProgressPercent(0);
+    setUploadErrors([]);
     setShowUploadModal(true);
 
     console.log(`Attempting to upload ${reviewsToUpload.length} reviews in batch:`, reviewsToUpload);
@@ -311,17 +379,23 @@ const StudySession: React.FC = () => {
 
     try {
       setUploadProgress(`Uploading... 0/${reviewsToUpload.length} synced`);
+      setUploadProgressPercent(10);
+      
       const { error } = await supabase
         .from('reviews')
         .upsert(reviewsToUpload, { onConflict: 'id' });
 
       if (error) {
         console.error('Batch upload error:', error);
-        setUploadProgress(`Upload failed: ${error.message}. Code: ${error.code}. Details: ${error.details}. Hint: ${error.hint}`);
+        setUploadProgress(`Upload failed: ${error.message}`);
+        setUploadErrors([`${error.message}. Code: ${error.code}`]);
+        setUploadProgressPercent(100);
         setError('Failed to save all review progress.');
       } else {
         console.log('Batch upload successful.');
         setUploadProgress(`Upload complete! ${reviewsToUpload.length}/${reviewsToUpload.length} synced`);
+        setCompletedUploads(reviewsToUpload.length);
+        setUploadProgressPercent(100);
         setCompletedReviewsData([]); // Clear the accumulated state
         setTimeout(() => {
           setShowUploadModal(false);
@@ -330,7 +404,9 @@ const StudySession: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Caught error during batch upload:', err);
-      setUploadProgress(`Upload failed: An unexpected error occurred. ${err.message}`);
+      setUploadProgress(`Upload failed: An unexpected error occurred.`);
+      setUploadErrors([err.message || 'Unknown error']);
+      setUploadProgressPercent(100);
       setError('An unexpected error occurred during upload.');
     }
   };
@@ -562,8 +638,19 @@ const StudySession: React.FC = () => {
   // ADDED: Check for upload modal state here
   if (showUploadModal) {
     // Render only the modal if it's showing
-    // FIXED: Pass uploadProgress to the message prop
-    return <UploadProgressModal isOpen={showUploadModal} message={uploadProgress} />;
+    return (
+      <UploadProgressModal 
+        isOpen={showUploadModal} 
+        onClose={() => {
+          setShowUploadModal(false);
+          navigate('/flashcards');
+        }}
+        uploadProgress={uploadProgressPercent}
+        totalUploads={totalUploads}
+        completedUploads={completedUploads}
+        errors={uploadErrors}
+      />
+    );
   }
 
   if (dueCards.length === 0) {
@@ -616,12 +703,16 @@ const StudySession: React.FC = () => {
   const cardForView = {
     ...reviewItem.card, // Spread the rest of the card properties (id, audio_url etc.)
     fields: {
-      english: reviewItem.card.english || (reviewItem.card.fields && reviewItem.card.fields.english) || '',
-      arabic: reviewItem.card.arabic || (reviewItem.card.fields && reviewItem.card.fields.arabic) || '',
-      transliteration: reviewItem.card.transliteration || (reviewItem.card.fields && reviewItem.card.fields.transliteration),
+      // Include all fields from the database for verb cards first
+      ...reviewItem.card.fields,
+      // Then override with specific fallback values if needed
+      english: reviewItem.card.fields?.english || reviewItem.card.english || '',
+      arabic: reviewItem.card.fields?.arabic || reviewItem.card.arabic || '',
+      transliteration: reviewItem.card.fields?.transliteration || reviewItem.card.transliteration,
       // Add other fields as needed, e.g., imageUrl, clozeText
-      imageUrl: reviewItem.card.image_url || (reviewItem.card.fields && reviewItem.card.fields.imageUrl),
-    }
+      imageUrl: reviewItem.card.fields?.imageUrl || reviewItem.card.image_url,
+    },
+    deck: deckNames[reviewItem.card.deck_id] ? { name: deckNames[reviewItem.card.deck_id] } : undefined, // Include deck information
   };
 
   return (

@@ -73,10 +73,7 @@ export async function loadStudySettings(user: User | null): Promise<StudySetting
 // Helper to save study settings to Supabase
 const saveStudySettingsToSupabase = async (user: User | null, settings: StudySettings) => {
   if (!user) {
-    console.warn("No user logged in, cannot save settings to Supabase.");
-    // Optionally, save to localStorage as a fallback
-    // localStorage.setItem(STUDY_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    return;
+    throw new Error("No user logged in, cannot save settings to Supabase.");
   }
   try {
     const { error } = await supabase
@@ -88,11 +85,14 @@ const saveStudySettingsToSupabase = async (user: User | null, settings: StudySet
         hotkeys: settings.hotkeys,
         hotkey_behavior: settings.hotkey_behavior,
         updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id' // Specify which column to use for conflict resolution
       });
     if (error) throw error;
     console.log('Study settings saved to Supabase.');
   } catch (err) {
     console.error('Failed to save study settings to Supabase:', err);
+    throw err; // Re-throw the error so it can be caught by handleSave
   }
 };
 
@@ -101,6 +101,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
   const [capturingKeyFor, setCapturingKeyFor] = useState<keyof HotkeySettings | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -149,10 +150,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
 
   const handleSave = async () => {
     setIsLoading(true);
-    await saveStudySettingsToSupabase(currentUser, currentSettings);
-    onSettingsSave(currentSettings); // Update parent state
-    setIsLoading(false);
-    onClose();
+    setSaveError(null);
+    try {
+      await saveStudySettingsToSupabase(currentUser, currentSettings);
+      onSettingsSave(currentSettings); // Update parent state
+      setIsLoading(false);
+      onClose();
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setSaveError('Failed to save settings. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -209,7 +217,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
             <p className="text-gray-700 dark:text-white">Loading settings...</p>
           </div>
         ) : (
-          <div className="space-y-6"> {/* Increased spacing */}
+          <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-4"> {/* Increased spacing, ADDED max-height and overflow-y-auto, added pr-4 for scrollbar */}
             {/* Study Direction Setting */}
             <div>
               <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Study Direction</h4>
@@ -326,6 +334,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettin
               </div>
             </div>
 
+          </div>
+        )}
+
+        {saveError && (
+          <div className="mt-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 rounded-md">
+            <p className="text-red-700 dark:text-red-300 text-sm">{saveError}</p>
           </div>
         )}
 
