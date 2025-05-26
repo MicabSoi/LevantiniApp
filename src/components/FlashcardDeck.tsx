@@ -418,54 +418,6 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     }
   };
 
-  // Debug function to test edge function connectivity
-  const handleDebugDownload = async (defaultDeckId: string) => {
-    console.log('🔍 Starting debug download test...');
-    try {
-      // Force session refresh to ensure we have a valid token
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError) {
-        console.error('❌ Session refresh error:', refreshError);
-        setDownloadError(`Debug: Session refresh failed - ${refreshError.message}`);
-        return;
-      }
-      
-      const session = refreshData.session;
-      if (!session?.user) {
-        console.error('❌ No authenticated user found after refresh');
-        setDownloadError('Debug: No authenticated user found');
-        return;
-      }
-      
-      console.log('✅ User authenticated, testing debug function...');
-      console.log('Environment check:', {
-        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-        hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
-      });
-
-      const { data, error: invokeError } = await supabase.functions.invoke('debugDownload', {
-        body: { default_deck_id: defaultDeckId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (invokeError) {
-        console.error('❌ Debug function invoke error:', invokeError);
-        setDownloadError(`Debug function error: ${invokeError.message}`);
-        return;
-      }
-
-      console.log('✅ Debug function response:', data);
-      setDownloadSuccessMessage(`Debug successful! Check console for details.`);
-    } catch (err) {
-      console.error('❌ Debug function failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown debug error';
-      setDownloadError(`Debug failed: ${errorMessage}`);
-    }
-  };
-
   // Calculate card counts for default decks
   const defaultDeckCardCounts = React.useMemo(() => {
     const counts: { [key: string]: number } = {};
@@ -763,29 +715,6 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       {/* Header with title */}
       <div className="flex justify-between items-center mb-6">
          <h2 className="text-xl font-bold">Flashcard Decks</h2>
-         {/* Temporary debug button */}
-         <button
-           onClick={async () => {
-             try {
-               console.log('🧪 Testing simple function...');
-               const { data, error } = await supabase.functions.invoke('simpleTest', {
-                 body: { test: 'hello' }
-               });
-               console.log('✅ Simple test result:', { data, error });
-               if (error) {
-                 setDownloadError(`Simple test failed: ${error.message}`);
-               } else {
-                 setDownloadSuccessMessage('Simple test passed! Check console for details.');
-               }
-             } catch (err) {
-               console.error('❌ Simple test error:', err);
-               setDownloadError(`Simple test error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-             }
-           }}
-           className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
-         >
-           🧪 Test
-         </button>
       </div>
       {/* END Header with title */}
 
@@ -1356,68 +1285,15 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => handleDownloadDefaultDeck(deck.id)}
-                      disabled={downloadingDeckId === deck.id || isDefaultDeckDownloaded(deck.id, deck.name)}
-                      className={`flex-1 py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors flex items-center justify-center ${
-                        isDefaultDeckDownloaded(deck.id, deck.name)
-                          ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
-                          : downloadingDeckId === deck.id
-                          ? 'bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      }`}
+                      className="px-3 py-1 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors flex items-center"
+                      disabled={downloadingDeckId === deck.id}
                     >
                       {downloadingDeckId === deck.id ? (
-                        <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                      ) : isDefaultDeckDownloaded(deck.id, deck.name) ? (
-                        <GraduationCap className="h-5 w-5 mr-2" />
+                        <Loader2 size={16} className="animate-spin mr-1" />
                       ) : (
-                        <Plus className="h-5 w-5 mr-2" />
+                        <Plus size={16} className="mr-1" />
                       )}
-                      {downloadingDeckId === deck.id 
-                        ? 'Downloading...' 
-                        : isDefaultDeckDownloaded(deck.id, deck.name) 
-                        ? 'Already Added' 
-                        : 'Download Deck'}
-                    </button>
-                    <button
-                      onClick={() => handleDebugDownload(deck.id)}
-                      className="px-2 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm"
-                      title="Debug download function"
-                    >
-                      🔍
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setDownloadingDeckId(deck.id);
-                        setDownloadError(null);
-                        setDownloadSuccessMessage(null);
-                        try {
-                          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-                          if (refreshError) throw new Error('Session refresh failed');
-                          const session = refreshData.session;
-                          if (!session?.user) throw new Error('No authenticated user');
-                          
-                          console.log('🔧 Testing fixed download function...');
-                          const { data, error: invokeError } = await supabase.functions.invoke('downloadDefaultDeckFixed', {
-                            body: { default_deck_id: deck.id },
-                            headers: { Authorization: `Bearer ${session.access_token}` },
-                          });
-                          
-                          if (invokeError) throw invokeError;
-                          if (data?.error) throw new Error(data.error);
-                          
-                          setDownloadSuccessMessage(`Fixed version worked! Downloaded "${deck.name}"`);
-                          loadUserDecks();
-                        } catch (err) {
-                          console.error('❌ Fixed download error:', err);
-                          setDownloadError(`Fixed download failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                        } finally {
-                          setDownloadingDeckId(null);
-                        }
-                      }}
-                      className="px-2 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors text-sm"
-                      title="Test fixed download function"
-                    >
-                      🔧
+                      {downloadingDeckId === deck.id ? 'Adding...' : 'Download Deck'}
                     </button>
                   </div>
                 </div>

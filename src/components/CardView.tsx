@@ -410,64 +410,64 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
         {/* Desktop view: Combined table */}
         <div className="hidden md:block">
           <div className="w-full">
-            <table className="w-full border border-gray-300 dark:border-gray-600 text-xs table-fixed">
+            <table className="w-full border border-gray-300 dark:border-gray-600 text-base table-fixed">
               <thead>
                 <tr className="bg-gray-100 dark:bg-dark-100">
-                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-base text-gray-900 dark:text-gray-100" colSpan={3}>
                     Past
                   </th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-base text-gray-900 dark:text-gray-100" colSpan={3}>
                     Present
                   </th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-base text-gray-900 dark:text-gray-100" colSpan={3}>
                     Imperative
                   </th>
                 </tr>
                 <tr className="bg-gray-50 dark:bg-dark-200">
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">English</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">Arabic</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">Translit.</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">English</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">Arabic</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">Translit.</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">English</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">Arabic</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-base font-medium text-gray-700 dark:text-gray-300 w-1/9">Translit.</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedConjugations.map((conj, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-dark-100">
                     {/* Past Tense */}
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-base">
                       {conj['English Past'] || '-'}
                     </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-base" dir="rtl">
                       {conj['Arabic Past'] || '-'}
                     </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-base">
                       {showTransliteration ? (conj['Transliteration Past'] || '-') : '-'}
                     </td>
                     
                     {/* Present Tense */}
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-base">
                       {conj['English Present'] || '-'}
                     </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-base" dir="rtl">
                       {conj['Arabic Present'] || '-'}
                     </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-base">
                       {showTransliteration ? (conj['Transliteration Present'] || '-') : '-'}
                     </td>
                     
                     {/* Imperative Tense */}
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-base">
                       {conj['English Imperative'] || '-'}
                     </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-base" dir="rtl">
                       {conj['Arabic Imperative'] || '-'}
                     </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-base">
                       {showTransliteration ? (conj['Transliteration Imperative'] || '-') : '-'}
                     </td>
                   </tr>

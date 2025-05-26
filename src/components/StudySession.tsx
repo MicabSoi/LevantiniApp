@@ -834,7 +834,7 @@ const StudySession: React.FC = () => {
 
       {/* Fixed Bottom Bar for Review Rating Buttons */}
       {isAnswerVisible && (
-        <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-3 px-2 z-50" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}>
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-3 px-2 z-50 md:max-w-xl md:mx-auto" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}>
           <button
             onClick={() => handleRatingClick(0)}
             className={`flex-1 mx-1 flex flex-col items-center justify-center p-0 h-20 rounded-md bg-red-500 text-white text-xs sm:text-sm leading-tight ${selectedQuality === 0 ? 'border-4 border-black dark:border-white' : ''}`}
@@ -868,6 +868,14 @@ const StudySession: React.FC = () => {
             <span className="block font-normal text-gray-200 text-xs sm:text-sm leading-tight">Perfect</span>
           </button>
         </div>
+      )}
+
+      {/* Cover box for Home button */}
+      {isAnswerVisible && (
+        <div 
+          className="fixed bottom-0 left-0 right-0 h-[6.5rem] bg-white dark:bg-dark-200 z-40 border-t border-gray-200 dark:border-gray-700"
+          style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.04)' }}
+        ></div>
       )}
 
       {/* Bottom controls: Undo (left), Next Card (center), Settings/Exit (right) */}
