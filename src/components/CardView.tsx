@@ -724,118 +724,211 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
           ({card.fields.transliteration})
         </p>
       )}
-      {isVerbCard ? renderVerbConjugationTable() : card.audio_url && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            playAudio(card.audio_url);
-          }}
-          className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
-        >
-          <Volume2 size={20} />
-        </button>
+      {/* For the original renderBackContent, verb table rendering was conditional here */}
+      {isVerbCard && !separateConjugationTable ? renderVerbConjugationTable() : 
+        (!isVerbCard && card.audio_url && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              playAudio(card.audio_url);
+            }}
+            className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
+          >
+            <Volume2 size={20} />
+          </button>
+      ))}
+      {/* If it's a verb card and table is separate, the audio button might still be desired IF NOT handled by getConjugationTable */}
+      {isVerbCard && separateConjugationTable && card.audio_url && (
+         <button
+            onClick={(e) => {
+              e.stopPropagation();
+              playAudio(card.audio_url);
+            }}
+            className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block"
+          >
+            <Volume2 size={20} />
+          </button>
       )}
     </div>
   );
 
-  const renderAnswerView = () => {
+  // NEW FUNCTION specifically for the content of the BACK FACE of the flipping card
+  const renderActualBackFaceContent = () => {
+    // Get the English word specifically for display on the back
+    const englishWordForDisplay = card.fields?.english || card.english || 'No English text';
+    
     if (isVerbCard && card.layout) {
-      // For verb cards with layout templates, use template renderer for the answer
       const renderedLayout = renderCardLayout(card.layout, card.fields);
-      
       return (
-        <div className="flex flex-col">
-          {renderFrontContent()} 
-          <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
-          <div className="bg-gray-50 dark:bg-dark-200 rounded-b-lg p-6">
-            <div 
-              className="verb-table-container"
-              dangerouslySetInnerHTML={{ __html: renderedLayout.answer }}
-            />
-            {card.audio_url && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  playAudio(card.audio_url);
-                }}
-                className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block"
-              >
-                <Volume2 size={20} />
-              </button>
-            )}
-          </div>
+        <div className="bg-gray-50 dark:bg-dark-200 rounded-lg p-6 h-full flex flex-col justify-center">
+          {/* Display English word on the back */}
+          {englishWordForDisplay !== 'No English text' && (
+            <div className="text-center mb-4">
+              <p className="text-base text-gray-600 dark:text-gray-400">
+                {englishWordForDisplay}
+              </p>
+            </div>
+          )}
+          <div 
+            className="verb-table-container flex-grow overflow-y-auto" // Added overflow-y-auto
+            dangerouslySetInnerHTML={{ __html: renderedLayout.answer }}
+          />
+          {card.audio_url && (
+            <button
+              onClick={(e) => { e.stopPropagation(); playAudio(card.audio_url); }}
+              className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block flex-shrink-0" // Added flex-shrink-0
+            >
+              <Volume2 size={20} />
+            </button>
+          )}
         </div>
       );
     } else if (isVerbCard) {
-      // Fallback for verb cards without layout templates
       return (
-        <div className="flex flex-col">
-          {renderFrontContent()} 
-          <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
-          <div className="bg-gray-50 dark:bg-dark-200 rounded-b-lg">
-            {/* Always show the Arabic word and transliteration within the card */}
-            <div className="p-6">
-              {/* Display Arabic word and transliteration - ALWAYS show for verb cards */}
-              {(verbBaseData?.word_arabic || verbBaseData?.word_transliteration) && (
-                <div className="text-center mb-4">
-                  {verbBaseData.word_arabic && (
-                    <p className="text-xl text-gray-900 dark:text-white mb-2" dir="rtl">
-                      {verbBaseData.word_arabic}
-                    </p>
-                  )}
-                  {verbBaseData.word_transliteration && showTransliteration && (
-                    <p className="text-lg italic text-gray-600 dark:text-gray-400">
-                      {verbBaseData.word_transliteration}
-                    </p>
-                  )}
-                </div>
+        <div className="bg-gray-50 dark:bg-dark-200 rounded-lg p-6 h-full flex flex-col justify-center items-center">
+          {/* Display English word on the back */}
+          {englishWordForDisplay !== 'No English text' && (
+            <div className="text-center mb-4">
+              <p className="text-base text-gray-600 dark:text-gray-400">
+                {englishWordForDisplay}
+              </p>
+            </div>
+          )}
+          {(verbBaseData?.word_arabic || verbBaseData?.word_transliteration) && (
+            <div className="text-center mb-4">
+              {verbBaseData.word_arabic && (
+                <p className="text-xl text-gray-900 dark:text-white mb-2" dir="rtl">
+                  {verbBaseData.word_arabic}
+                </p>
               )}
-              
-              {/* Show conjugations table if not separate, or if no separate table exists yet */}
-              {!separateConjugationTable && (
-                <>
-                  <h3 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-4">
-                    Conjugations
-                  </h3>
-                  {renderConjugationTableContent()}
-                </>
-              )}
-              
-              {/* Audio button */}
-              {card.audio_url && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playAudio(card.audio_url);
-                  }}
-                  className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block"
-                >
-                  <Volume2 size={20} />
-                </button>
+              {verbBaseData.word_transliteration && showTransliteration && (
+                <p className="text-lg italic text-gray-600 dark:text-gray-400">
+                  {verbBaseData.word_transliteration}
+                </p>
               )}
             </div>
-          </div>
+          )}
+          {/* Conjugation table is rendered separately by StudySession for verb cards */}
+          {card.audio_url && (
+            <button
+              onClick={(e) => { e.stopPropagation(); playAudio(card.audio_url); }}
+              className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block flex-shrink-0"
+            >
+              <Volume2 size={20} />
+            </button>
+          )}
         </div>
       );
     }
-
+    // Default back content for non-verb cards
     return (
-    <div className="flex flex-col">
-      {renderFrontContent()} 
-      <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
-      {renderBackContent()}
-    </div>
-  );
+      <div className="flex flex-col items-center justify-center p-6 bg-gray-50 dark:bg-dark-200 rounded-lg h-full">
+        {/* Display English word on the back */}
+        {englishWordForDisplay !== 'No English text' && (
+          <div className="text-center mb-4">
+            <p className="text-base text-gray-600 dark:text-gray-400">
+              {englishWordForDisplay}
+            </p>
+          </div>
+        )}
+        <p 
+          dir={isRtlBack ? 'rtl' : 'ltr'}
+          className={`text-3xl font-bold text-center text-gray-900 dark:text-white ${isRtlBack ? '' : ''}`}>
+          {safeBackText || (studyDirection === 'en-ar' ? 'No Arabic text' : 'No English text')}
+        </p>
+        {studyDirection === 'en-ar' && showTransliteration && card.fields?.transliteration && (
+          <p className="text-lg text-gray-600 dark:text-gray-400 text-center mt-2">
+            ({card.fields.transliteration})
+          </p>
+        )}
+        {!isVerbCard && card.audio_url && (
+          <button
+            onClick={(e) => { e.stopPropagation(); playAudio(card.audio_url); }}
+            className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 flex-shrink-0"
+          >
+            <Volume2 size={20} />
+          </button>
+        )}
+      </div>
+    );
   };
 
-  return (
-    <div className={`mx-auto bg-white dark:bg-dark-200 rounded-lg shadow-xl overflow-hidden ${
-      isVerbCard ? 'max-w-6xl w-full' : 'max-w-md'
-    }`}>
-      <div onClick={handleFlip} className="cursor-pointer">
-        {isFlipped ? renderAnswerView() : renderFrontContent()}
-      </div>
+  // renderAnswerView remains for contexts where the old stacked view might be needed,
+  // but it's not used for the primary flip animation display.
+  const renderAnswerView = () => (
+    <div className="flex flex-col h-full"> 
+      {renderFrontContent()}
+      <div className="border-b border-gray-300 dark:border-dark-300 mx-6 my-0 py-0"></div>
+      {/* This originally called renderBackContent, but for consistency if it *were* used, 
+          it should show the same content as the back face of the flip card. */}
+      {renderActualBackFaceContent()} 
     </div>
+  );
+  
+  const css = `
+    .card-view-perspective {
+      perspective: 1000px;
+      width: 100%;
+      min-height: 250px; /* Minimum height for the card, adjust as needed */
+      /* height: auto; /* Let content define height */
+    }
+    .card-view-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 250px; /* Match perspective container */
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
+      border-radius: 0.5rem; /* Tailwind's rounded-lg */
+    }
+    .card-view-perspective.flipped .card-view-inner {
+      transform: rotateY(180deg);
+    }
+    .card-view-front, .card-view-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden; /* Safari */
+      backface-visibility: hidden;
+      border-radius: 0.5rem; /* Match Tailwind's rounded-lg */
+      overflow: hidden; /* Ensure content respects border radius and is not visible when on the hidden face */
+      display: flex; /* Ensure children can fill height */
+      flex-direction: column; /* Stack content vertically */
+    }
+    .card-view-front {
+      /* background styling is handled by renderFrontContent */
+    }
+    .card-view-back {
+      /* background styling is handled by renderActualBackFaceContent */
+      transform: rotateY(180deg);
+    }
+    /* Ensure the direct children of front/back faces (which are the divs returned by render functions) fill the space */
+    .card-view-front > div,
+    .card-view-back > div {
+      width: 100%;
+      height: 100%; 
+    }
+  `;
+
+  return (
+    <>
+      <style>{css}</style>
+      <div 
+        className={`mx-auto card-view-perspective ${isFlipped ? 'flipped' : ''} ${isVerbCard ? 'max-w-lg w-full' : 'max-w-md'}`}
+        onClick={handleFlip} // Click on the perspective container flips the card
+      >
+        <div className="card-view-inner">
+          <div className="card-view-front">
+            {renderFrontContent()} 
+          </div>
+          <div className="card-view-back">
+            {renderActualBackFaceContent()}
+          </div>
+        </div>
+      </div>
+    </>
   );
 });
 

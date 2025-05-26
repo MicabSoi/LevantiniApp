@@ -755,7 +755,7 @@ const StudySession: React.FC = () => {
   return (
     <div
       className={`h-screen overflow-hidden flex flex-col mx-auto ${
-        isVerbCard ? 'max-w-7xl' : 'max-w-xl'
+        isVerbCard ? 'max-w-4xl' : 'max-w-xl'
       }`}
     >
       <div 
@@ -791,7 +791,7 @@ const StudySession: React.FC = () => {
       >
         {/* CardView and its sibling paragraph are direct children of this div */}
         {isVerbCard ? (
-          // For verb cards, show everything within the card for simplicity
+          // For verb cards, show card + separate conjugation table
           <>
             <CardView
               ref={cardViewRef}
@@ -801,11 +801,17 @@ const StudySession: React.FC = () => {
               selectedQuality={selectedQuality}
               studyDirection={studySettings.study_direction}
               showTransliteration={studySettings.show_transliteration}
-              separateConjugationTable={false}
+              separateConjugationTable={true}
             />
             <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
               Card {current + 1} of {dueCards.length}
             </p>
+            {/* Show conjugation table outside the card when answer is visible (card is flipped) */}
+            {isVerbCard && isAnswerVisible && cardViewRef.current?.getConjugationTable && (
+              <div className="mt-6">
+                {cardViewRef.current.getConjugationTable()}
+              </div>
+            )}
           </>
         ) : (
           // For non-verb cards, use normal layout
