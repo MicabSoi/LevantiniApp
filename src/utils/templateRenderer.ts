@@ -17,6 +17,12 @@ export const renderTemplate = (template: string, fields: any): string => {
         }
       }
       
+      // Ensure the value is a string or number before returning
+      if (typeof value === 'object' || Array.isArray(value)) {
+        console.warn('Template path resolved to an object or array:', path, value);
+        return ''; // Or a string representation like JSON.stringify(value) if helpful for debugging
+      }
+
       return value || '';
     } catch (error) {
       console.warn('Error rendering template path:', path, error);

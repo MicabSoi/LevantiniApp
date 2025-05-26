@@ -109,6 +109,7 @@ const StudySession: React.FC = () => {
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
 
   const cardViewRef = useRef<CardViewHandle>(null); // ADDED: Ref for CardView
+  const selectedQualityRef = useRef<number | null>(null); // Track selected quality synchronously
 
   // Calculate the "due now" threshold timestamp once when the component mounts
   // for this specific set of URL parameters. This value will be stable.
@@ -324,6 +325,7 @@ const StudySession: React.FC = () => {
       // First click on this button, or changing selection.
       // Just update the UI selection. Do not submit the review yet.
       setSelectedQuality(quality);
+      selectedQualityRef.current = quality; // Update ref synchronously
       setShowPostReviewButtons(true); // Show "Next Card" and "Undo" buttons.
     }
   };
@@ -339,6 +341,7 @@ const StudySession: React.FC = () => {
     setReviewHistory(prev => [...prev, { cardIdx: current, selected: selectedQuality }]);
     setShowPostReviewButtons(false);
     setSelectedQuality(null);
+    selectedQualityRef.current = null; // Update ref synchronously
     setIsAnswerVisible(false);
 
     if (current === dueCards.length - 1) {
@@ -418,11 +421,13 @@ const StudySession: React.FC = () => {
       const last = reviewHistory[reviewHistory.length - 1];
       setCurrent(last.cardIdx);
       setSelectedQuality(last.selected);
+      selectedQualityRef.current = last.selected; // Update ref synchronously
       setShowPostReviewButtons(!!last.selected);
       setIsAnswerVisible(true);
       setReviewHistory(prev => prev.slice(0, -1));
     } else {
       setSelectedQuality(null);
+      selectedQualityRef.current = null; // Update ref synchronously
       setShowPostReviewButtons(false);
       setIsAnswerVisible(false);
     }
@@ -459,32 +464,50 @@ const StudySession: React.FC = () => {
         else if (key === studySettings.hotkeys.quality3) newSelectedQualityViaHotkey = 3;
 
         if (newSelectedQualityViaHotkey !== null) {
-          // Always set the quality on first press, regardless of behavior setting
+          // Check if this is the same quality key pressed twice (double-press behavior)
+          if (studySettings.hotkey_behavior === 'double-press' && selectedQualityRef.current === newSelectedQualityViaHotkey) {
+            console.log('Double-press of same quality key detected. Submitting review.');
+            // Second press of the same quality key - submit the review
+            await handleNextCard();
+            event.preventDefault();
+            return; // Double-press submission handled
+          }
+          
+          // First press or different quality key - just select the quality
           setSelectedQuality(newSelectedQualityViaHotkey);
+          selectedQualityRef.current = newSelectedQualityViaHotkey; // Update ref synchronously
           setShowPostReviewButtons(true); // Ensure Next/Undo buttons are shown
 
-          // NEW LOGIC: Handle submission based on hotkey_behavior setting
+          // Handle submission based on hotkey_behavior setting
           if (studySettings.hotkey_behavior === 'single-press') {
             console.log('Single-press hotkey behavior: Submitting review.');
             await handleNextCard(); // Immediately submit on single press
           } else { // double-press behavior
-             console.log('Double-press hotkey behavior: Selected quality.', newSelectedQualityViaHotkey);
-             // The second press/spacebar will trigger handleNextCard via the next hotkey logic below
+             console.log('Double-press hotkey behavior: Selected quality.', newSelectedQualityViaHotkey, 'Press same key again to submit.');
+             // In double-press mode, pressing the same key again will trigger submission
           }
 
           event.preventDefault();
           return; // Rating hotkey handled
         }
 
-        // "Next Card" hotkey (e.g., spacebar)
-        // This is used for submission ONLY in double-press mode AFTER a quality is selected.
-        // In single-press mode, quality hotkeys handle submission.
-        console.log('Checking next hotkey (with quality) for double-press mode:', 'key=', key, 'expected=', studySettings.hotkeys.next, 'selectedQuality=', selectedQuality, 'behavior=', studySettings.hotkey_behavior);
-        if (studySettings.hotkey_behavior === 'double-press' && key === studySettings.hotkeys.next && selectedQuality !== null) {
-          console.log('Double-press Next hotkey condition met. Calling handleNextCard().');
-          await handleNextCard(); // This will submit the current selectedQuality
-          event.preventDefault();
-          return; // Next hotkey handled
+        // Spacebar handling for general navigation
+        console.log('Checking general next hotkey (answer visible):', 'key=', key, 'expectedNext=', studySettings.hotkeys.next, 'isAnswerVisible=', isAnswerVisible, 'selectedQuality=', selectedQuality);
+        if (key === studySettings.hotkeys.next && isAnswerVisible) {
+             console.log('General Next hotkey with answer visible. Proceeding...');
+             // If a quality is already selected (e.g., from a button click), submit it.
+             if (selectedQuality !== null) {
+                console.log('General Next hotkey found with selected quality. Calling handleNextCard().');
+                await handleNextCard();
+                event.preventDefault();
+                return; // General next hotkey handled
+             } else {
+                 // If answer is visible but no quality selected, and space is pressed,
+                 // prevent default to avoid scrolling, but do nothing else.
+                 console.log('General Next hotkey found with answer visible, but no quality selected. Preventing default.');
+                 event.preventDefault();
+                 return;
+             }
         }
 
         // "Undo" hotkey
@@ -704,14 +727,19 @@ const StudySession: React.FC = () => {
   const cardForView = {
     ...reviewItem.card, // Spread the rest of the card properties (id, audio_url, layout, etc.)
     fields: {
-      // Include all fields from the database for verb cards first
-      ...reviewItem.card.fields,
-      // Then override with specific fallback values if needed
+      // Only include safe string/primitive fields, and preserve complex verb data separately
       english: reviewItem.card.fields?.english || reviewItem.card.english || '',
       arabic: reviewItem.card.fields?.arabic || reviewItem.card.arabic || '',
       transliteration: reviewItem.card.fields?.transliteration || reviewItem.card.transliteration,
-      // Add other fields as needed, e.g., imageUrl, clozeText
       imageUrl: reviewItem.card.fields?.imageUrl || reviewItem.card.image_url,
+      clozeText: reviewItem.card.fields?.clozeText,
+      // Preserve verb conjugation data for verb cards
+      ...(reviewItem.card.fields?.past && {
+        past: reviewItem.card.fields.past,
+        present: reviewItem.card.fields.present,
+        imperative: reviewItem.card.fields.imperative,
+        word: reviewItem.card.fields.word
+      })
     },
     layout: reviewItem.card.layout, // Ensure layout is passed for template rendering
     deck: deckNames[reviewItem.card.deck_id] ? { name: deckNames[reviewItem.card.deck_id] } : undefined, // Include deck information

@@ -158,6 +158,12 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   const isRtlFront = studyDirection === 'ar-en';
   const isRtlBack = studyDirection === 'en-ar';
 
+  // Ensure frontText and backText are strings, not objects
+  const safeFrontText = typeof frontText === 'object' && frontText !== null ? 
+    ((frontText as any)?.english || (frontText as any)?.arabic || 'No text') : frontText;
+  const safeBackText = typeof backText === 'object' && backText !== null ? 
+    ((backText as any)?.english || (backText as any)?.arabic || 'No text') : backText;
+
   // Check if this is a verb card
   const isVerbCard = card.deck?.name === 'Verbs' || (
     (card.fields as any)?.past && 
@@ -397,7 +403,13 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
     } else if (isVerbCard) {
       // Fallback for verb cards without layout templates
       const verbFields = card.fields as any;
-      const verbInfinitive = verbFields.word || frontText;
+      let verbInfinitive = verbFields.word || safeFrontText;
+      
+      // Ensure verbInfinitive is a string, not an object
+      if (typeof verbInfinitive === 'object') {
+        console.warn('verbInfinitive is an object:', verbInfinitive);
+        verbInfinitive = verbInfinitive?.english || verbInfinitive?.arabic || safeFrontText || 'Unknown verb';
+      }
       
       return (
         <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
@@ -416,7 +428,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       <p 
         dir={isRtlFront ? 'rtl' : 'ltr'}
         className={`text-2xl font-bold text-center text-gray-900 dark:text-white ${isRtlFront ? '' : ''}`}>
-        {frontText || (studyDirection === 'en-ar' ? 'No English text' : 'No Arabic text')}
+        {safeFrontText || (studyDirection === 'en-ar' ? 'No English text' : 'No Arabic text')}
       </p>
       {/* Render transliteration on the front if Arabic is on the front and showTransliteration is true */}
       {studyDirection === 'ar-en' && showTransliteration && card.fields?.transliteration && (
@@ -436,7 +448,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       <p 
         dir={isRtlBack ? 'rtl' : 'ltr'}
         className={`text-3xl font-bold text-center text-gray-900 dark:text-white ${isRtlBack ? '' : ''}`}>
-        {backText || (studyDirection === 'en-ar' ? 'No Arabic text' : 'No English text')}
+        {safeBackText || (studyDirection === 'en-ar' ? 'No Arabic text' : 'No English text')}
       </p>
       {/* Render transliteration on the back if Arabic is on the back and showTransliteration is true */}
       {studyDirection === 'en-ar' && showTransliteration && card.fields?.transliteration && (
