@@ -49,6 +49,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   const [isFlipped, setIsFlipped] = useState(false);
   const [allConjugations, setAllConjugations] = useState<any[]>([]);
   const [isLoadingConjugations, setIsLoadingConjugations] = useState(false);
+  const [verbBaseData, setVerbBaseData] = useState<{word_arabic: string, word_transliteration: string} | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useImperativeHandle(ref, () => ({
@@ -69,6 +70,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       // Check if this is a verb card
       if (card.deck?.name !== 'Verbs') {
         setAllConjugations([]);
+        setVerbBaseData(null);
         return;
       }
 
@@ -77,6 +79,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       // Check if this card has the verb structure
       if (!verbFields?.past || !verbFields?.present || !verbFields?.word) {
         setAllConjugations([]);
+        setVerbBaseData(null);
         return;
       }
 
@@ -107,11 +110,52 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
 
         console.log('Fetched conjugations from card data:', conjugationData);
         setAllConjugations(conjugationData);
+
+        // Fetch verb base data from default_verb_flashcards table
+        await fetchVerbBaseData();
       } catch (err) {
         console.error('Error in fetchAllConjugations:', err);
         setAllConjugations([]);
+        setVerbBaseData(null);
       } finally {
         setIsLoadingConjugations(false);
+      }
+    };
+
+    const fetchVerbBaseData = async () => {
+      try {
+        // Get the English word from the card to match against default_verb_flashcards
+        const verbFields = card.fields as any;
+        const wordEnglish = typeof verbFields.word === 'object' ? 
+          verbFields.word?.english : 
+          (typeof verbFields.word === 'string' ? verbFields.word : card.fields?.english);
+
+        if (!wordEnglish) {
+          console.log('No English word found to query default_verb_flashcards');
+          return;
+        }
+
+        // Query the default_verb_flashcards table
+        const { data, error } = await supabase
+          .from('default_verb_flashcards')
+          .select('word_arabic, word_transliteration')
+          .eq('word_english', wordEnglish)
+          .single();
+
+        if (error) {
+          console.log('No matching verb found in default_verb_flashcards:', error);
+          return;
+        }
+
+        if (data) {
+          setVerbBaseData({
+            word_arabic: data.word_arabic || '',
+            word_transliteration: data.word_transliteration || ''
+          });
+          console.log('Fetched verb base data from default_verb_flashcards:', data);
+        }
+      } catch (err) {
+        console.error('Error fetching verb base data:', err);
       }
     };
 
@@ -289,8 +333,51 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       );
     };
 
+    // Get the base verb information from the default_verb_flashcards table
+    let wordArabic = '';
+    let wordTransliteration = '';
+    
+    if (verbBaseData) {
+      // Use data fetched from default_verb_flashcards table
+      wordArabic = verbBaseData.word_arabic || '';
+      wordTransliteration = verbBaseData.word_transliteration || '';
+    } else {
+      // Fallback to card fields if database data is not available
+      const verbFields = card.fields as any;
+      const wordData = verbFields?.word;
+      
+      if (typeof wordData === 'object' && wordData !== null) {
+        wordArabic = wordData.arabic || wordData.ar || '';
+        wordTransliteration = wordData.transliteration || wordData.tr || '';
+      } else if (typeof wordData === 'string') {
+        // If word is a string, try to extract from the first conjugation
+        const firstConj = allConjugations[0];
+        if (firstConj) {
+          // Try to get from past tense as fallback
+          wordArabic = firstConj['Arabic Past'] || '';
+          wordTransliteration = firstConj['Transliteration Past'] || '';
+        }
+      }
+    }
+
     return (
       <div className="p-4 space-y-4">
+        {/* Display Arabic word and transliteration above Conjugations heading */}
+        {(wordArabic || wordTransliteration) && (
+          <div className="text-center mb-4">
+            {wordArabic && (
+              <p className="text-xl text-gray-900 dark:text-white mb-2" dir="rtl">
+                {wordArabic}
+              </p>
+            )}
+            {wordTransliteration && showTransliteration && (
+              <p className="text-lg italic text-gray-600 dark:text-gray-400">
+                {wordTransliteration}
+              </p>
+            )}
+          </div>
+        )}
+        
         <h3 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-4">
           Conjugations
         </h3>
