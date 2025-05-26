@@ -775,7 +775,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
           <div className="bg-gray-50 dark:bg-dark-200 rounded-b-lg">
             {/* Always show the Arabic word and transliteration within the card */}
             <div className="p-6">
-              {/* Display Arabic word and transliteration */}
+              {/* Display Arabic word and transliteration - ALWAYS show for verb cards */}
               {(verbBaseData?.word_arabic || verbBaseData?.word_transliteration) && (
                 <div className="text-center mb-4">
                   {verbBaseData.word_arabic && (
@@ -791,13 +791,13 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
                 </div>
               )}
               
-              {/* Only show conjugations table if not separate */}
+              {/* Show conjugations table if not separate, or if no separate table exists yet */}
               {!separateConjugationTable && (
                 <>
                   <h3 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-4">
                     Conjugations
                   </h3>
-                                     {renderConjugationTableContent()}
+                  {renderConjugationTableContent()}
                 </>
               )}
               

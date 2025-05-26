@@ -790,10 +790,10 @@ const StudySession: React.FC = () => {
         }}
       >
         {/* CardView and its sibling paragraph are direct children of this div */}
-        {isVerbCard && isAnswerVisible ? (
-          // For verb cards when answer is visible, use a side-by-side layout on larger screens
-          <div className="flex flex-col lg:flex-row lg:gap-8 lg:items-start">
-            <div className="lg:w-1/2">
+        {isVerbCard ? (
+          // For verb cards, always use the same CardView to maintain state
+          <div className={`${isAnswerVisible ? 'flex flex-col lg:flex-row lg:gap-8 lg:items-start' : ''}`}>
+            <div className={isAnswerVisible ? 'lg:w-1/2' : ''}>
               <CardView
                 ref={cardViewRef}
                 card={cardForView}
@@ -802,18 +802,20 @@ const StudySession: React.FC = () => {
                 selectedQuality={selectedQuality}
                 studyDirection={studySettings.study_direction}
                 showTransliteration={studySettings.show_transliteration}
-                separateConjugationTable={true}
+                separateConjugationTable={isAnswerVisible}
               />
               <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
                 Card {current + 1} of {dueCards.length}
               </p>
             </div>
-            <div className="lg:w-1/2 mt-6 lg:mt-0">
-              {cardViewRef.current?.getConjugationTable?.()}
-            </div>
+            {isAnswerVisible && (
+              <div className="lg:w-1/2 mt-6 lg:mt-0">
+                {cardViewRef.current?.getConjugationTable?.()}
+              </div>
+            )}
           </div>
         ) : (
-          // For non-verb cards or when answer is not visible, use normal layout
+          // For non-verb cards, use normal layout
           <>
             <CardView
               ref={cardViewRef}
