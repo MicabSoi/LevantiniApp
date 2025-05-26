@@ -745,9 +745,18 @@ const StudySession: React.FC = () => {
     deck: deckNames[reviewItem.card.deck_id] ? { name: deckNames[reviewItem.card.deck_id] } : undefined, // Include deck information
   };
 
+  // Check if this is a verb card
+  const isVerbCard = deckNames[reviewItem.card.deck_id] === 'Verbs' || (
+    (reviewItem.card.fields as any)?.past && 
+    (reviewItem.card.fields as any)?.present && 
+    (reviewItem.card.fields as any)?.word
+  );
+
   return (
     <div
-      className="h-screen overflow-hidden flex flex-col max-w-xl mx-auto"
+      className={`h-screen overflow-hidden flex flex-col mx-auto ${
+        isVerbCard ? 'max-w-7xl' : 'max-w-xl'
+      }`}
     >
       <div 
         className="flex-grow overflow-y-auto p-6 relative pb-44" // pb-44 for bottom fixed bars
@@ -781,18 +790,45 @@ const StudySession: React.FC = () => {
         }}
       >
         {/* CardView and its sibling paragraph are direct children of this div */}
-        <CardView
-          ref={cardViewRef}
-          card={cardForView}
-          onQualitySelect={onQualitySelect} // This prop is part of CardViewProps
-          onAnswerShown={() => setIsAnswerVisible(true)} // This prop is part of CardViewProps
-          selectedQuality={selectedQuality} // This prop is part of CardViewProps
-          studyDirection={studySettings.study_direction} // This prop is part of CardViewProps
-          showTransliteration={studySettings.show_transliteration} // This prop is part of CardViewProps
-        />
-        <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
-          Card {current + 1} of {dueCards.length}
-        </p>
+        {isVerbCard && isAnswerVisible ? (
+          // For verb cards when answer is visible, use a side-by-side layout on larger screens
+          <div className="flex flex-col lg:flex-row lg:gap-8 lg:items-start">
+            <div className="lg:w-1/2">
+              <CardView
+                ref={cardViewRef}
+                card={cardForView}
+                onQualitySelect={onQualitySelect}
+                onAnswerShown={() => setIsAnswerVisible(true)}
+                selectedQuality={selectedQuality}
+                studyDirection={studySettings.study_direction}
+                showTransliteration={studySettings.show_transliteration}
+                separateConjugationTable={true}
+              />
+              <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
+                Card {current + 1} of {dueCards.length}
+              </p>
+            </div>
+            <div className="lg:w-1/2 mt-6 lg:mt-0">
+              {cardViewRef.current?.getConjugationTable?.()}
+            </div>
+          </div>
+        ) : (
+          // For non-verb cards or when answer is not visible, use normal layout
+          <>
+            <CardView
+              ref={cardViewRef}
+              card={cardForView}
+              onQualitySelect={onQualitySelect}
+              onAnswerShown={() => setIsAnswerVisible(true)}
+              selectedQuality={selectedQuality}
+              studyDirection={studySettings.study_direction}
+              showTransliteration={studySettings.show_transliteration}
+            />
+            <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
+              Card {current + 1} of {dueCards.length}
+            </p>
+          </>
+        )}
       </div> {/* End of scrollable content area */}
 
       {/* Fixed Bottom Bar for Review Rating Buttons */}

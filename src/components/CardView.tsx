@@ -31,11 +31,13 @@ interface CardViewProps {
   selectedQuality: number | null;
   studyDirection: 'en-ar' | 'ar-en';
   showTransliteration: boolean;
+  separateConjugationTable?: boolean; // New prop to control if conjugation table should be rendered separately
 }
 
 // Define the ref handle type
 export interface CardViewHandle {
   flipCard: () => void;
+  getConjugationTable?: () => JSX.Element | null;
 }
 
 const CardView = forwardRef<CardViewHandle, CardViewProps>(({ 
@@ -44,7 +46,8 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   onAnswerShown, 
   selectedQuality, 
   studyDirection, 
-  showTransliteration 
+  showTransliteration,
+  separateConjugationTable = false
 }: CardViewProps, ref) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [allConjugations, setAllConjugations] = useState<any[]>([]);
@@ -54,6 +57,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
 
   useImperativeHandle(ref, () => ({
     flipCard: handleFlip,
+    getConjugationTable: () => isVerbCard && separateConjugationTable ? renderVerbConjugationTable() : null,
   }));
 
   useEffect(() => {
@@ -391,65 +395,65 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
 
         {/* Desktop view: Combined table */}
         <div className="hidden md:block">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
+          <div className="w-full">
+            <table className="w-full border border-gray-300 dark:border-gray-600 text-xs table-fixed">
               <thead>
                 <tr className="bg-gray-100 dark:bg-dark-100">
-                  <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
                     Past
                   </th>
-                  <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
                     Present
                   </th>
-                  <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
                     Imperative
                   </th>
                 </tr>
                 <tr className="bg-gray-50 dark:bg-dark-200">
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
-                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedConjugations.map((conj, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-dark-100">
                     {/* Past Tense */}
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
                       {conj['English Past'] || '-'}
                     </td>
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
                       {conj['Arabic Past'] || '-'}
                     </td>
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
                       {showTransliteration ? (conj['Transliteration Past'] || '-') : '-'}
                     </td>
                     
                     {/* Present Tense */}
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
                       {conj['English Present'] || '-'}
                     </td>
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
                       {conj['Arabic Present'] || '-'}
                     </td>
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
                       {showTransliteration ? (conj['Transliteration Present'] || '-') : '-'}
                     </td>
                     
                     {/* Imperative Tense */}
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
                       {conj['English Imperative'] || '-'}
                     </td>
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
                       {conj['Arabic Imperative'] || '-'}
                     </td>
-                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
                       {showTransliteration ? (conj['Transliteration Imperative'] || '-') : '-'}
                     </td>
                   </tr>
@@ -592,7 +596,12 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
           {renderFrontContent()} 
           <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
           <div className="bg-gray-50 dark:bg-dark-200 rounded-b-lg">
-            {renderVerbConjugationTable()}
+            {!separateConjugationTable && renderVerbConjugationTable()}
+            {separateConjugationTable && (
+              <div className="p-6 text-center text-gray-600 dark:text-gray-400">
+                Conjugation table displayed separately
+              </div>
+            )}
           </div>
         </div>
       );
@@ -608,7 +617,9 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white dark:bg-dark-200 rounded-lg shadow-xl overflow-hidden">
+    <div className={`mx-auto bg-white dark:bg-dark-200 rounded-lg shadow-xl overflow-hidden ${
+      isVerbCard ? 'max-w-6xl w-full' : 'max-w-md'
+    }`}>
       <div onClick={handleFlip} className="cursor-pointer">
         {isFlipped ? renderAnswerView() : renderFrontContent()}
       </div>
