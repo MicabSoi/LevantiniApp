@@ -134,7 +134,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
         setAllConjugations(conjugationData);
 
         // Fetch verb base data from default_verb_flashcards table
-        await fetchVerbBaseData();
+        await fetchVerbBaseData(conjugationData);
       } catch (err) {
         console.error('Error in fetchAllConjugations:', err);
         setAllConjugations([]);
@@ -144,7 +144,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       }
     };
 
-    const fetchVerbBaseData = async () => {
+    const fetchVerbBaseData = async (conjugationData: any[] = allConjugations) => {
       try {
         // Get the English word from the card to match against default_verb_flashcards
         const verbFields = card.fields as any;
@@ -152,8 +152,14 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
           verbFields.word?.english : 
           (typeof verbFields.word === 'string' ? verbFields.word : card.fields?.english);
 
+        console.log('🔍 fetchVerbBaseData - Attempting to fetch for English word:', wordEnglish);
+        console.log('🔍 fetchVerbBaseData - Card fields:', card.fields);
+        console.log('🔍 fetchVerbBaseData - Verb fields word:', verbFields.word);
+
         if (!wordEnglish) {
-          console.log('No English word found to query default_verb_flashcards');
+          console.log('No English word found to query default_verb_flashcards, using fallback');
+          // Fallback: try to extract Arabic and transliteration from card data
+          setFallbackVerbData(conjugationData);
           return;
         }
 
@@ -166,6 +172,9 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
 
         if (error) {
           console.log('No matching verb found in default_verb_flashcards:', error);
+          console.log('Using fallback verb data from card');
+          // Fallback: try to extract Arabic and transliteration from card data
+          setFallbackVerbData(conjugationData);
           return;
         }
 
@@ -174,11 +183,48 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
             word_arabic: data.word_arabic || '',
             word_transliteration: data.word_transliteration || ''
           });
-          console.log('Fetched verb base data from default_verb_flashcards:', data);
+          console.log('✅ Fetched verb base data from default_verb_flashcards:', data);
+        } else {
+          console.log('No data returned from default_verb_flashcards, using fallback');
+          setFallbackVerbData(conjugationData);
         }
       } catch (err) {
         console.error('Error fetching verb base data:', err);
+        setFallbackVerbData(conjugationData);
       }
+    };
+
+    const setFallbackVerbData = (conjugationData: any[] = allConjugations) => {
+      // Try to extract Arabic and transliteration from the card data itself
+      const verbFields = card.fields as any;
+      let wordArabic = '';
+      let wordTransliteration = '';
+
+      // Try to get from the word field first
+      if (typeof verbFields.word === 'object' && verbFields.word !== null) {
+        wordArabic = verbFields.word.arabic || verbFields.word.ar || '';
+        wordTransliteration = verbFields.word.transliteration || verbFields.word.tr || '';
+      }
+
+      // If not found, try to extract from the first conjugation
+      if (!wordArabic && conjugationData.length > 0) {
+        const firstConj = conjugationData[0];
+        wordArabic = firstConj['Arabic Past'] || '';
+        wordTransliteration = firstConj['Transliteration Past'] || '';
+      }
+
+      // If still not found, try card fields directly
+      if (!wordArabic) {
+        wordArabic = card.fields?.arabic || '';
+        wordTransliteration = card.fields?.transliteration || '';
+      }
+
+      console.log('🔄 Using fallback verb data:', { wordArabic, wordTransliteration });
+      
+      setVerbBaseData({
+        word_arabic: wordArabic,
+        word_transliteration: wordTransliteration
+      });
     };
 
     fetchAllConjugations();
