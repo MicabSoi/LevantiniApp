@@ -57,7 +57,25 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
 
   useImperativeHandle(ref, () => ({
     flipCard: handleFlip,
-    getConjugationTable: () => isVerbCard && separateConjugationTable ? renderVerbConjugationTable() : null,
+    getConjugationTable: () => isVerbCard && separateConjugationTable ? (
+      <div className="p-4 space-y-4 bg-white dark:bg-dark-200 rounded-lg shadow-xl">
+        <h3 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-4">
+          Conjugations
+        </h3>
+        {renderConjugationTableContent()}
+        {card.audio_url && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              playAudio(card.audio_url);
+            }}
+            className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block"
+          >
+            <Volume2 size={20} />
+          </button>
+        )}
+      </div>
+    ) : null,
   }));
 
   useEffect(() => {
@@ -228,6 +246,194 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
     cardFields: card.fields
   });
 
+  // Function to render just the conjugation table content without headers
+  const renderConjugationTableContent = () => {
+    // Check if we have verb conjugation data
+    if (isLoadingConjugations) {
+      return (
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          Loading conjugations...
+        </div>
+      );
+    }
+
+    if (allConjugations.length === 0) {
+      return (
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          No conjugation data available
+        </div>
+      );
+    }
+
+    // Define the order of pronouns as they should appear
+    const pronounOrder = [
+      'I ',
+      'You (m.) ',
+      'You (f.) ',
+      'He ',
+      'She ',
+      'We ',
+      'You (pl.) ',
+      'They '
+    ];
+
+    // Sort conjugations by pronoun order
+    const sortedConjugations = allConjugations.sort((a, b) => {
+      const aIndex = pronounOrder.findIndex(p => a['English Past'].startsWith(p));
+      const bIndex = pronounOrder.findIndex(p => b['English Past'].startsWith(p));
+      return aIndex - bIndex;
+    });
+
+    // Render individual tense table for mobile
+    const renderTenseTable = (tense: string, englishKey: string, arabicKey: string, transliterationKey: string) => {
+      let conjugationsToShow = sortedConjugations;
+      
+      // Special handling for imperative tense on mobile
+      if (tense === 'Imperative') {
+        // Filter out entries that are just "-" and remove duplicates
+        const seenEntries = new Set();
+        conjugationsToShow = sortedConjugations.filter((conj) => {
+          const englishValue = conj[englishKey];
+          const arabicValue = conj[arabicKey];
+          const transliterationValue = conj[transliterationKey];
+          
+          // Skip if all values are "-" or empty
+          if ((!englishValue || englishValue === '-') && 
+              (!arabicValue || arabicValue === '-') && 
+              (!transliterationValue || transliterationValue === '-')) {
+            return false;
+          }
+          
+          // Create a unique key for this entry
+          const entryKey = `${englishValue || ''}-${arabicValue || ''}-${transliterationValue || ''}`;
+          
+          // Skip if we've already seen this exact combination
+          if (seenEntries.has(entryKey)) {
+            return false;
+          }
+          
+          seenEntries.add(entryKey);
+          return true;
+        });
+      }
+      
+      return (
+        <div className="mb-6">
+          <h4 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">
+            {tense}
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-dark-200">
+                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
+                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
+                  <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Transliteration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {conjugationsToShow.map((conj, index) => (
+                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                      {conj[englishKey] || '-'}
+                    </td>
+                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                      {conj[arabicKey] || '-'}
+                    </td>
+                    <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                      {showTransliteration ? (conj[transliterationKey] || '-') : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {/* Mobile view: Separate tables for each tense */}
+        <div className="block md:hidden">
+          {renderTenseTable('Past', 'English Past', 'Arabic Past', 'Transliteration Past')}
+          {renderTenseTable('Present', 'English Present', 'Arabic Present', 'Transliteration Present')}
+          {renderTenseTable('Imperative', 'English Imperative', 'Arabic Imperative', 'Transliteration Imperative')}
+        </div>
+
+        {/* Desktop view: Combined table */}
+        <div className="hidden md:block">
+          <div className="w-full">
+            <table className="w-full border border-gray-300 dark:border-gray-600 text-xs table-fixed">
+              <thead>
+                <tr className="bg-gray-100 dark:bg-dark-100">
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
+                    Past
+                  </th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
+                    Present
+                  </th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
+                    Imperative
+                  </th>
+                </tr>
+                <tr className="bg-gray-50 dark:bg-dark-200">
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
+                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedConjugations.map((conj, index) => (
+                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                    {/* Past Tense */}
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
+                      {conj['English Past'] || '-'}
+                    </td>
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
+                      {conj['Arabic Past'] || '-'}
+                    </td>
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
+                      {showTransliteration ? (conj['Transliteration Past'] || '-') : '-'}
+                    </td>
+                    
+                    {/* Present Tense */}
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
+                      {conj['English Present'] || '-'}
+                    </td>
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
+                      {conj['Arabic Present'] || '-'}
+                    </td>
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
+                      {showTransliteration ? (conj['Transliteration Present'] || '-') : '-'}
+                    </td>
+                    
+                    {/* Imperative Tense */}
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
+                      {conj['English Imperative'] || '-'}
+                    </td>
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
+                      {conj['Arabic Imperative'] || '-'}
+                    </td>
+                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
+                      {showTransliteration ? (conj['Transliteration Imperative'] || '-') : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   const renderVerbConjugationTable = () => {
     // Check if we have verb conjugation data
     if (isLoadingConjugations) {
@@ -386,82 +592,7 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
           Conjugations
         </h3>
         
-        {/* Mobile view: Separate tables for each tense */}
-        <div className="block md:hidden">
-          {renderTenseTable('Past', 'English Past', 'Arabic Past', 'Transliteration Past')}
-          {renderTenseTable('Present', 'English Present', 'Arabic Present', 'Transliteration Present')}
-          {renderTenseTable('Imperative', 'English Imperative', 'Arabic Imperative', 'Transliteration Imperative')}
-        </div>
-
-        {/* Desktop view: Combined table */}
-        <div className="hidden md:block">
-          <div className="w-full">
-            <table className="w-full border border-gray-300 dark:border-gray-600 text-xs table-fixed">
-              <thead>
-                <tr className="bg-gray-100 dark:bg-dark-100">
-                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
-                    Past
-                  </th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
-                    Present
-                  </th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-center font-bold text-xs text-gray-900 dark:text-gray-100" colSpan={3}>
-                    Imperative
-                  </th>
-                </tr>
-                <tr className="bg-gray-50 dark:bg-dark-200">
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">En</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Ar</th>
-                  <th className="px-1 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 w-1/9">Trans</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedConjugations.map((conj, index) => (
-                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                    {/* Past Tense */}
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
-                      {conj['English Past'] || '-'}
-                    </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
-                      {conj['Arabic Past'] || '-'}
-                    </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
-                      {showTransliteration ? (conj['Transliteration Past'] || '-') : '-'}
-                    </td>
-                    
-                    {/* Present Tense */}
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
-                      {conj['English Present'] || '-'}
-                    </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
-                      {conj['Arabic Present'] || '-'}
-                    </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
-                      {showTransliteration ? (conj['Transliteration Present'] || '-') : '-'}
-                    </td>
-                    
-                    {/* Imperative Tense */}
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs truncate">
-                      {conj['English Imperative'] || '-'}
-                    </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-900 dark:text-white text-xs truncate" dir="rtl">
-                      {conj['Arabic Imperative'] || '-'}
-                    </td>
-                    <td className="px-1 py-1 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic text-xs truncate">
-                      {showTransliteration ? (conj['Transliteration Imperative'] || '-') : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {renderConjugationTableContent()}
 
         {card.audio_url && (
           <button
@@ -596,12 +727,47 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
           {renderFrontContent()} 
           <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
           <div className="bg-gray-50 dark:bg-dark-200 rounded-b-lg">
-            {!separateConjugationTable && renderVerbConjugationTable()}
-            {separateConjugationTable && (
-              <div className="p-6 text-center text-gray-600 dark:text-gray-400">
-                Conjugation table displayed separately
-              </div>
-            )}
+            {/* Always show the Arabic word and transliteration within the card */}
+            <div className="p-6">
+              {/* Display Arabic word and transliteration */}
+              {(verbBaseData?.word_arabic || verbBaseData?.word_transliteration) && (
+                <div className="text-center mb-4">
+                  {verbBaseData.word_arabic && (
+                    <p className="text-xl text-gray-900 dark:text-white mb-2" dir="rtl">
+                      {verbBaseData.word_arabic}
+                    </p>
+                  )}
+                  {verbBaseData.word_transliteration && showTransliteration && (
+                    <p className="text-lg italic text-gray-600 dark:text-gray-400">
+                      {verbBaseData.word_transliteration}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Only show conjugations table if not separate */}
+              {!separateConjugationTable && (
+                <>
+                  <h3 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-4">
+                    Conjugations
+                  </h3>
+                                     {renderConjugationTableContent()}
+                </>
+              )}
+              
+              {/* Audio button */}
+              {card.audio_url && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    playAudio(card.audio_url);
+                  }}
+                  className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block"
+                >
+                  <Volume2 size={20} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       );
