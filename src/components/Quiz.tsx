@@ -13,6 +13,7 @@ import { useAudio } from '../context/AudioContext';
 import { useProgress } from '../context/ProgressContext';
 import { useLessonProgress } from '../hooks/useLessonProgress';
 import { Volume2 } from 'lucide-react';
+import { Lesson } from '../context/LessonContext'; // Import Lesson type
 
 interface QuizQuestion {
   id: string;
@@ -39,23 +40,25 @@ interface QuizOption {
 }
 
 interface QuizProps {
-  lesson: any;
-  lessonId: string;
-  quizData: any;
+  lesson: any; // Keep for now, might refactor later
+  lessonId: string; // Keep for now, might refactor later
+  // quizData: any; // No longer needed, removing
   onComplete: () => void;
   onBack: () => void;
   onNavigateToTopic?: (topicId: string) => void;
   questionCount: number;
+  completedLessons: Lesson[]; // Add new prop for completed lessons details
 }
 
 const Quiz: React.FC<QuizProps> = ({
   lesson,
   lessonId,
-  quizData,
+  // quizData, // No longer needed, removing
   onComplete,
   onBack,
   onNavigateToTopic,
   questionCount, // ← Add this here
+  completedLessons, // Destructure new prop
 }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -178,6 +181,8 @@ const Quiz: React.FC<QuizProps> = ({
     const fetchOptionsForCurrentQuestion = async () => {
       if (questions.length === 0 || currentQuestionIndex >= questions.length) {
         console.warn('⚠️ No valid question found!');
+        console.debug('DEBUG: Questions state:', questions);
+        console.debug('DEBUG: currentQuestionIndex:', currentQuestionIndex);
         return;
       }
 
@@ -202,10 +207,27 @@ const Quiz: React.FC<QuizProps> = ({
 
       console.log('✅ Successfully fetched new quiz options:', optionData);
       setOptions(shuffleArray(optionData as QuizOption[]));
+       console.debug('DEBUG: Options state after setting:', options);
     };
 
     fetchOptionsForCurrentQuestion();
   }, [currentQuestionIndex, questions]);
+
+  useEffect(() => {
+    console.debug('DEBUG: questions state updated:', questions);
+  }, [questions]);
+
+  useEffect(() => {
+    console.debug('DEBUG: options state updated:', options);
+     console.debug('DEBUG: Current state of options:', options);
+  }, [options]);
+
+  // ⬇️ Fetch Quiz Questions and Options (Initial fetch based on lesson)
+  useEffect(() => {
+    fetchQuizData();
+     console.debug('DEBUG: fetchQuizData called.');
+  }, [lesson, questionCount]); // Rerun when lesson or questionCount changes
+
   useEffect(() => {
     console.log('✅ Debug: quizSounds Map', quizSounds);
   }, [quizSounds]);
@@ -249,7 +271,7 @@ const Quiz: React.FC<QuizProps> = ({
 
   useEffect(() => {
     fetchQuizData();
-  }, [lessonId]);
+  }, [lessonId, completedLessons]); // Trigger fetch when lessonId or completedLessons change
 
   useEffect(() => {
     console.log('🔍 DEBUG: Current state of options:', options);
@@ -288,25 +310,26 @@ const Quiz: React.FC<QuizProps> = ({
       setLoading(true);
       setError(null);
 
-      if (
-        !lesson ||
-        lesson.level === undefined ||
-        lesson.order_num === undefined
-      ) {
-        const msg = 'Lesson is missing required fields (level and order_num).';
-        console.warn('⚠️', msg, lesson);
+      if (!completedLessons || completedLessons.length === 0) {
+        const msg = 'No completed lessons provided for the quiz.';
+        console.warn('⚠️', msg);
         setError(msg);
         setLoading(false);
         return;
       }
 
       console.log(
-        '🔍 DEBUG: Fetching quiz data for:',
-        lesson.level,
-        lesson.order_num
+        '🔍 DEBUG: Fetching quiz data for completed lessons:',
+        completedLessons
       );
 
-      // Fetch questions along with correct answers from quiz_options (subquery)
+      // Create an array of { level, order_num } pairs from completedLessons
+      const levelOrderPairs = completedLessons.map(lesson => ({
+        level: lesson.level,
+        order_num: lesson.order_num
+      }));
+
+      // Fetch questions for any of the completed lesson level/order_num pairs
       const { data: quizQuestions, error: quizError } = await supabase
         .from('quiz_questions')
         .select(
@@ -321,8 +344,14 @@ const Quiz: React.FC<QuizProps> = ({
           quiz_options (option_text, is_correct) 
         `
         )
-        .eq('level', lesson.level)
-        .eq('order_num', lesson.order_num)
+        .in(
+          'level',
+          levelOrderPairs.map(pair => pair.level)
+        )
+        .in(
+          'order_num',
+          levelOrderPairs.map(pair => pair.order_num)
+        )
         .limit(100); // Adjust limit if necessary
 
       if (quizError) {
@@ -332,7 +361,7 @@ const Quiz: React.FC<QuizProps> = ({
       }
 
       if (!quizQuestions || quizQuestions.length === 0) {
-        setError('No quiz questions found for this lesson.');
+        setError('No quiz questions found for the completed lessons.');
         return;
       }
 
@@ -374,9 +403,13 @@ const Quiz: React.FC<QuizProps> = ({
       return [];
     }
 
-    return options.filter(
+    // Filter options based on the current question's quiz_question_id
+    const filteredOptions = options.filter(
       (option) => String(option.quiz_question_id) === String(currentQuestion.id)
     );
+
+    console.log('🔍 DEBUG: Filtered Options for current question:', filteredOptions);
+    return filteredOptions;
   };
 
   const handleAnswerSelect = (answer: string) => {

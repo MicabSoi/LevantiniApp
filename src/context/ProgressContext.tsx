@@ -97,6 +97,8 @@ export const ProgressProvider: React.FC<ProgressProviderProps> = ({ children }) 
       return;
     }
 
+    console.log('ProgressContext - initializing progress for user:', user.id);
+
     try {
       setLoading(true);
       setError(null);
@@ -138,12 +140,14 @@ export const ProgressProvider: React.FC<ProgressProviderProps> = ({ children }) 
       }
 
       // Fetch lesson progress
+      console.log('ProgressContext - fetching lesson progress for user:', user.id);
       const { data: lessonProgressData, error: lessonError } = await supabase
         .from('lesson_progress')
         .select('*')
         .eq('user_id', user.id);
 
       if (lessonError) throw lessonError;
+      console.log('ProgressContext - lesson progress data:', lessonProgressData);
       setLessonProgress(lessonProgressData || []);
 
       // Calculate stats
