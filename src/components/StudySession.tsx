@@ -203,7 +203,8 @@ const StudySession: React.FC = () => {
             image_url,
             audio_url,
             fields,
-            deck_id
+            deck_id,
+            type
           `)
           .in('id', reviewCardIds);
 
@@ -701,7 +702,7 @@ const StudySession: React.FC = () => {
 
   // Prepare the card data for CardView, ensuring fields object exists
   const cardForView = {
-    ...reviewItem.card, // Spread the rest of the card properties (id, audio_url etc.)
+    ...reviewItem.card, // Spread the rest of the card properties (id, audio_url, layout, etc.)
     fields: {
       // Include all fields from the database for verb cards first
       ...reviewItem.card.fields,
@@ -712,6 +713,7 @@ const StudySession: React.FC = () => {
       // Add other fields as needed, e.g., imageUrl, clozeText
       imageUrl: reviewItem.card.fields?.imageUrl || reviewItem.card.image_url,
     },
+    layout: reviewItem.card.layout, // Ensure layout is passed for template rendering
     deck: deckNames[reviewItem.card.deck_id] ? { name: deckNames[reviewItem.card.deck_id] } : undefined, // Include deck information
   };
 

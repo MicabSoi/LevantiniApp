@@ -110,80 +110,61 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
   useEffect(() => {
     const fetchAllConjugations = async () => {
       if (!flashcard) return;
-      // Only for verb cards
+      
+      // Check if this is a verb card by looking at the fields structure
       const isVerbCard = flashcard.type === 'verb' || (
-        (flashcard as any).fields && (flashcard as any).fields.past_tense && (flashcard as any).fields.present_tense
+        (flashcard as any).fields && 
+        (flashcard as any).fields.past && 
+        (flashcard as any).fields.present &&
+        (flashcard as any).fields.word
       );
+      
+      console.log('🔍 Is verb card?', isVerbCard);
+      console.log('🔍 Flashcard type:', flashcard.type);
+      console.log('🔍 Has past?', !!(flashcard as any).fields?.past);
+      console.log('🔍 Has present?', !!(flashcard as any).fields?.present);
+      console.log('🔍 Has word?', !!(flashcard as any).fields?.word);
+      
       if (!isVerbCard) return;
 
-      // Use the 'Word' field to group - get the verb word
-      const word = (flashcard as any).fields?.word_english || flashcard.english;
+      // For verb cards, we already have all the conjugation data in the single card
+      // Transform the data structure to match what the table expects
+      const fields = (flashcard as any).fields;
+      const pronounOrder = ['i', 'you_m', 'you_f', 'you_pl', 'he', 'she', 'we', 'they'];
       
-      // Fetch all conjugations from default_verb_flashcards table for this verb
-      const { data, error } = await supabase
-        .from('default_verb_flashcards')
-        .select('*')
-        .eq('Word', word);
-
-      if (error) {
-        console.error('Error fetching all conjugations:', error);
-      } else if (data) {
-        console.log('Fetched all conjugations data:', data); // Log the fetched data
+      const conjugationData = pronounOrder.map(pronoun => {
+        const pastData = fields.past?.[pronoun];
+        const presentData = fields.present?.[pronoun];
+        const imperativeData = fields.imperative?.[pronoun];
         
-        // Transform the default_verb_flashcards data to match the expected format
-        const transformedData = data.map(row => ({
-          id: `${row.id}-transformed`,
-          english: row.Word,
+        return {
+          id: `${flashcard.id}-${pronoun}`,
           fields: {
-            word_english: row.Word,
-            past_tense: {
-              english: row['English Past'],
-              arabic: row['Arabic Past'],
-              transliteration: row['Transliteration Past']
-            },
-            present_tense: {
-              english: row['English Present'],
-              arabic: row['Arabic Present'],
-              transliteration: row['Transliteration Present']
-            },
-            imperative_tense: row['English Imperative'] ? {
-              english: row['English Imperative'],
-              arabic: row['Arabic Imperative'],
-              transliteration: row['Transliteration Imperative']
-            } : null
+            past_tense: pastData ? {
+              english: pastData.en,
+              arabic: pastData.ar,
+              transliteration: pastData.tr
+            } : null,
+            present_tense: presentData ? {
+              english: presentData.en,
+              arabic: presentData.ar,
+              transliteration: presentData.tr
+            } : null,
+            imperative_tense: imperativeData ? {
+              english: imperativeData.en,
+              arabic: imperativeData.ar,
+              transliteration: imperativeData.tr
+            } : null,
+            word_english: typeof fields.word === 'object' ? fields.word?.english : fields.word
           }
-        }));
-        
-        // Define the correct order for conjugations
-        const conjugationOrder = [
-          'I ', // I ask, I asked, etc.
-          'You (m.)', // You (m.) ask, You (m.) asked, etc.
-          'You (f.)', // You (f.) ask, You (f.) asked, etc.  
-          'You (pl.)', // You (pl.) ask, You (pl.) asked, etc.
-          'He ', // He asks, He asked, etc.
-          'She ', // She asks, She asked, etc.
-          'We ', // We ask, We asked, etc.
-          'They ' // They ask, They asked, etc.
-        ];
-        
-        // Sort conjugations by the defined order
-        const sortedData = transformedData.sort((a, b) => {
-          const aPresent = (a.fields as any)?.present_tense?.english || '';
-          const bPresent = (b.fields as any)?.present_tense?.english || '';
-          
-          // Find the order index for each conjugation
-          const aIndex = conjugationOrder.findIndex(pattern => aPresent.startsWith(pattern));
-          const bIndex = conjugationOrder.findIndex(pattern => bPresent.startsWith(pattern));
-          
-          // If both found, sort by index; otherwise, preserve original order
-          if (aIndex !== -1 && bIndex !== -1) {
-            return aIndex - bIndex;
-          }
-          return 0;
-        });
-        
-        setAllConjugations(sortedData);
-      }
+        };
+      });
+      
+      console.log('🎯 Setting conjugations from single card:', conjugationData.length, 'items');
+      console.log('📋 Sample conjugation:', conjugationData[0]?.fields);
+      console.log('🔍 fields.word structure:', fields.word);
+      console.log('🔍 fields.word type:', typeof fields.word);
+      setAllConjugations(conjugationData);
     };
     fetchAllConjugations();
   }, [flashcard]); // Re-run when flashcard changes
@@ -252,8 +233,20 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
   // Verb card detection: type === 'verb' or has verb-like fields
   const isVerbCard = flashcard.type === 'verb' || (
-    (flashcard as any).fields && (flashcard as any).fields.past_tense && (flashcard as any).fields.present_tense
+    (flashcard as any).fields && 
+    (flashcard as any).fields.past && 
+    (flashcard as any).fields.present &&
+    (flashcard as any).fields.word
   );
+  
+  console.log('🔍 SingleFlashcardView - Verb card detection:', {
+    type: flashcard.type,
+    hasPast: !!((flashcard as any).fields?.past),
+    hasPresent: !!((flashcard as any).fields?.present),
+    hasWord: !!((flashcard as any).fields?.word),
+    isVerbCard,
+    flashcardFields: (flashcard as any).fields
+  });
 
   // Determine modal width classes based on card type
   // For verb cards, allow it to take full available width by removing max-width constraints.
@@ -343,12 +336,57 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
             {/* Verb-specific display: show all conjugations in a table */}
             {isVerbCard && allConjugations.length > 0 ? (
               <div className="space-y-4">
-                <h1 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
-                   {(allConjugations[0] as any)?.english || (flashcard as any).fields?.word_english || flashcard.english} {/* Display the common word */}
-                </h1>
-
-                {/* Combined Table for Medium and Larger Screens (lg and up) */}
-                <div className="hidden lg:block">
+                                <div className="text-left">
+                  <h1 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
+                     {(() => {
+                       const wordEnglish = (allConjugations[0] as any)?.fields?.word_english;
+                       const flashcardWord = (flashcard as any).fields?.word;
+                       const fallback = flashcard.english;
+                       
+                       // Handle word_english from conjugations
+                       if (wordEnglish && typeof wordEnglish === 'string') {
+                         return wordEnglish;
+                       }
+                       
+                       // Handle flashcard word field
+                       if (flashcardWord) {
+                         if (typeof flashcardWord === 'string') {
+                           return flashcardWord;
+                         } else if (typeof flashcardWord === 'object' && flashcardWord.english) {
+                           return flashcardWord.english;
+                         }
+                       }
+                       
+                       // Fallback to basic english field
+                       return fallback || 'Unknown';
+                     })()} {/* Display the common word */}
+                  </h1>
+                  {/* ADDED: Display Arabic and Transliteration for the base verb - left aligned */}
+                  {(() => {
+                    const flashcardWord = (flashcard as any).fields?.word;
+                    const arabicText = (typeof flashcardWord === 'object' ? flashcardWord?.arabic : null) || 
+                                     allConjugations[0]?.fields?.past_tense?.arabic || 
+                                     allConjugations[0]?.fields?.present_tense?.arabic;
+                    return arabicText ? (
+                      <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
+                        {arabicText}
+                      </p>
+                    ) : null;
+                  })()}
+                  {(() => {
+                    const flashcardWord = (flashcard as any).fields?.word;
+                    const transliterationText = (typeof flashcardWord === 'object' ? flashcardWord?.transliteration : null) || 
+                                              allConjugations[0]?.fields?.past_tense?.transliteration || 
+                                              allConjugations[0]?.fields?.present_tense?.transliteration;
+                    return transliterationText ? (
+                      <p className="text-lg italic text-gray-500 dark:text-gray-400 mb-4">
+                        {transliterationText}
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+                {/* Combined Table for Tablets and Larger Screens (md and up) */}
+                <div className="hidden md:block">
                   <div className="overflow-x-auto">
                     <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                       <thead>
@@ -377,12 +415,12 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                           const impTrans = (row.fields as any)?.imperative_tense?.transliteration || '-';
                           return (
                             <tr key={row.id || idx} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Past'] || row.english_past || (row.fields as any)?.past_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Past'] || row.arabic_past || (row.fields as any)?.past_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Past'] || row.transliteration_past || (row.fields as any)?.past_tense?.transliteration || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Present'] || row.english_present || (row.fields as any)?.present_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Present'] || row.arabic_present || (row.fields as any)?.present_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Present'] || row.transliteration_present || (row.fields as any)?.present_tense?.transliteration || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.past_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.past_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.past_tense?.transliteration || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.present_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.present_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.present_tense?.transliteration || '-'}</td>
                               <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{impEng}</td>
                               <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{impArb}</td>
                               <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{impTrans}</td>
@@ -394,8 +432,8 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                   </div>
                 </div>
 
-                {/* Separate Tables for Small Screens (default, hidden on lg and up) */}
-                <div className="block lg:hidden space-y-6">
+                {/* Separate Tables for Small Screens (phones, hidden on md and up) */}
+                <div className="block md:hidden space-y-6">
                   {/* Past Tense Table */}
                   <div>
                     <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Past</h2>
@@ -411,9 +449,9 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                         <tbody>
                           {allConjugations.map((row, idx) => (
                             <tr key={`${row.id || idx}-past`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Past'] || row.english_past || (row.fields as any)?.past_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Past'] || row.arabic_past || (row.fields as any)?.past_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Past'] || row.transliteration_past || (row.fields as any)?.past_tense?.transliteration || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.past_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.past_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.past_tense?.transliteration || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -436,9 +474,9 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                         <tbody>
                           {allConjugations.map((row, idx) => (
                             <tr key={`${row.id || idx}-present`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{row['English Present'] || row.english_present || (row.fields as any)?.present_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{row['Arabic Present'] || row.arabic_present || (row.fields as any)?.present_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{row['Transliteration Present'] || row.transliteration_present || (row.fields as any)?.present_tense?.transliteration || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.present_tense?.english || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.present_tense?.arabic || '-'}</td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.present_tense?.transliteration || '-'}</td>
                             </tr>
                           ))}
                         </tbody>

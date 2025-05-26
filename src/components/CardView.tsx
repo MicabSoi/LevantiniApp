@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Volume2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { renderCardLayout } from '../utils/templateRenderer';
 
 // Define the expected structure of the 'fields' JSONB column for a basic card
 interface CardFields {
@@ -16,6 +17,7 @@ interface CardViewProps {
   card: {
     id: string;
     fields: CardFields;
+    layout?: any; // Add layout field for template rendering
     audio_url?: string | null;
     english?: string;
     arabic?: string;
@@ -71,26 +73,40 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
       }
 
       const verbFields = card.fields as any;
-      const verbWord = verbFields.word_english || card.fields.english || card.english;
       
-      if (!verbWord) return;
+      // Check if this card has the verb structure
+      if (!verbFields?.past || !verbFields?.present || !verbFields?.word) {
+        setAllConjugations([]);
+        return;
+      }
 
       setIsLoadingConjugations(true);
       
       try {
-        const { data, error } = await supabase
-          .from('default_verb_flashcards')
-          .select('*')
-          .eq('Word', verbWord)
-          .order('English Past');
+        // Transform the verb data structure to match what the table expects
+        const pronounOrder = ['i', 'you_m', 'you_f', 'you_pl', 'he', 'she', 'we', 'they'];
+        
+        const conjugationData = pronounOrder.map(pronoun => {
+          const pastData = verbFields.past?.[pronoun];
+          const presentData = verbFields.present?.[pronoun];
+          const imperativeData = verbFields.imperative?.[pronoun];
+          
+          return {
+            'English Past': pastData?.en || '-',
+            'Arabic Past': pastData?.ar || '-',
+            'Transliteration Past': pastData?.tr || '-',
+            'English Present': presentData?.en || '-',
+            'Arabic Present': presentData?.ar || '-',
+            'Transliteration Present': presentData?.tr || '-',
+            'English Imperative': imperativeData?.en || '-',
+            'Arabic Imperative': imperativeData?.ar || '-',
+            'Transliteration Imperative': imperativeData?.tr || '-',
+            'Word': verbFields.word
+          };
+        });
 
-        if (error) {
-          console.error('Error fetching verb conjugations:', error);
-          setAllConjugations([]);
-        } else {
-          console.log('Fetched conjugations:', data);
-          setAllConjugations(data || []);
-        }
+        console.log('Fetched conjugations from card data:', conjugationData);
+        setAllConjugations(conjugationData);
       } catch (err) {
         console.error('Error in fetchAllConjugations:', err);
         setAllConjugations([]);
@@ -143,7 +159,20 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   const isRtlBack = studyDirection === 'en-ar';
 
   // Check if this is a verb card
-  const isVerbCard = card.deck?.name === 'Verbs';
+  const isVerbCard = card.deck?.name === 'Verbs' || (
+    (card.fields as any)?.past && 
+    (card.fields as any)?.present && 
+    (card.fields as any)?.word
+  );
+  
+  console.log('🔍 CardView - Verb card detection:', {
+    deckName: card.deck?.name,
+    hasPast: !!(card.fields as any)?.past,
+    hasPresent: !!(card.fields as any)?.present,
+    hasWord: !!(card.fields as any)?.word,
+    isVerbCard,
+    cardFields: card.fields
+  });
 
   const renderVerbConjugationTable = () => {
     // Check if we have verb conjugation data
@@ -261,14 +290,14 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
         </h3>
         
         {/* Mobile view: Separate tables for each tense */}
-        <div className="block lg:hidden">
+        <div className="block md:hidden">
           {renderTenseTable('Past', 'English Past', 'Arabic Past', 'Transliteration Past')}
           {renderTenseTable('Present', 'English Present', 'Arabic Present', 'Transliteration Present')}
           {renderTenseTable('Imperative', 'English Imperative', 'Arabic Imperative', 'Transliteration Imperative')}
         </div>
 
         {/* Desktop view: Combined table */}
-        <div className="hidden lg:block">
+        <div className="hidden md:block">
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
               <thead>
@@ -353,15 +382,30 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   };
 
   const renderFrontContent = () => {
-    if (isVerbCard) {
-      // For verb cards, show the infinitive form (word_english field)
+    if (isVerbCard && card.layout) {
+      // For verb cards with layout templates, use template renderer
+      const renderedLayout = renderCardLayout(card.layout, card.fields);
+      
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
+          <div 
+            className="text-2xl font-bold text-center text-gray-900 dark:text-white"
+            dangerouslySetInnerHTML={{ __html: renderedLayout.question }}
+          />
+        </div>
+      );
+    } else if (isVerbCard) {
+      // Fallback for verb cards without layout templates
       const verbFields = card.fields as any;
-      const verbInfinitive = verbFields.word_english || frontText;
+      const verbInfinitive = verbFields.word || frontText;
       
       return (
         <div className="flex flex-col items-center justify-center min-h-[200px] p-6 bg-gray-100 dark:bg-dark-100 rounded-t-lg">
           <p className="text-2xl font-bold text-center text-gray-900 dark:text-white">
             {verbInfinitive}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            (Verb)
           </p>
         </div>
       );
@@ -415,7 +459,35 @@ const CardView = forwardRef<CardViewHandle, CardViewProps>(({
   );
 
   const renderAnswerView = () => {
-    if (isVerbCard) {
+    if (isVerbCard && card.layout) {
+      // For verb cards with layout templates, use template renderer for the answer
+      const renderedLayout = renderCardLayout(card.layout, card.fields);
+      
+      return (
+        <div className="flex flex-col">
+          {renderFrontContent()} 
+          <div className="border-b border-gray-300 dark:border-dark-300 mx-6"></div>
+          <div className="bg-gray-50 dark:bg-dark-200 rounded-b-lg p-6">
+            <div 
+              className="verb-table-container"
+              dangerouslySetInnerHTML={{ __html: renderedLayout.answer }}
+            />
+            {card.audio_url && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playAudio(card.audio_url);
+                }}
+                className="mt-4 p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 mx-auto block"
+              >
+                <Volume2 size={20} />
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    } else if (isVerbCard) {
+      // Fallback for verb cards without layout templates
       return (
         <div className="flex flex-col">
           {renderFrontContent()} 

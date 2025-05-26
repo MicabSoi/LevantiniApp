@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import verb table styles */
+@import './styles/verbTable.css';
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

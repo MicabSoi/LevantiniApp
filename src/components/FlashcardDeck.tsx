@@ -149,6 +149,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   // Add success message state for deck operations
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // State for deletion progress tracking
+  const [isDeletingDeck, setIsDeletingDeck] = useState(false);
+  const [deletionProgress, setDeletionProgress] = useState({ deleted: 0, total: 0 });
+  const [deletionStatus, setDeletionStatus] = useState<string>('');
+
   // Function to calculate correct card count for verb decks by grouping conjugations
   const getVerbCardCount = (cards: Flashcard[], deckName: string): number => {
     // Only apply grouping logic for Verbs deck
@@ -280,7 +285,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     const { data, error } = await supabase
       .from('decks')
       .select('*, cards(count)')
-      .eq('is_default', false) // Only fetch decks that are NOT default copies
+      // Remove the is_default filter to include both user-created and downloaded default decks
       .order('created_at', { ascending: true });
     if (error) {
       console.error('Error loading decks:', error);
@@ -288,7 +293,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     } else {
       setDecks(data as Deck[]);
       // ADDED: Log fetched data
-      console.log('Fetched deck data (user-specific):', data);
+      console.log('Fetched deck data (including downloaded defaults):', data);
     }
     setLoadingDecks(false); // End loading
   };
@@ -299,6 +304,25 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
     loadAvailableDefaultDecks(); // Changed from loadDefaultDecks
     // loadDefaultFlashcards(); // Consider if this is still needed, or if it should be triggered differently
   }, []);
+
+  // Prevent navigation during deck deletion
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDeletingDeck) {
+        e.preventDefault();
+        e.returnValue = 'Deck deletion is in progress. Are you sure you want to leave?';
+        return 'Deck deletion is in progress. Are you sure you want to leave?';
+      }
+    };
+
+    if (isDeletingDeck) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDeletingDeck]);
 
   // ADDED: Effect to load all flashcards after decks are loaded
   useEffect(() => {
@@ -486,63 +510,99 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   };
 
   const handleDeleteDeck = async (deckId: string) => {
-    // Get deck name for success message
+    // Get deck name for progress messages
     const deckToDeleteName = deckToDelete?.name || 'Unknown Deck';
     
-    // Step 1: Optimistic update - immediately update UI
-    setDecks((prev) => prev.filter((deck) => deck.id !== deckId));
-    setShowDeleteConfirm(false); // Close the modal
-    setDeckToDelete(null); // Clear the deck to delete
-    setError(null); // Clear any existing errors
-    setSuccessMessage(`"${deckToDeleteName}" has been deleted successfully!`);
+    // Initialize deletion state
+    setIsDeletingDeck(true);
+    setError(null);
+    setSuccessMessage(null);
+    setDeletionStatus('Preparing to delete deck...');
+    setDeletionProgress({ deleted: 0, total: 0 });
     
-    // Step 2: Perform actual deletion in the background (don't await)
-    (async () => {
-      try {
-        // Fetch all flashcard IDs associated with the deck
-        const { data: cardIdsData, error: fetchError } = await supabase
-          .from('cards')
-          .select('id')
-          .eq('deck_id', deckId);
+    // Close the confirmation modal but keep the deck reference for progress display
+    setShowDeleteConfirm(false);
+    
+    try {
+      // Step 1: Fetch all flashcard IDs associated with the deck
+      setDeletionStatus('Counting cards to delete...');
+      const { data: cardIdsData, error: fetchError } = await supabase
+        .from('cards')
+        .select('id')
+        .eq('deck_id', deckId);
 
-        if (fetchError) throw fetchError;
+      if (fetchError) throw fetchError;
 
-        const cardIds = cardIdsData.map(card => card.id);
-        const batchSize = 500; // Define batch size
+      const cardIds = cardIdsData.map(card => card.id);
+      const totalCards = cardIds.length;
+      
+      console.log(`Found ${totalCards} cards to delete for deck ${deckId}`);
+      
+      // Update progress with total count
+      setDeletionProgress({ deleted: 0, total: totalCards });
+      
+      if (totalCards === 0) {
+        setDeletionStatus('No cards to delete, removing deck...');
+      } else {
+        setDeletionStatus(`Deleting ${totalCards} cards...`);
 
-        console.log(`Found ${cardIds.length} cards to delete for deck ${deckId}`);
+        // Step 2: Delete flashcards in batches with progress updates
+        const batchSize = 100; // Smaller batches for more frequent progress updates
+        let deletedCount = 0;
 
-        // Delete flashcards in batches
         for (let i = 0; i < cardIds.length; i += batchSize) {
           const batchIds = cardIds.slice(i, i + batchSize);
+          
           const { error: deleteCardsError } = await supabase
             .from('cards')
             .delete()
             .in('id', batchIds);
 
           if (deleteCardsError) throw deleteCardsError;
-          console.log(`Deleted batch of ${batchIds.length} cards for deck ${deckId}`);
+          
+          deletedCount += batchIds.length;
+          setDeletionProgress({ deleted: deletedCount, total: totalCards });
+          setDeletionStatus(`Deleted ${deletedCount} of ${totalCards} cards...`);
+          
+          console.log(`Deleted batch of ${batchIds.length} cards for deck ${deckId} (${deletedCount}/${totalCards})`);
+          
+          // Small delay to make progress visible for smaller decks
+          if (totalCards > 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
         }
-
-        // Delete the deck
-        const { error: deleteDeckError } = await supabase
-          .from('decks')
-          .delete()
-          .eq('id', deckId);
-
-        if (deleteDeckError) throw deleteDeckError;
-
-        console.log(`Successfully completed background deletion of deck ${deckId} and its ${cardIds.length} flashcards.`);
-
-      } catch (err) {
-        console.error('Error deleting deck or flashcards in background:', err);
-        
-        // If there's an error, reload decks to get the accurate state and show error
-        loadUserDecks();
-        setSuccessMessage(null); // Clear the success message
-        setError(`Failed to completely delete deck "${deckToDeleteName}". The deck may still exist. Please refresh and try again.`);
       }
-    })();
+
+      // Step 3: Delete the deck itself
+      setDeletionStatus('Deleting deck...');
+      const { error: deleteDeckError } = await supabase
+        .from('decks')
+        .delete()
+        .eq('id', deckId);
+
+      if (deleteDeckError) throw deleteDeckError;
+
+      // Step 4: Update UI and show success
+      setDecks((prev) => prev.filter((deck) => deck.id !== deckId));
+      setDeletionStatus('Deletion completed successfully!');
+      setSuccessMessage(`"${deckToDeleteName}" and ${totalCards} cards have been deleted successfully!`);
+      
+      console.log(`Successfully completed deletion of deck ${deckId} and its ${totalCards} flashcards.`);
+
+      // Wait a moment to show completion message
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+    } catch (err) {
+      console.error('Error deleting deck or flashcards:', err);
+      setError(`Failed to delete deck "${deckToDeleteName}". ${err instanceof Error ? err.message : 'Please try again.'}`);
+      setDeletionStatus('Deletion failed');
+    } finally {
+      // Reset deletion state
+      setIsDeletingDeck(false);
+      setDeckToDelete(null);
+      setDeletionProgress({ deleted: 0, total: 0 });
+      setDeletionStatus('');
+    }
   };
 
   const handleUpdateDeck = async () => {
@@ -636,10 +696,18 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       {/* Back button to Vocabulary */}
       <button
         onClick={() => {
-          setActiveTab('wordbank');
-          setWordBankSubTab('landing');
+          if (!isDeletingDeck) {
+            setActiveTab('wordbank');
+            setWordBankSubTab('landing');
+          }
         }}
-        className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
+        disabled={isDeletingDeck}
+        className={`mb-6 flex items-center ${
+          isDeletingDeck 
+            ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' 
+            : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600'
+        }`}
+        title={isDeletingDeck ? 'Cannot navigate while deleting deck' : 'Back to Vocabulary'}
       >
         ← Back to Vocabulary
       </button>
@@ -792,25 +860,39 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 </span>
                 {/* Single Edit Button for Decks */}
                 <button
-                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 p-1 rounded-md"
+                  disabled={isDeletingDeck}
+                  className={`p-1 rounded-md ${
+                    isDeletingDeck
+                      ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600'
+                  }`}
                   onClick={(e) => {
-                    console.log('Edit Decks button clicked');
-                    setIsSelectingDeckForEdit(!isSelectingDeckForEdit);
-                    setIsSelectingDeckForDelete(false); // Turn off delete mode if turning on edit mode
+                    if (!isDeletingDeck) {
+                      console.log('Edit Decks button clicked');
+                      setIsSelectingDeckForEdit(!isSelectingDeckForEdit);
+                      setIsSelectingDeckForDelete(false); // Turn off delete mode if turning on edit mode
+                    }
                   }}
-                  title="Edit Decks"
+                  title={isDeletingDeck ? 'Cannot edit while deleting deck' : 'Edit Decks'}
                 >
                   <Edit2 size={20} />
                 </button>
                 {/* Single Delete Button for Decks */}
                 <button
-                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600 p-1 rounded-md"
+                  disabled={isDeletingDeck}
+                  className={`p-1 rounded-md ${
+                    isDeletingDeck
+                      ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-600'
+                  }`}
                   onClick={(e) => {
-                    console.log('Delete Decks button clicked');
-                    setIsSelectingDeckForDelete(!isSelectingDeckForDelete);
-                    setIsSelectingDeckForEdit(false); // Turn off edit mode if turning on delete mode
+                    if (!isDeletingDeck) {
+                      console.log('Delete Decks button clicked');
+                      setIsSelectingDeckForDelete(!isSelectingDeckForDelete);
+                      setIsSelectingDeckForEdit(false); // Turn off edit mode if turning on delete mode
+                    }
                   }}
-                  title="Delete Decks"
+                  title={isDeletingDeck ? 'Cannot delete while deleting deck' : 'Delete Decks'}
                 >
                   <Trash2 size={20} />
                 </button>
@@ -834,8 +916,17 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
               {combinedDecks.sort((a, b) => a.name.localeCompare(b.name)).map((deck) => (
                 <div
                   key={deck.id}
-                  className="relative bg-gray-50 dark:bg-dark-100 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors cursor-pointer flex flex-col justify-between h-full"
+                  className={`relative p-6 rounded-lg shadow-sm border transition-colors flex flex-col justify-between h-full ${
+                    isDeletingDeck
+                      ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-60'
+                      : 'bg-gray-50 dark:bg-dark-100 border-gray-200 dark:border-dark-100 hover:border-emerald-500 dark:hover:border-emerald-500 cursor-pointer'
+                  }`}
                   onClick={(e) => {
+                    // Prevent any deck interactions during deletion
+                    if (isDeletingDeck) {
+                      return;
+                    }
+                    
                     console.log('Deck card clicked:', deck.name);
                     console.log('isSelectingDeckForEdit:', isSelectingDeckForEdit);
                     console.log('isSelectingDeckForDelete:', isSelectingDeckForDelete);
@@ -1000,6 +1091,61 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deletion Progress Modal */}
+      {isDeletingDeck && deckToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-dark-200 p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <div className="text-center">
+              <h3 className="text-xl font-bold mb-6 text-gray-800 dark:text-white">
+                Deleting "{deckToDelete.name}"
+              </h3>
+              
+              {/* Progress Bar */}
+              <div className="mb-6">
+                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <span>Progress</span>
+                  <span>
+                    {deletionProgress.total === 0 
+                      ? 'Empty deck' 
+                      : `${deletionProgress.deleted} / ${deletionProgress.total} cards`
+                    }
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                  <div 
+                    className="bg-red-600 h-3 rounded-full transition-all duration-300 ease-out"
+                    style={{ 
+                      width: deletionProgress.total > 0 
+                        ? `${(deletionProgress.deleted / deletionProgress.total) * 100}%` 
+                        : deletionStatus.includes('completed') ? '100%' : '0%'
+                    }}
+                  ></div>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  {deletionProgress.total > 0 
+                    ? `${Math.round((deletionProgress.deleted / deletionProgress.total) * 100)}%`
+                    : deletionStatus.includes('completed') ? '100%' : '0%'
+                  } complete
+                </div>
+              </div>
+
+              {/* Status Message */}
+              <div className="flex items-center justify-center mb-6">
+                <Loader2 className="w-6 h-6 animate-spin text-red-600 mr-3" />
+                <p className="text-gray-700 dark:text-gray-300">{deletionStatus}</p>
+              </div>
+
+              {/* Warning Message */}
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Please wait:</strong> Do not close this window or navigate away until deletion is complete.
+                </p>
+              </div>
             </div>
           </div>
         </div>

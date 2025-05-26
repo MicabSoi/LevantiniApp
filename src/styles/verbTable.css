@@ -1,0 +1,62 @@
+/* Verb table styles for template-rendered content */
+.verb-table {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.verb-table h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem 0;
+  color: #374151;
+  text-align: center;
+}
+
+.dark .verb-table h3 {
+  color: #f3f4f6;
+}
+
+.verb-conjugation-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.verb-conjugation-table td {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.dark .verb-conjugation-table td {
+  border-color: #4b5563;
+}
+
+.verb-conjugation-table tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.dark .verb-conjugation-table tr:nth-child(even) {
+  background-color: #1f2937;
+}
+
+.verb-conjugation-table tr:hover {
+  background-color: #f3f4f6;
+}
+
+.dark .verb-conjugation-table tr:hover {
+  background-color: #374151;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .verb-conjugation-table {
+    font-size: 0.75rem;
+  }
+  
+  .verb-conjugation-table td {
+    padding: 0.25rem;
+  }
+} 
