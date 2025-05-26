@@ -791,29 +791,22 @@ const StudySession: React.FC = () => {
       >
         {/* CardView and its sibling paragraph are direct children of this div */}
         {isVerbCard ? (
-          // For verb cards, always use the same CardView to maintain state
-          <div className={`${isAnswerVisible ? 'flex flex-col lg:flex-row lg:gap-8 lg:items-start' : ''}`}>
-            <div className={isAnswerVisible ? 'lg:w-1/2' : ''}>
-              <CardView
-                ref={cardViewRef}
-                card={cardForView}
-                onQualitySelect={onQualitySelect}
-                onAnswerShown={() => setIsAnswerVisible(true)}
-                selectedQuality={selectedQuality}
-                studyDirection={studySettings.study_direction}
-                showTransliteration={studySettings.show_transliteration}
-                separateConjugationTable={isAnswerVisible}
-              />
-              <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
-                Card {current + 1} of {dueCards.length}
-              </p>
-            </div>
-            {isAnswerVisible && (
-              <div className="lg:w-1/2 mt-6 lg:mt-0">
-                {cardViewRef.current?.getConjugationTable?.()}
-              </div>
-            )}
-          </div>
+          // For verb cards, show everything within the card for simplicity
+          <>
+            <CardView
+              ref={cardViewRef}
+              card={cardForView}
+              onQualitySelect={onQualitySelect}
+              onAnswerShown={() => setIsAnswerVisible(true)}
+              selectedQuality={selectedQuality}
+              studyDirection={studySettings.study_direction}
+              showTransliteration={studySettings.show_transliteration}
+              separateConjugationTable={false}
+            />
+            <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
+              Card {current + 1} of {dueCards.length}
+            </p>
+          </>
         ) : (
           // For non-verb cards, use normal layout
           <>
