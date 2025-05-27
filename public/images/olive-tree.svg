@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="currentColor">
+  <!-- Tree trunk -->
+  <path d="M200 380 Q195 350 190 320 Q185 290 190 260 Q195 230 200 200" stroke="currentColor" stroke-width="8" fill="none"/>
+  
+  <!-- Main branches -->
+  <path d="M200 200 Q170 180 150 160 Q130 140 120 120" stroke="currentColor" stroke-width="4" fill="none"/>
+  <path d="M200 200 Q230 180 250 160 Q270 140 280 120" stroke="currentColor" stroke-width="4" fill="none"/>
+  <path d="M200 200 Q180 170 160 150" stroke="currentColor" stroke-width="3" fill="none"/>
+  <path d="M200 200 Q220 170 240 150" stroke="currentColor" stroke-width="3" fill="none"/>
+  
+  <!-- Left side leaves clusters -->
+  <ellipse cx="120" cy="120" rx="15" ry="8" transform="rotate(-30 120 120)"/>
+  <ellipse cx="110" cy="130" rx="12" ry="6" transform="rotate(-45 110 130)"/>
+  <ellipse cx="130" cy="110" rx="14" ry="7" transform="rotate(-15 130 110)"/>
+  <ellipse cx="105" cy="140" rx="10" ry="5" transform="rotate(-60 105 140)"/>
+  <ellipse cx="135" cy="125" rx="13" ry="6" transform="rotate(-20 135 125)"/>
+  
+  <ellipse cx="140" cy="140" rx="16" ry="8" transform="rotate(-40 140 140)"/>
+  <ellipse cx="125" cy="150" rx="14" ry="7" transform="rotate(-55 125 150)"/>
+  <ellipse cx="155" cy="130" rx="15" ry="8" transform="rotate(-25 155 130)"/>
+  <ellipse cx="145" cy="155" rx="12" ry="6" transform="rotate(-45 145 155)"/>
+  
+  <ellipse cx="160" cy="150" rx="18" ry="9" transform="rotate(-35 160 150)"/>
+  <ellipse cx="170" cy="140" rx="16" ry="8" transform="rotate(-20 170 140)"/>
+  <ellipse cx="150" cy="165" rx="14" ry="7" transform="rotate(-50 150 165)"/>
+  <ellipse cx="175" cy="155" rx="15" ry="8" transform="rotate(-30 175 155)"/>
+  
+  <!-- Center-left leaves -->
+  <ellipse cx="180" cy="170" rx="17" ry="9" transform="rotate(-25 180 170)"/>
+  <ellipse cx="165" cy="180" rx="15" ry="8" transform="rotate(-40 165 180)"/>
+  <ellipse cx="190" cy="160" rx="16" ry="8" transform="rotate(-15 190 160)"/>
+  <ellipse cx="175" cy="185" rx="14" ry="7" transform="rotate(-35 175 185)"/>
+  
+  <!-- Center top leaves -->
+  <ellipse cx="200" cy="150" rx="18" ry="9" transform="rotate(0 200 150)"/>
+  <ellipse cx="190" cy="140" rx="16" ry="8" transform="rotate(-15 190 140)"/>
+  <ellipse cx="210" cy="140" rx="16" ry="8" transform="rotate(15 210 140)"/>
+  <ellipse cx="200" cy="130" rx="15" ry="8" transform="rotate(0 200 130)"/>
+  <ellipse cx="185" cy="155" rx="14" ry="7" transform="rotate(-20 185 155)"/>
+  <ellipse cx="215" cy="155" rx="14" ry="7" transform="rotate(20 215 155)"/>
+  
+  <!-- Center-right leaves -->
+  <ellipse cx="220" cy="170" rx="17" ry="9" transform="rotate(25 220 170)"/>
+  <ellipse cx="235" cy="180" rx="15" ry="8" transform="rotate(40 235 180)"/>
+  <ellipse cx="210" cy="160" rx="16" ry="8" transform="rotate(15 210 160)"/>
+  <ellipse cx="225" cy="185" rx="14" ry="7" transform="rotate(35 225 185)"/>
+  
+  <!-- Right side leaves clusters -->
+  <ellipse cx="280" cy="120" rx="15" ry="8" transform="rotate(30 280 120)"/>
+  <ellipse cx="290" cy="130" rx="12" ry="6" transform="rotate(45 290 130)"/>
+  <ellipse cx="270" cy="110" rx="14" ry="7" transform="rotate(15 270 110)"/>
+  <ellipse cx="295" cy="140" rx="10" ry="5" transform="rotate(60 295 140)"/>
+  <ellipse cx="265" cy="125" rx="13" ry="6" transform="rotate(20 265 125)"/>
+  
+  <ellipse cx="260" cy="140" rx="16" ry="8" transform="rotate(40 260 140)"/>
+  <ellipse cx="275" cy="150" rx="14" ry="7" transform="rotate(55 275 150)"/>
+  <ellipse cx="245" cy="130" rx="15" ry="8" transform="rotate(25 245 130)"/>
+  <ellipse cx="255" cy="155" rx="12" ry="6" transform="rotate(45 255 155)"/>
+  
+  <ellipse cx="240" cy="150" rx="18" ry="9" transform="rotate(35 240 150)"/>
+  <ellipse cx="230" cy="140" rx="16" ry="8" transform="rotate(20 230 140)"/>
+  <ellipse cx="250" cy="165" rx="14" ry="7" transform="rotate(50 250 165)"/>
+  <ellipse cx="225" cy="155" rx="15" ry="8" transform="rotate(30 225 155)"/>
+  
+  <!-- Additional scattered leaves for fullness -->
+  <ellipse cx="140" cy="100" rx="12" ry="6" transform="rotate(-35 140 100)"/>
+  <ellipse cx="260" cy="100" rx="12" ry="6" transform="rotate(35 260 100)"/>
+  <ellipse cx="200" cy="110" rx="14" ry="7" transform="rotate(0 200 110)"/>
+  <ellipse cx="160" cy="120" rx="11" ry="6" transform="rotate(-25 160 120)"/>
+  <ellipse cx="240" cy="120" rx="11" ry="6" transform="rotate(25 240 120)"/>
+  
+  <ellipse cx="115" cy="110" rx="10" ry="5" transform="rotate(-40 115 110)"/>
+  <ellipse cx="285" cy="110" rx="10" ry="5" transform="rotate(40 285 110)"/>
+  <ellipse cx="180" cy="130" rx="13" ry="7" transform="rotate(-10 180 130)"/>
+  <ellipse cx="220" cy="130" rx="13" ry="7" transform="rotate(10 220 130)"/>
+  
+  <!-- Lower leaves -->
+  <ellipse cx="170" cy="190" rx="14" ry="7" transform="rotate(-30 170 190)"/>
+  <ellipse cx="230" cy="190" rx="14" ry="7" transform="rotate(30 230 190)"/>
+  <ellipse cx="200" cy="180" rx="16" ry="8" transform="rotate(0 200 180)"/>
+  <ellipse cx="185" cy="195" rx="12" ry="6" transform="rotate(-20 185 195)"/>
+  <ellipse cx="215" cy="195" rx="12" ry="6" transform="rotate(20 215 195)"/>
+</svg> 

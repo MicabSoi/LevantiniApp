@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   LibraryBig,
@@ -52,7 +52,12 @@ import { LearnedWordsProvider } from './context/LearnedWordsContext';
 import { ProgressProvider, useProgress } from './context/ProgressContext';
 import { LessonProvider, useLessonContext, Lesson } from './context/LessonContext'; // Import Lesson type
 
-const AppContent: React.FC = () => {
+interface AppContentProps {
+  isDarkMode: boolean;
+  setIsDarkMode: (value: boolean) => void;
+}
+
+const AppContent: React.FC<AppContentProps> = ({ isDarkMode, setIsDarkMode }) => {
   const navigate = useNavigate();
   const { user } = useSupabase();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
@@ -76,11 +81,6 @@ const AppContent: React.FC = () => {
   console.log('AppContent - lessonProgress:', lessonProgress); // Debugging lessonProgress
 
   console.log('Current activeTab:', activeTab);
-
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => { // Explicitly type prev
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
-  });
 
   // Add last sub-tab memory for each tab
   const [lastLearnSubTab, setLastLearnSubTab] = useState('landing');
@@ -162,16 +162,10 @@ const AppContent: React.FC = () => {
     });
   }, [activeTab, subTab, homeSubTab, wordBankSubTab]);
 
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
+
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-dark-300">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-dark-300 dark:via-dark-300 dark:to-dark-200">
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-1 sm:px-4 sm:py-2 shadow-md dark:shadow-black/20">
         <div className="container mx-auto max-w-4xl flex justify-between items-center relative">
@@ -179,11 +173,9 @@ const AppContent: React.FC = () => {
           <div className="flex-shrink-0">
             <button
               onClick={() => {
-                setIsDarkMode((prev) => {
-                  const newMode = !prev;
-                  localStorage.setItem('darkMode', JSON.stringify(newMode));
-                  return newMode;
-                });
+                const newMode = !isDarkMode;
+                localStorage.setItem('darkMode', JSON.stringify(newMode));
+                setIsDarkMode(newMode);
               }}
               className="p-2 rounded-full bg-emerald-700 dark:bg-emerald-800 hover:bg-emerald-800 dark:hover:bg-emerald-900 transition-colors"
               aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
@@ -221,7 +213,7 @@ const AppContent: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-4 max-w-4xl mt-14 flex-grow">
+      <main className="container mx-auto p-6 max-w-4xl mt-14 flex-grow">
         <Routes>
           <Route path="/flashcard/:id" element={<FlashcardDetail />} />
           <Route path="/flashcard/:deckId/:cardId" element={<SingleFlashcardView />} />
@@ -233,82 +225,157 @@ const AppContent: React.FC = () => {
           <Route
             path="*"
             element={
-              <div className="bg-white dark:bg-dark-200 rounded-lg shadow-md mb-20 dark:text-gray-100 dark:shadow-black/10">
+              <div className="mb-20 dark:text-gray-100">
                 {activeTab === 'home' && (
-                  <div className="flex flex-col items-center justify-center min-h-[70vh] p-4">
-                    {/* Welcome and Quick Stats */}
-                    <div className="w-full flex flex-col items-center mb-8">
-                      <h2 className="text-2xl font-bold mb-2 text-emerald-700 dark:text-emerald-300 text-center">Progress</h2>
-                      <div className="flex flex-wrap justify-center gap-4 mt-2">
-                        <div className="flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                          <Star size={18} className="text-emerald-600 mr-2" />
-                          <span className="font-semibold text-emerald-800 dark:text-emerald-200">Level {userLevel}</span>
+                  <div className="space-y-6">
+                    {/* Hero Section with Welcome and Quick Stats */}
+                    <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-900/10 dark:via-dark-200 dark:to-emerald-900/5 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 dark:bg-emerald-900/20 rounded-full -translate-y-16 translate-x-16 opacity-50"></div>
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-200 dark:bg-emerald-800/20 rounded-full translate-y-12 -translate-x-12 opacity-30"></div>
+                      
+                      {/* OLIVE TREE IMAGE - Responsive size for different screens */}
+                      <div className="absolute -top-8 right-0 z-20 pointer-events-none select-none">
+                        <img 
+                          src="/images/ChatGPT Image May 27, 2025, 01_56_32 PM.png" 
+                          alt="Olive Tree" 
+                          className="w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 xl:w-72 xl:h-72 opacity-90 object-contain"
+                        />
+                      </div>
+                      
+                      <div className="relative z-10 flex">
+                        {/* Left side content - Welcome text */}
+                        <div className="w-2/3 pr-4">
+                          <div className="text-left mb-6">
+                            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 bg-gradient-to-r from-emerald-600 to-emerald-800 dark:from-emerald-400 dark:to-emerald-300 bg-clip-text text-transparent">
+                              Welcome Back!
+                            </h2>
+                            <p className="text-gray-600 dark:text-gray-400">
+                              {
+                                (() => {
+                                  const date = new Date();
+                                  const weekday = date.toLocaleString('en-US', { weekday: 'long' });
+                                  const dayOfMonth = date.getDate();
+                                  const month = date.toLocaleString('en-US', { month: 'long' });
+                                  const year = date.getFullYear();
+                                  return `${weekday} ${dayOfMonth} ${month} ${year}`;
+                                })()
+                              }
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-200 mr-2">🔥</span>
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-200">Streak: 5 days</span>
-                        </div>
-                        <div
-                          className="flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800 cursor-pointer"
-                          onClick={() => navigate('/study/run')}
-                        >
-                          <CalendarDays size={18} className="text-emerald-600 mr-2" />
-                          <span className="font-semibold text-emerald-800 dark:text-emerald-200">Due Reviews: {dueReviewsCount}</span>
+                        
+                        {/* Right side - Space for olive tree */}
+                        <div className="w-1/3"></div>
+                      </div>
+
+                      {/* Enhanced Progress Cards - Full width with proper spacing */}
+                      <div className="relative z-10 mt-8 md:mt-12 lg:mt-16">
+                        <div className="grid grid-cols-3 gap-3 mb-6">
+                          <div className="bg-white/80 dark:bg-dark-100/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-200/50 dark:border-emerald-700/30 text-center group hover:scale-105 transition-all duration-200">
+                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:shadow-lg transition-shadow">
+                              <Star size={18} className="text-white" />
+                            </div>
+                            <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">Level {userLevel}</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Current Level</div>
+                          </div>
+                          
+                          <div className="bg-white/80 dark:bg-dark-100/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-200/50 dark:border-emerald-700/30 text-center group hover:scale-105 transition-all duration-200">
+                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:shadow-lg transition-shadow">
+                              <span className="text-white font-bold text-sm">🔥</span>
+                            </div>
+                            <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">5 Days</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Streak</div>
+                          </div>
+                          
+                          <div 
+                            className="bg-white/80 dark:bg-dark-100/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-200/50 dark:border-emerald-700/30 text-center group hover:scale-105 transition-all duration-200 cursor-pointer"
+                            onClick={() => navigate('/study/run')}
+                          >
+                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:shadow-lg transition-shadow">
+                              <CalendarDays size={18} className="text-white" />
+                            </div>
+                            <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{dueReviewsCount}</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Due Reviews</div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Add Daily Words Section Here */}
-                    <div className="w-full max-w-md mb-8">
+                    {/* Daily Words Section - Enhanced */}
+                    <div className="bg-white dark:bg-dark-200 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-100 overflow-hidden">
                       <DailyWordsSection />
                     </div>
 
-                    {/* Grid of Home Options */}
-                    <div className="w-full max-w-md grid grid-cols-2 gap-4 mb-8">
-                      {[
-                        {
-                          id: 'dashboard',
-                          label: 'Dashboard',
-                          description: 'Your learning overview',
-                          icon: <Home size={28} className="text-emerald-600 mb-2 mx-auto" />,
-                        },
-                        {
-                          id: 'progress',
-                          label: 'Progress',
-                          description: 'Track your achievements and stats',
-                          icon: <Star size={28} className="text-emerald-600 mb-2 mx-auto" />,
-                        },
-                        {
-                          id: 'profile',
-                          label: 'Profile',
-                          description: 'Manage your personal information',
-                          icon: <User size={28} className="text-emerald-600 mb-2 mx-auto" />,
-                        },
-                        {
-                          id: 'settings',
-                          label: 'Settings',
-                          description: 'Configure app settings',
-                          icon: <GraduationCap size={28} className="text-emerald-600 mb-2 mx-auto" />,
-                        },
-                      ].map((option) => (
-                        <div
-                          key={option.id}
-                          onClick={() => setHomeSubTab(option.id)}
-                          className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 flex flex-col items-center text-center"
-                        >
-                          {option.icon}
-                          <h3 className="font-bold mb-1 text-gray-800 dark:text-gray-100">
-                            {option.label}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {option.description}
-                          </p>
-                        </div>
-                      ))}
+                    {/* Navigation Grid - Redesigned */}
+                    <div className="bg-white dark:bg-dark-200 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-dark-100">
+                      <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Quick Access</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          {
+                            id: 'dashboard',
+                            label: 'Dashboard',
+                            description: 'Your learning overview',
+                            icon: <Home size={24} className="text-emerald-600 dark:text-emerald-400" />,
+                            gradient: 'from-emerald-500 to-emerald-600',
+                            bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
+                            borderColor: 'border-emerald-200 dark:border-emerald-700/50'
+                          },
+                          {
+                            id: 'progress',
+                            label: 'Progress',
+                            description: 'Track achievements',
+                            icon: <Star size={24} className="text-emerald-600 dark:text-emerald-400" />,
+                            gradient: 'from-emerald-600 to-emerald-700',
+                            bgColor: 'bg-emerald-100 dark:bg-emerald-800/20',
+                            borderColor: 'border-emerald-300 dark:border-emerald-600/50'
+                          },
+                          {
+                            id: 'profile',
+                            label: 'Profile',
+                            description: 'Personal settings',
+                            icon: <User size={24} className="text-emerald-600 dark:text-emerald-400" />,
+                            gradient: 'from-emerald-400 to-emerald-500',
+                            bgColor: 'bg-emerald-50 dark:bg-emerald-900/15',
+                            borderColor: 'border-emerald-200 dark:border-emerald-700/40'
+                          },
+                          {
+                            id: 'settings',
+                            label: 'Settings',
+                            description: 'App configuration',
+                            icon: <GraduationCap size={24} className="text-emerald-600 dark:text-emerald-400" />,
+                            gradient: 'from-emerald-700 to-emerald-800',
+                            bgColor: 'bg-emerald-100 dark:bg-emerald-800/25',
+                            borderColor: 'border-emerald-300 dark:border-emerald-600/60'
+                          },
+                        ].map((option) => (
+                          <div
+                            key={option.id}
+                            onClick={() => setHomeSubTab(option.id)}
+                            className={`group relative overflow-hidden ${option.bgColor} ${option.borderColor} border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-1`}
+                          >
+                            <div className="flex flex-col items-center text-center space-y-3">
+                              <div className={`w-12 h-12 bg-gradient-to-br ${option.gradient} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}>
+                                {React.cloneElement(option.icon, { className: "text-white", size: 24 })}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                                  {option.label}
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-tight">
+                                  {option.description}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Hover effect overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Render content based on selected sub-tab */}
-                    <div className="w-full">
+                    {/* Content Area */}
+                    <div className="bg-white dark:bg-dark-200 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-100 overflow-hidden">
                       {homeSubTab === 'dashboard' && (
                         <HomePage setActiveTab={setActiveTab} />
                       )}
@@ -545,6 +612,14 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-300">
@@ -564,7 +639,7 @@ function App() {
           <LearnedWordsProvider>
             <ProgressProvider>
               <LessonProvider>
-                <AppContent />
+                <AppContent isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
               </LessonProvider>
             </ProgressProvider>
           </LearnedWordsProvider>

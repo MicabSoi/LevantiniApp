@@ -76,6 +76,22 @@
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
+
+  .font-arabic {
+    font-family: 'Amiri', Arial, sans-serif;
+  }
+
+  /* Enhanced backdrop blur support */
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Improved gradient text support */
+  .bg-clip-text {
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
 }
 
 @keyframes fadeIn {
