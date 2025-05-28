@@ -390,7 +390,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
   // Button group for conjugation editing actions - positioned near the top right
   const conjugationActionButtons = isVerbCard && isEditingConjugations && !showEditModal && (
-    <div className="absolute top-44 right-20 flex flex-col space-y-2 z-10"> {/* Position below header buttons, vertical flex */}
+    <div className="flex items-center space-x-2"> {/* Use flexbox for horizontal layout */}
       <button
         onClick={() => {
           setIsEditingConjugations(false);
@@ -420,56 +420,85 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
       {/* Apply dynamic width classes here */}
       <div className={`bg-white dark:bg-dark-200 p-6 rounded-lg shadow-lg relative ${modalWidthClasses}`}>
 
-        {/* Header button container for Close, Edit, and Delete - Adjusted right position */}
-        <div className="absolute top-4 right-12 flex items-center space-x-2"> {/* Changed right-8 to right-12 */}
-          {/* Edit Button */}
-          <button
-            className="text-emerald-600 dark:text-emerald-400 p-1 rounded-md"
-            onClick={handleEdit}
-            title="Edit Flashcard"
-          >
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit2"><path d="M16.474 3.526a2.121 2.121 0 0 1 3 3L7.5 18.5l-4 1 1-4 10.974-10.974Z"></path></svg>
-          </button>
-          {/* Delete Button */}
-          <button
-            className="text-red-600 dark:text-red-400 p-1 rounded-md"
-            onClick={() => setShowDeleteConfirm(true)}
-            title="Delete Flashcard"
-          >
-            <Trash2 size={18} />
-          </button>
-          {/* Close Button */}
-          {onClose && (
-            <button
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded-md"
-              onClick={onClose}
-              aria-label="Close"
-              title="Close"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-xcircle "><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
-            </button>
-          )}
-        </div>
-
-        {/* Inner content div - This div holds the scrollable content */}
-        {/* Let it fill its parent. No explicit width or centering classes here. */}
-        <div className="p-4 text-gray-900 dark:text-white max-h-[calc(80vh-6rem)] overflow-y-auto">
-          {/* max-h adjusted to account for padding and title/buttons above scrollable area */}
-
-          {/* ... existing back button (if applicable) ...*/}
+        {/* NEW: Fixed Header Section for Buttons and Back Button */}
+        {/* This div will not scroll and contains all top-level controls */}
+        <div className="flex justify-between items-start pb-4 border-b border-gray-200 dark:border-gray-700 mb-4">
+          {/* Back button (if applicable) - moved here */}
           {deckName && (
             <button
               onClick={() => {
                 navigate(`/flashcard/${deckId}`);
               }}
-              className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
+              className="text-emerald-600 dark:text-emerald-400 flex items-center"
             >
               ← Back to {deckName}
             </button>
           )}
+          {/* Placeholder div if no back button, to align buttons to the right */}
+          {!deckName && <div></div>}
 
-          {/* Actual card content (image, text, table) */}
-          <div className={`${flashcard.image_url ? 'mt-12' : ''}`}> {/* Removed relative pt-12 from here */}
+          {/* Right-aligned button group (Edit, Delete, Close) - moved here */}
+          {/* This div now sits naturally in the flex container, no need for absolute positioning here */}
+          <div className="flex items-center space-x-2">
+             {/* Conjugation action buttons (Cancel, Save) - conditionally rendered and positioned within this group */}
+            {isVerbCard && isEditingConjugations && !showEditModal && (
+              <div className="flex items-center space-x-2"> {/* Use flexbox for horizontal layout */}
+                <button
+                  onClick={() => {
+                    setIsEditingConjugations(false);
+                    setEditedConjugations([]); // Clear edits on cancel
+                  }}
+                  className="px-3 py-1 rounded bg-gray-500 hover:bg-gray-600 text-white text-sm transition-colors" // Smaller padding and text
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveChanges}
+                  className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 text-white text-sm transition-colors" // Smaller padding and text, text changed
+                >
+                  Save
+                </button>
+              </div>
+            )}
+
+            {/* Edit Button */} {/* Removed absolute positioning */}
+            <button
+              className="text-emerald-600 dark:text-emerald-400 p-1 rounded-md"
+              onClick={handleEdit}
+              title="Edit Flashcard"
+            >
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit2"><path d="M16.474 3.526a2.121 2.121 0 0 1 3 3L7.5 18.5l-4 1 1-4 10.974-10.974Z"></path></svg>
+            </button>
+            {/* Delete Button */} {/* Removed absolute positioning */}
+            <button
+              className="text-red-600 dark:text-red-400 p-1 rounded-md"
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete Flashcard"
+            >
+              <Trash2 size={18} />
+            </button>
+            {/* Close Button */}
+            {onClose && (
+              <button
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded-md"
+                onClick={onClose}
+                aria-label="Close"
+                title="Close"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-xcircle "><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Inner content div - This div holds the scrollable content */} {/* This div now starts below the header */}
+        {/* Let it fill its parent. No explicit width or centering classes here. */}
+        {/* Adjusted max-height to account for the new header */}
+        <div className="p-4 text-gray-900 dark:text-white max-h-[calc(80vh-10rem)] overflow-y-auto">
+          {/* max-h adjusted to account for padding, title/buttons above scrollable area, and new header height */}
+
+          {/* Actual card content (image, text, table) */} {/* Adjusted top margin */}
+          <div className={`${flashcard.image_url ? '' : 'mt-0'}`}> {/* Removed mt-12, adjusted based on image existence */}
             {/* Removed the old edit/delete button container from here */}
 
             {flashcard.image_url && (
@@ -962,8 +991,6 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
           </div>
         </div>
       )}
-
-      {conjugationActionButtons}
     </div>
   );
 };
