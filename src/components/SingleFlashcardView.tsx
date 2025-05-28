@@ -462,32 +462,32 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
             )}
 
             {/* Edit Button */} {/* Removed absolute positioning */}
-            <button
-              className="text-emerald-600 dark:text-emerald-400 p-1 rounded-md"
-              onClick={handleEdit}
-              title="Edit Flashcard"
-            >
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit2"><path d="M16.474 3.526a2.121 2.121 0 0 1 3 3L7.5 18.5l-4 1 1-4 10.974-10.974Z"></path></svg>
-            </button>
+          <button
+            className="text-emerald-600 dark:text-emerald-400 p-1 rounded-md"
+            onClick={handleEdit}
+            title="Edit Flashcard"
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit2"><path d="M16.474 3.526a2.121 2.121 0 0 1 3 3L7.5 18.5l-4 1 1-4 10.974-10.974Z"></path></svg>
+          </button>
             {/* Delete Button */} {/* Removed absolute positioning */}
+          <button
+            className="text-red-600 dark:text-red-400 p-1 rounded-md"
+            onClick={() => setShowDeleteConfirm(true)}
+            title="Delete Flashcard"
+          >
+            <Trash2 size={18} />
+          </button>
+          {/* Close Button */}
+          {onClose && (
             <button
-              className="text-red-600 dark:text-red-400 p-1 rounded-md"
-              onClick={() => setShowDeleteConfirm(true)}
-              title="Delete Flashcard"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded-md"
+              onClick={onClose}
+              aria-label="Close"
+              title="Close"
             >
-              <Trash2 size={18} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-xcircle "><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
             </button>
-            {/* Close Button */}
-            {onClose && (
-              <button
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded-md"
-                onClick={onClose}
-                aria-label="Close"
-                title="Close"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-xcircle "><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
-              </button>
-            )}
+          )}
           </div>
         </div>
 
@@ -732,7 +732,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                             }
                             const fields = currentConjugation.fields;
                             return (
-                              <tr key={`${row.id || idx}-past`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                            <tr key={`${row.id || idx}-past`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
                                 <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
                                   {isEditingConjugations ? (
                                     <input
@@ -764,7 +764,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                     />
                                   ) : (fields.past_tense?.transliteration || '-')}
                                 </td>
-                              </tr>
+                            </tr>
                             );
                           })}
                         </tbody>
@@ -795,7 +795,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                             }
                             const fields = currentConjugation.fields;
                             return (
-                              <tr key={`${row.id || idx}-present`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                            <tr key={`${row.id || idx}-present`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
                                 <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
                                   {isEditingConjugations ? (
                                     <input
@@ -827,7 +827,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                     />
                                   ) : (fields.present_tense?.transliteration || '-')}
                                 </td>
-                              </tr>
+                            </tr>
                             );
                           })}
                         </tbody>
@@ -860,8 +860,8 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                               return <tr key={`${row.id || idx}-imp`}><td colSpan={3}>Error: Data missing</td></tr>; // Or some other placeholder
                             }
                             const fields = currentConjugation.fields;
-                            return (
-                              <tr key={`${row.id || idx}-imp`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                              return (
+                                <tr key={`${row.id || idx}-imp`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
                                 <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
                                   {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
                                     <input
@@ -893,8 +893,8 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                     />
                                   ) : (impTrans)}
                                 </td>
-                              </tr>
-                            );
+                                </tr>
+                              );
                           })}
                         </tbody>
                       </table>
