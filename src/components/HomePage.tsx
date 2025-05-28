@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useLearnedWords } from '../context/LearnedWordsContext';
 import { supabase } from '../lib/supabaseClient';
+import HillsBackground from './HillsBackground';
 
 interface HomePageProps {
   setActiveTab: (tab: string) => void;
@@ -36,13 +37,13 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
   const todayWords = getTodayLearnedWords();
 
   const tabInfo = {
-    daily: { name: 'Daily Words', icon: Calendar, color: 'from-emerald-500 to-emerald-600', bgColor: 'bg-emerald-50 dark:bg-emerald-900/20' },
-    wordbank: { name: 'Vocabulary', icon: BookA, color: 'from-emerald-600 to-emerald-700', bgColor: 'bg-emerald-100 dark:bg-emerald-800/20' },
-    translate: { name: 'Translate', icon: Languages, color: 'from-emerald-400 to-emerald-500', bgColor: 'bg-emerald-50 dark:bg-emerald-900/15' },
-    dictionary: { name: 'Dictionary', icon: Search, color: 'from-emerald-700 to-emerald-800', bgColor: 'bg-emerald-100 dark:bg-emerald-800/25' },
-    alphabet: { name: 'Alphabet', icon: BookA, color: 'from-emerald-300 to-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-900/10' },
-    pronunciation: { name: 'Pronunciation', icon: Volume2, color: 'from-emerald-600 to-emerald-700', bgColor: 'bg-emerald-100 dark:bg-emerald-800/20' },
-    grammar: { name: 'Grammar', icon: AlignLeft, color: 'from-emerald-500 to-emerald-600', bgColor: 'bg-emerald-50 dark:bg-emerald-900/18' },
+    daily: { name: 'Daily Words', icon: Calendar },
+    wordbank: { name: 'Vocabulary', icon: BookA },
+    translate: { name: 'Translate', icon: Languages },
+    dictionary: { name: 'Dictionary', icon: Search },
+    alphabet: { name: 'Alphabet', icon: BookA },
+    pronunciation: { name: 'Pronunciation', icon: Volume2 },
+    grammar: { name: 'Grammar', icon: AlignLeft },
   };
 
   // Enhanced stats for the dashboard
@@ -50,31 +51,23 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
     {
       title: 'Words Learned Today',
       value: todayCount,
-      icon: <BookOpen className="text-white" />,
-      gradient: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
+      icon: <BookOpen className="text-emerald-600" />,
       onClick: () => setShowLearnedWords(!showLearnedWords),
     },
     {
       title: 'Current Streak',
       value: '3 days',
-      icon: <Flame className="text-white" />,
-      gradient: 'from-emerald-600 to-orange-500',
-      bgColor: 'bg-gradient-to-br from-emerald-50 to-orange-50 dark:from-emerald-900/20 dark:to-orange-900/20',
+      icon: <Flame className="text-emerald-600" />,
     },
     {
       title: 'Total Words',
       value: todayCount,
-      icon: <Target className="text-white" />,
-      gradient: 'from-emerald-400 to-emerald-500',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/15',
+      icon: <Target className="text-emerald-600" />,
     },
     {
       title: 'Study Time',
       value: '25 mins',
-      icon: <Clock className="text-white" />,
-      gradient: 'from-emerald-700 to-emerald-800',
-      bgColor: 'bg-emerald-100 dark:bg-emerald-800/25',
+      icon: <Clock className="text-emerald-600" />,
     },
   ];
 
@@ -92,7 +85,9 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
   };
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="relative min-h-screen">
+      <HillsBackground />
+      <div className="relative z-10 p-6 space-y-8">
       {/* Header Section */}
       <div className="flex justify-between items-center">
         <div>
@@ -113,14 +108,14 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className={`group relative overflow-hidden ${stat.bgColor} rounded-xl border border-gray-200 dark:border-dark-100 transition-all duration-300 hover:shadow-lg ${
-              index === 0 ? 'cursor-pointer hover:scale-[1.02]' : ''
+            className={`group relative overflow-hidden bg-gray-50 dark:bg-dark-100 rounded-lg border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 transition-colors duration-200 ${
+              index === 0 ? 'cursor-pointer' : ''
             }`}
             onClick={stat.onClick}
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <div className={`w-10 h-10 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}>
+                <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
                   {stat.icon}
                 </div>
                 {index === 0 && (
@@ -130,21 +125,18 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
                   />
                 )}
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
                 {stat.title}
               </p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{stat.value}</p>
             </div>
-            
-            {/* Hover effect overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
           </div>
         ))}
       </div>
 
       {/* Today's learned words section */}
       {showLearnedWords && (
-        <div className="bg-white dark:bg-dark-100 rounded-xl p-6 border border-gray-200 dark:border-dark-100 shadow-sm animate-fade-in">
+        <div className="bg-gray-50 dark:bg-dark-100 rounded-lg p-6 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 transition-colors duration-200 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Words Learned Today</h3>
             <button
@@ -160,12 +152,12 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
               {todayWords.map((word) => (
                 <div
                   key={word.id}
-                  className="group bg-gray-50 dark:bg-dark-200 border border-gray-200 dark:border-dark-100 rounded-lg p-4 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-200 dark:hover:border-emerald-700/50 transition-all duration-200"
+                  className="group bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 rounded-lg p-4 transition-colors duration-200"
                 >
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
                       <h4 className="font-semibold text-gray-800 dark:text-gray-100">{word.word}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 italic">
                         {word.transliteration}
                       </p>
                     </div>
@@ -180,10 +172,10 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-dark-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen size={24} className="text-gray-400" />
+              <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen size={24} className="text-emerald-600" />
               </div>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">No words learned today</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">No words learned today</p>
               <button 
                 onClick={() => setActiveTab('learn')}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
@@ -211,25 +203,23 @@ const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
             return (
               <button
                 key={tabId}
-                className={`group relative overflow-hidden ${tab.bgColor} border border-gray-200 dark:border-dark-100 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-left`}
+                className="group bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 rounded-lg p-4 transition-colors duration-200 text-left w-full"
                 onClick={() => setActiveTab(tabId)}
               >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 bg-gradient-to-br ${tab.color} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}>
-                      <Icon size={20} className="text-white" />
+                    <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+                      <Icon size={20} className="text-emerald-600" />
                     </div>
-                    <span className="font-medium text-gray-800 dark:text-gray-100">{tab.name}</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-100">{tab.name}</span>
                   </div>
                   <ChevronRight size={20} className="text-gray-400 dark:text-gray-500 group-hover:translate-x-1 transition-transform duration-200" />
                 </div>
-                
-                {/* Hover effect overlay */}
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
               </button>
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

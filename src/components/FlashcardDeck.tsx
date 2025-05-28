@@ -41,6 +41,8 @@ interface Flashcard {
     clozeText?: string;
     imageUrl?: string;
   };
+  reviews_count?: number;
+  repetition_count?: number;
 }
 
 interface Deck {
@@ -330,7 +332,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       setLoadingFlashcards(true);
       const { data, error } = await supabase
         .from('cards') // Assuming flashcards are stored in a 'cards' table
-        .select('*'); // Fetch all flashcards
+        .select('*, reviews(reviews_count, repetition_count)'); // Fetch all flashcards and join with reviews table to get review counts
 
       if (error) {
         console.error('Error loading all flashcards:', error);
@@ -807,12 +809,24 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                 {card.transliteration && (
                   <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">{card.transliteration}</p>
                 )}
-                {/* Optional: Display tags or other relevant info */}
+                {/* Display tags or other relevant info */}
                 {card.tags && card.tags.length > 0 && (
                   <div className="mt-2">
                     {card.tags.map(tag => (
                       <span key={tag} className="inline-block bg-gray-200 dark:bg-gray-700 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-300 mr-2">{tag}</span>
                     ))}
+                  </div>
+                )}
+                {/* Display Total Review Count */}
+                {card.reviews_count !== undefined && (
+                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Total Reviews: {card.reviews_count}
+                  </div>
+                )}
+                {/* Display Successful Repetitions (formerly repetition_count or streak) */}
+                {card.repetition_count !== undefined && (
+                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Successful Repetitions: {card.repetition_count}
                   </div>
                 )}
                  {/* Display the name of the deck the card belongs to */}

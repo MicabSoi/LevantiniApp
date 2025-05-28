@@ -69,6 +69,106 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
   const [editData, setEditData] = useState<Partial<Flashcard> | null>(null);
   const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
   const [allConjugations, setAllConjugations] = useState<any[]>([]);
+  const [isEditingConjugations, setIsEditingConjugations] = useState(false);
+  const [editedConjugations, setEditedConjugations] = useState<any[]>([]);
+
+  const handleConjugationInputChange = (
+    pronounIndex: number,
+    tense: 'past_tense' | 'present_tense' | 'imperative_tense',
+    field: 'english' | 'arabic' | 'transliteration',
+    value: string
+  ) => {
+    setEditedConjugations(prev => {
+      const newConjugations = JSON.parse(JSON.stringify(prev));
+      if (newConjugations[pronounIndex] && newConjugations[pronounIndex].fields) {
+        if (!newConjugations[pronounIndex].fields[tense]) {
+          newConjugations[pronounIndex].fields[tense] = {};
+        }
+        newConjugations[pronounIndex].fields[tense][field] = value;
+      }
+      return newConjugations;
+    });
+  };
+
+  const handleSaveChanges = async () => {
+    if (!flashcard) return;
+
+    // Transform editedConjugations back to the original flashcard.fields structure
+    const updatedFields: any = {
+      past: {},
+      present: {},
+      imperative: {},
+      word: (flashcard.fields as any)?.word // Preserve the original word field
+    };
+
+    const pronounKeys = ['i', 'you_m', 'you_f', 'you_pl', 'he', 'she', 'we', 'they'];
+
+    editedConjugations.forEach((conjugation, index) => {
+      const pronounKey = pronounKeys[index];
+      if (!pronounKey) return; // Should not happen if pronounOrder and editedConjugations align
+
+      if (conjugation.fields?.past_tense) {
+        updatedFields.past[pronounKey] = {
+          en: conjugation.fields.past_tense.english || '',
+          ar: conjugation.fields.past_tense.arabic || '',
+          tr: conjugation.fields.past_tense.transliteration || ''
+        };
+      }
+      if (conjugation.fields?.present_tense) {
+        updatedFields.present[pronounKey] = {
+          en: conjugation.fields.present_tense.english || '',
+          ar: conjugation.fields.present_tense.arabic || '',
+          tr: conjugation.fields.present_tense.transliteration || ''
+        };
+      }
+      // Imperative needs special handling for pronoun keys like 'kuli'
+      // For simplicity, this example assumes imperative might map differently or might not be fully editable this way
+      // This part needs to be aligned with how imperative is stored and keyed in `fields.imperative`
+      // For now, let's assume it maps to a pronounKey if it exists
+      if (conjugation.fields?.imperative_tense && updatedFields.imperative) {
+         updatedFields.imperative[pronounKey] = { // This line might need adjustment based on actual imperative keys
+          en: conjugation.fields.imperative_tense.english || '',
+          ar: conjugation.fields.imperative_tense.arabic || '',
+          tr: conjugation.fields.imperative_tense.transliteration || ''
+        };
+      }
+    });
+    
+    // Imperative special keys (kuli, kuli_pl) if they are outside the main pronoun loop
+    // This is a placeholder - needs to match how imperative is structured if 'kuli' and 'kuli_pl' are direct keys
+    const kuliImperative = editedConjugations.find(c => c.id.endsWith('-kuli'))?.fields?.imperative_tense;
+    if (kuliImperative && updatedFields.imperative) {
+        updatedFields.imperative.kuli = { en: kuliImperative.english, ar: kuliImperative.arabic, tr: kuliImperative.transliteration };
+    }
+    const kuliPlImperative = editedConjugations.find(c => c.id.endsWith('-kuli_pl'))?.fields?.imperative_tense;
+    if (kuliPlImperative && updatedFields.imperative) {
+        updatedFields.imperative.kuli_pl = { en: kuliPlImperative.english, ar: kuliPlImperative.arabic, tr: kuliPlImperative.transliteration };
+    }
+
+
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: updateError } = await supabase
+        .from('cards')
+        .update({ fields: updatedFields })
+        .eq('id', flashcard.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      setFlashcard(data as Flashcard); // Update local flashcard state
+      setAllConjugations(editedConjugations); // Update allConjugations to reflect saved changes
+      setIsEditingConjugations(false);
+      // console.log('Successfully saved conjugation changes:', data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save changes');
+      console.error('Error saving conjugation changes:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch card and deck data
   const fetchCardAndDeck = async () => {
@@ -121,9 +221,9 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
       
       console.log('🔍 Is verb card?', isVerbCard);
       console.log('🔍 Flashcard type:', flashcard.type);
-      console.log('🔍 Has past?', !!(flashcard as any).fields?.past);
-      console.log('🔍 Has present?', !!(flashcard as any).fields?.present);
-      console.log('🔍 Has word?', !!(flashcard as any).fields?.word);
+      console.log('🔍 Has past?', !!((flashcard as any).fields?.past));
+      console.log('🔍 Has present?', !!((flashcard as any).fields?.present));
+      console.log('🔍 Has word?', !!((flashcard as any).fields?.word));
       
       if (!isVerbCard) return;
 
@@ -184,8 +284,35 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
   const handleEdit = () => {
     if (!flashcard) return;
+    if (isVerbCard) {
+      // For verb cards, toggle inline conjugation editing mode
+      // instead of showing the main edit modal.
+      if (!isEditingConjugations) {
+        setEditedConjugations(JSON.parse(JSON.stringify(allConjugations)));
+        setIsEditingConjugations(true);
+      }
+      // If already editing conjugations, the pencil icon might do nothing or toggle off.
+      // For now, it primarily serves to enter edit mode if not already in it.
+      // The separate "Cancel" and "Save Conjugation Changes" buttons will handle exiting.
+    } else {
+      // For non-verb cards, show the main edit modal
     setEditData(flashcard);
     setShowEditModal(true);
+    }
+  };
+
+  const handleToggleEditConjugations = () => {
+    if (!isVerbCard) return;
+    if (isEditingConjugations) {
+      // "Cancel" button clicked
+      setIsEditingConjugations(false);
+      setEditedConjugations([]); // Clear edits on cancel
+    } else {
+      // This case should now primarily be handled by handleEdit for verb cards
+      // or if there was a dedicated "Edit Conjugations" button still desired.
+      setEditedConjugations(JSON.parse(JSON.stringify(allConjugations)));
+      setIsEditingConjugations(true);
+    }
   };
 
   const handleDelete = async () => {
@@ -261,6 +388,27 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
     }
   };
 
+  // Button group for conjugation editing actions - positioned near the top right
+  const conjugationActionButtons = isVerbCard && isEditingConjugations && !showEditModal && (
+    <div className="absolute top-44 right-20 flex flex-col space-y-2 z-10"> {/* Position below header buttons, vertical flex */}
+      <button
+        onClick={() => {
+          setIsEditingConjugations(false);
+          setEditedConjugations([]); // Clear edits on cancel
+        }}
+        className="px-3 py-1 rounded bg-gray-500 hover:bg-gray-600 text-white text-sm transition-colors" // Smaller padding and text
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleSaveChanges}
+        className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 text-white text-sm transition-colors" // Smaller padding and text, text changed
+      >
+        Save
+      </button>
+    </div>
+  );
+
   return (
     // Outer modal overlay and container
     // This div provides the backdrop and centers the modal. The p-4 adds some padding.
@@ -335,7 +483,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
             {/* Verb-specific display: show all conjugations in a table */}
             {isVerbCard && allConjugations.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-4 mt-4"> {/* Add some top margin if needed after removing button group */}
                                 <div className="text-left">
                   <h1 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
                      {(() => {
@@ -413,17 +561,115 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                           const impEng = (row.fields as any)?.imperative_tense?.english || '-';
                           const impArb = (row.fields as any)?.imperative_tense?.arabic || '-';
                           const impTrans = (row.fields as any)?.imperative_tense?.transliteration || '-';
+                          
+                          const currentConjugation = isEditingConjugations ? editedConjugations[idx] : row;
+                          if (!currentConjugation || !currentConjugation.fields) {
+                            // console.error("Missing conjugation data for row:", idx, currentConjugation, isEditingConjugations, editedConjugations);
+                            return <tr key={row.id || idx}><td colSpan={9}>Error: Data missing</td></tr>; // Or some other placeholder
+                          }
+                          const fields = currentConjugation.fields;
+
                           return (
                             <tr key={row.id || idx} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.past_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.past_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.past_tense?.transliteration || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.present_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.present_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.present_tense?.transliteration || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{impEng}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{impArb}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{impTrans}</td>
+                              {/* Past Tense */}
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                {isEditingConjugations ? (
+                                  <input
+                                    type="text"
+                                    value={fields.past_tense?.english || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'past_tense', 'english', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                  />
+                                ) : (fields.past_tense?.english || '-')}
+                              </td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                                {isEditingConjugations ? (
+                                  <input
+                                    type="text"
+                                    value={fields.past_tense?.arabic || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'past_tense', 'arabic', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    dir="rtl"
+                                  />
+                                ) : (fields.past_tense?.arabic || '-')}
+                              </td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                                {isEditingConjugations ? (
+                                  <input
+                                    type="text"
+                                    value={fields.past_tense?.transliteration || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'past_tense', 'transliteration', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                  />
+                                ) : (fields.past_tense?.transliteration || '-')}
+                              </td>
+
+                              {/* Present Tense */}
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                {isEditingConjugations ? (
+                                  <input
+                                    type="text"
+                                    value={fields.present_tense?.english || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'present_tense', 'english', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                  />
+                                ) : (fields.present_tense?.english || '-')}
+                              </td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                                {isEditingConjugations ? (
+                                  <input
+                                    type="text"
+                                    value={fields.present_tense?.arabic || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'present_tense', 'arabic', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    dir="rtl"
+                                  />
+                                ) : (fields.present_tense?.arabic || '-')}
+                              </td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                                {isEditingConjugations ? (
+                                  <input
+                                    type="text"
+                                    value={fields.present_tense?.transliteration || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'present_tense', 'transliteration', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                  />
+                                ) : (fields.present_tense?.transliteration || '-')}
+                              </td>
+
+                              {/* Imperative Tense - Note: Imperative usually only applies to "You" forms. */}
+                              {/* This example makes all imperative cells editable; adjust logic if needed. */}
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                 {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
+                                  <input
+                                    type="text"
+                                    value={fields.imperative_tense?.english || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'imperative_tense', 'english', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                  />
+                                ) : (impEng)}
+                              </td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                                {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
+                                  <input
+                                    type="text"
+                                    value={fields.imperative_tense?.arabic || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'imperative_tense', 'arabic', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    dir="rtl"
+                                  />
+                                ) : (impArb)}
+                              </td>
+                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                                {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
+                                  <input
+                                    type="text"
+                                    value={fields.imperative_tense?.transliteration || ''}
+                                    onChange={(e) => handleConjugationInputChange(idx, 'imperative_tense', 'transliteration', e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                  />
+                                ) : (impTrans)}
+                              </td>
                             </tr>
                           );
                         })}
@@ -436,10 +682,12 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                 <div className="block md:hidden space-y-6">
                   {/* Past Tense Table */}
                   <div>
-                    <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Past</h2>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                         <thead>
+                          <tr className="bg-gray-100 dark:bg-dark-100">
+                            <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>Past</th>
+                          </tr>
                           <tr className="bg-gray-50 dark:bg-dark-200">
                             <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
                             <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
@@ -447,13 +695,49 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                           </tr>
                         </thead>
                         <tbody>
-                          {allConjugations.map((row, idx) => (
-                            <tr key={`${row.id || idx}-past`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.past_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.past_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.past_tense?.transliteration || '-'}</td>
-                            </tr>
-                          ))}
+                          {allConjugations.map((row, idx) => {
+                            const currentConjugation = isEditingConjugations ? editedConjugations[idx] : row;
+                            if (!currentConjugation || !currentConjugation.fields) {
+                              // console.error("Missing conjugation data for row:", idx, currentConjugation, isEditingConjugations, editedConjugations);
+                              return <tr key={`${row.id || idx}-past`}><td colSpan={3}>Error: Data missing</td></tr>; // Or some other placeholder
+                            }
+                            const fields = currentConjugation.fields;
+                            return (
+                              <tr key={`${row.id || idx}-past`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                  {isEditingConjugations ? (
+                                    <input
+                                      type="text"
+                                      value={fields.past_tense?.english || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'past_tense', 'english', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    />
+                                  ) : (fields.past_tense?.english || '-')}
+                                </td>
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                                  {isEditingConjugations ? (
+                                    <input
+                                      type="text"
+                                      value={fields.past_tense?.arabic || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'past_tense', 'arabic', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                      dir="rtl"
+                                    />
+                                  ) : (fields.past_tense?.arabic || '-')}
+                                </td>
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                                  {isEditingConjugations ? (
+                                    <input
+                                      type="text"
+                                      value={fields.past_tense?.transliteration || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'past_tense', 'transliteration', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    />
+                                  ) : (fields.past_tense?.transliteration || '-')}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -461,10 +745,12 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
                   {/* Present Tense Table */}
                   <div>
-                    <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Present</h2>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                         <thead>
+                          <tr className="bg-gray-100 dark:bg-dark-100">
+                            <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>Present</th>
+                          </tr>
                           <tr className="bg-gray-50 dark:bg-dark-200">
                             <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
                             <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
@@ -472,13 +758,49 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                           </tr>
                         </thead>
                         <tbody>
-                          {allConjugations.map((row, idx) => (
-                            <tr key={`${row.id || idx}-present`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{(row.fields as any)?.present_tense?.english || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{(row.fields as any)?.present_tense?.arabic || '-'}</td>
-                              <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{(row.fields as any)?.present_tense?.transliteration || '-'}</td>
-                            </tr>
-                          ))}
+                          {allConjugations.map((row, idx) => {
+                            const currentConjugation = isEditingConjugations ? editedConjugations[idx] : row;
+                            if (!currentConjugation || !currentConjugation.fields) {
+                              // console.error("Missing conjugation data for row:", idx, currentConjugation, isEditingConjugations, editedConjugations);
+                              return <tr key={`${row.id || idx}-present`}><td colSpan={3}>Error: Data missing</td></tr>; // Or some other placeholder
+                            }
+                            const fields = currentConjugation.fields;
+                            return (
+                              <tr key={`${row.id || idx}-present`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                  {isEditingConjugations ? (
+                                    <input
+                                      type="text"
+                                      value={fields.present_tense?.english || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'present_tense', 'english', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    />
+                                  ) : (fields.present_tense?.english || '-')}
+                                </td>
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                                  {isEditingConjugations ? (
+                                    <input
+                                      type="text"
+                                      value={fields.present_tense?.arabic || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'present_tense', 'arabic', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                      dir="rtl"
+                                    />
+                                  ) : (fields.present_tense?.arabic || '-')}
+                                </td>
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                                  {isEditingConjugations ? (
+                                    <input
+                                      type="text"
+                                      value={fields.present_tense?.transliteration || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'present_tense', 'transliteration', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    />
+                                  ) : (fields.present_tense?.transliteration || '-')}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -486,10 +808,12 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
 
                   {/* Imperative Table */}
                   <div>
-                    <h2 className="text-md font-bold text-center text-gray-900 dark:text-white mb-3">Imperative</h2>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border border-gray-300 dark:border-gray-600 text-sm">
                         <thead>
+                          <tr className="bg-gray-100 dark:bg-dark-100">
+                            <th className="px-2 py-2 border dark:border-gray-600 text-center font-bold" colSpan={3}>Imperative</th>
+                          </tr>
                           <tr className="bg-gray-50 dark:bg-dark-200">
                             <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">English</th>
                             <th className="px-2 py-1 border dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300">Arabic</th>
@@ -501,17 +825,47 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                             const impEng = (row.fields as any)?.imperative_tense?.english || '-';
                             const impArb = (row.fields as any)?.imperative_tense?.arabic || '-';
                             const impTrans = (row.fields as any)?.imperative_tense?.transliteration || '-';
-                            // Only show row if at least one imperative field is not '-'
-                            if (impEng !== '-' || impArb !== '-' || impTrans !== '-') {
-                              return (
-                                <tr key={`${row.id || idx}-imp`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
-                                  <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">{impEng}</td>
-                                  <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">{impArb}</td>
-                                  <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">{impTrans}</td>
-                                </tr>
-                              );
+                            const currentConjugation = isEditingConjugations ? editedConjugations[idx] : row;
+                            if (!currentConjugation || !currentConjugation.fields) {
+                              // console.error("Missing conjugation data for row:", idx, currentConjugation, isEditingConjugations, editedConjugations);
+                              return <tr key={`${row.id || idx}-imp`}><td colSpan={3}>Error: Data missing</td></tr>; // Or some other placeholder
                             }
-                            return null;
+                            const fields = currentConjugation.fields;
+                            return (
+                              <tr key={`${row.id || idx}-imp`} className="hover:bg-gray-50 dark:hover:bg-dark-100">
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                  {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
+                                    <input
+                                      type="text"
+                                      value={fields.imperative_tense?.english || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'imperative_tense', 'english', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    />
+                                  ) : (impEng)}
+                                </td>
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-900 dark:text-white" dir="rtl">
+                                  {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
+                                    <input
+                                      type="text"
+                                      value={fields.imperative_tense?.arabic || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'imperative_tense', 'arabic', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                      dir="rtl"
+                                    />
+                                  ) : (impArb)}
+                                </td>
+                                <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
+                                  {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
+                                    <input
+                                      type="text"
+                                      value={fields.imperative_tense?.transliteration || ''}
+                                      onChange={(e) => handleConjugationInputChange(idx, 'imperative_tense', 'transliteration', e.target.value)}
+                                      className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
+                                    />
+                                  ) : (impTrans)}
+                                </td>
+                              </tr>
+                            );
                           })}
                         </tbody>
                       </table>
@@ -608,6 +962,8 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
           </div>
         </div>
       )}
+
+      {conjugationActionButtons}
     </div>
   );
 };

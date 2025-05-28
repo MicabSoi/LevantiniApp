@@ -40,7 +40,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   const { id: deckId } = useParams<{ id: string }>();
   const [deck, setDeck] = useState<Deck | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
-  const [reviewCounts, setReviewCounts] = useState<{ [cardId: string]: number }>({});
+  const [reviewStats, setReviewStats] = useState<{ [cardId: string]: { reviews_count: number, repetition_count: number } }>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -141,16 +141,19 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       if (cardIds.length > 0) {
         const { data: reviewData, error: reviewError } = await supabase
           .from('reviews')
-          .select('card_id, reviews_count')
+          .select('card_id, reviews_count, repetition_count')
           .in('card_id', cardIds);
         if (!reviewError && reviewData) {
-          const counts: { [cardId: string]: number } = {};
-          reviewData.forEach((row: { card_id: string, reviews_count: number }) => {
-            if (!counts[row.card_id] || row.reviews_count > counts[row.card_id]) {
-              counts[row.card_id] = row.reviews_count;
+          const stats: { [cardId: string]: { reviews_count: number, repetition_count: number } } = {};
+          reviewData.forEach((row: { card_id: string, reviews_count: number, repetition_count: number }) => {
+            if (!stats[row.card_id] || row.reviews_count > stats[row.card_id]?.reviews_count) {
+              stats[row.card_id] = {
+                reviews_count: row.reviews_count,
+                repetition_count: row.repetition_count
+              };
             }
           });
-          setReviewCounts(counts);
+          setReviewStats(stats);
         }
       }
     }
@@ -305,9 +308,13 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
             valA = (displayDataA_tr.transliteration || '').toLowerCase();
             valB = (displayDataB_tr.transliteration || '').toLowerCase();
             break;
-          case 'reviewCount':
-            valA = reviewCounts[a.id] || 0;
-            valB = reviewCounts[b.id] || 0;
+          case 'totalReviews':
+            valA = reviewStats[a.id]?.reviews_count || 0;
+            valB = reviewStats[b.id]?.reviews_count || 0;
+            break;
+          case 'successfulRepetitions':
+            valA = reviewStats[a.id]?.repetition_count || 0;
+            valB = reviewStats[b.id]?.repetition_count || 0;
             break;
           case 'createdAt':
             valA = new Date(a.metadata?.createdAt || 0).getTime();
@@ -327,7 +334,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
       });
     }
     return sortableItems;
-  }, [filteredFlashcards, sortConfig, reviewCounts, deck]);
+  }, [filteredFlashcards, sortConfig, reviewStats, deck]);
 
   // Handler to open edit modal (now using FlashcardForm)
   const handleEditFlashcardClick = (card: Flashcard) => {
@@ -481,15 +488,18 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
               {sortConfig.key === 'transliteration' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
             </button>
           </div>
-          <button onClick={() => requestSort('reviewCount')} className="col-span-2 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
-            Review count
-            {sortConfig.key === 'reviewCount' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+          <button onClick={() => requestSort('totalReviews')} className="col-span-2 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
+            Total Reviews
+            {sortConfig.key === 'totalReviews' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
           </button>
-          <button onClick={() => requestSort('createdAt')} className="col-span-3 text-center md:text-right flex items-center justify-center md:justify-end hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
-            Date created
+          <button onClick={() => requestSort('successfulRepetitions')} className="col-span-2 text-center flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0">
+            Review Streak
+            {sortConfig.key === 'successfulRepetitions' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
+          </button>
+          <button onClick={() => requestSort('createdAt')} className="col-span-3 text-center md:text-right flex items-center justify-center md:justify-end hover:text-emerald-600 dark:hover:text-emerald-400 py-1 md:py-0 pr-4">
+            Date Created
             {sortConfig.key === 'createdAt' && <ArrowUpDown size={14} className={`ml-1 ${sortConfig.direction === 'desc' ? 'transform rotate-180' : ''}`} />}
           </button>
-          <div className="col-span-2 text-center flex items-center justify-center py-1 md:py-0">Media</div>
         </div>
       )}
 
@@ -498,7 +508,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
           No flashcards in this deck yet.
         </div>
       ) : (
-        <div className="flex flex-col h-[60vh] overflow-y-auto mt-4">
+        <div className="flex flex-col mt-4">
           {sortedFlashcards.map((card) => {
             const displayData = parseVerbCardDisplay(card);
             return (
@@ -518,11 +528,20 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                 )}
               </div>
               <div className="col-span-2 text-center">
-                {deckType === 'user' && typeof reviewCounts[card.id] !== 'undefined' && reviewCounts[card.id] > 0 ? (
-                  <span className="text-gray-700 dark:text-white">{reviewCounts[card.id]}</span>
+                {deckType === 'user' && reviewStats[card.id]?.reviews_count > 0 ? (
+                  <span className="text-gray-700 dark:text-white">{reviewStats[card.id].reviews_count}</span>
+                ) : <span className="text-gray-500 dark:text-gray-400">-</span>}
+              </div>
+              <div className="col-span-2 text-center">
+                {deckType === 'user' && typeof reviewStats[card.id]?.repetition_count === 'number' ? (
+                  reviewStats[card.id].repetition_count > 0 ? (
+                    <span className="text-gray-700 dark:text-white">{reviewStats[card.id].repetition_count}</span>
+                  ) : (
+                    <span className="text-gray-500 dark:text-gray-400">-</span>
+                  )
                 ) : '-'}
               </div>
-              <div className="col-span-3 text-sm text-gray-500 dark:text-gray-400 text-center md:text-right">
+              <div className="col-span-3 text-sm text-gray-500 dark:text-gray-400 text-center md:text-right pr-4">
                 {card.metadata?.createdAt ? (() => {
                   const date = new Date(card.metadata.createdAt);
                   const day = String(date.getDate()).padStart(2, '0');
@@ -532,11 +551,6 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
                   const year = String(date.getFullYear()).slice(-2);
                   return `${day}-${month}-${year}`;
                 })() : ''}
-              </div>
-              <div className="col-span-2 flex items-center justify-center">
-                {(card.image_url || card.audio_url) ? (
-                  <CheckCircle2 className="text-emerald-500" size={22} />
-                ) : null}
               </div>
             </div>
             );
