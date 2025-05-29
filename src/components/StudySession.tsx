@@ -903,7 +903,7 @@ const StudySession: React.FC = () => {
         {/* Settings/Exit bottom right */}
         <div className="flex space-x-2" style={{ position: 'absolute', right: '1.5rem' }}>
           <button
-            className="p-3 rounded-full shadow-lg transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-600 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-gray-200"
+            className="p-3 rounded-full shadow-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-gray-200"
             onClick={() => setShowSettingsModal(true)}
             aria-label="Settings"
           >

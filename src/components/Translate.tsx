@@ -3,6 +3,8 @@ import { Send, Volume2, Settings, X, Check, Loader2, FolderPlus, Plus, HelpCircl
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useSupabase } from '../context/SupabaseContext';
 import { supabase } from '../lib/supabaseClient';
+import { useSettings } from '../contexts/SettingsContext';
+import { formatArabicText } from '../utils/arabicUtils';
 
 // Define the translation result type
 interface TranslationResult {
@@ -76,8 +78,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
   const [showDiacriticsSettingsModal, setShowDiacriticsSettingsModal] = useState(false);
-  const [showDiacritics, setShowDiacritics] = useState(true);
-  const [modalShowDiacriticsState, setModalShowDiacriticsState] = useState(showDiacritics);
+  const { translationShowDiacritics, setTranslationShowDiacritics } = useSettings();
+  const [modalShowDiacriticsState, setModalShowDiacriticsState] = useState(translationShowDiacritics);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAddToDeckModal, setShowAddToDeckModal] = useState(false);
@@ -99,18 +101,6 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   const saveSettingsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-  // Helper function to remove diacritics
-  const removeDiacritics = (text: string): string => {
-    if (!text) return '';
-    // Regex for common Arabic diacritics (Fatha, Damma, Kasra, Tanweens, Shadda, Sukun, Dagger Alif)
-    return text.replace(/[ً-ْٰ]/g, '');
-  };
-
-  const arabicTextToShow = (text: string | undefined | null): string => {
-    if (!text) return '';
-    return showDiacritics ? text : removeDiacritics(text);
-  };
 
   const translateWithGemini = async (text: string, contextText: string) => {
     console.log('translateWithGemini called with text:', text, 'and context:', contextText);
@@ -447,93 +437,17 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
     };
   }, [showDiacriticsSettingsModal, showQuestionInput, showAddToDeckModal]); // Re-run effect if modal states change
 
-  // Effect to LOAD user-specific settings when the user changes
-  useEffect(() => {
-    const loadSettings = async () => {
-      if (user) {
-        setIsLoading(true); // Indicate loading of settings
-        try {
-          const { data, error: fetchUserError } = await supabase.auth.getUser();
-          if (fetchUserError) {
-            console.error('Error fetching user for settings:', fetchUserError);
-            setShowDiacritics(true); // Default on error
-            return;
-          }
-          if (data?.user?.user_metadata) {
-            const userMetadata = data.user.user_metadata;
-            if (userMetadata.translateSettings !== undefined && userMetadata.translateSettings.showDiacritics !== undefined) {
-              const storedSetting = userMetadata.translateSettings.showDiacritics;
-              setShowDiacritics(currentSetting => currentSetting !== storedSetting ? storedSetting : currentSetting);
-            } else {
-              setShowDiacritics(true); // Default if not set in metadata
-            }
-          } else {
-             setShowDiacritics(true); // Default if no metadata
-          }
-        } catch (e) {
-            console.error("Error in loadSettings:", e);
-            setShowDiacritics(true); // Fallback default
-        } finally {
-            setIsLoading(false); // Done loading settings
-        }
-      } else {
-         // If user logs out, reset settings state to default (true)
-         setShowDiacritics(true);
-      }
-    };
-
-    loadSettings();
-  }, [user]); // Depend on user to load settings
-
-  // Debounced function to SAVE settings to Supabase
-  const saveDiacriticsSettingToSupabase = async (newSettingValue: boolean) => {
-    if (!user) return;
-
-    // Clear any existing timeout
-    if (saveSettingsTimeoutRef.current) {
-      clearTimeout(saveSettingsTimeoutRef.current);
-    }
-
-    // Set a new timeout
-    saveSettingsTimeoutRef.current = setTimeout(async () => {
-      try {
-        const { data: userData, error: fetchError } = await supabase.auth.getUser(); // Get fresh user data
-        if (fetchError) {
-           console.error('Error fetching user before saving settings:', fetchError);
-           return;
-        }
-
-        const existingMetadata = userData?.user?.user_metadata || {};
-        const newMetadata = {
-            ...existingMetadata,
-            translateSettings: { ...existingMetadata.translateSettings, showDiacritics: newSettingValue }
-        };
-
-        const { error: updateError } = await supabase.auth.updateUser({ data: newMetadata });
-        if (updateError) {
-          console.error('Error saving diacritics setting to Supabase:', updateError);
-        } else {
-          console.log('Diacritics setting saved to Supabase:', newSettingValue);
-        }
-      } catch (e) {
-          console.error("Error in saveDiacriticsSettingToSupabase:", e);
-      }
-    }, 1000); // 1-second debounce
-  };
-
   // Handler for opening the settings modal
   const handleOpenSettingsModal = () => {
     // Initialize modal state with current main state
-    setModalShowDiacriticsState(showDiacritics);
+    setModalShowDiacriticsState(translationShowDiacritics);
     setShowDiacriticsSettingsModal(true);
   };
 
   // Handler for saving changes from the modal
   const handleSaveSettings = () => {
     // Update main state with modal state
-    setShowDiacritics(modalShowDiacriticsState);
-    // Trigger debounced save to Supabase
-    saveDiacriticsSettingToSupabase(modalShowDiacriticsState);
+    setTranslationShowDiacritics(modalShowDiacriticsState);
     // Close modal
     setShowDiacriticsSettingsModal(false);
   };
@@ -705,7 +619,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
         <h2 className="text-xl font-bold">Translate</h2>
         <button
           onClick={handleOpenSettingsModal}
-          className="p-2 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           aria-label="Display Settings"
         >
           <Settings size={22} />
@@ -791,7 +705,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             <div>
               {/* Display English word/phrase */}
               <p className="font-medium text-gray-800 dark:text-gray-200 mb-1">{result.english}</p>
-              <h3 className="font-bold text-lg">{arabicTextToShow(result.arabic)}</h3>
+              <h3 className="font-bold text-lg">{formatArabicText(result.arabic, translationShowDiacritics)}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
                 {result.transliteration}
               </p>
@@ -799,20 +713,50 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             {result.audioUrl && (
               <button
                 onClick={() => playAudio(result.audioUrl)}
-                className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-700"
+                className="mt-2 p-2 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+                aria-label="Play audio"
               >
-                <Volume2 size={18} />
+                <Volume2 size={20} />
               </button>
             )}
           </div>
 
+          {/* Display Context / Example Sentence */}
           {result.arabicSentence && (
             <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-700">
               <p className="font-medium">In context:</p>
-              <p className="text-lg mt-1">{arabicTextToShow(result.arabicSentence)}</p>
+              <p className="text-lg mt-1">{formatArabicText(result.arabicSentence, translationShowDiacritics)}</p>
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 {result.transliterationSentence}
               </p>
+            </div>
+          )}
+
+          {/* Context or Example Arabic Translation */}
+          {result.contextArabic && result.contextArabic.trim().length > 0 && (
+            <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-700">
+              <p className="font-medium">Context translated:</p>
+              <div className="bg-gray-50 dark:bg-dark-200 p-3 rounded-lg mt-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="text-gray-800 dark:text-gray-200">{result.context}</p>
+                    <div className="mt-2">
+                      {result.contextArabic && (
+                          <>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              {formatArabicText(result.contextArabic, translationShowDiacritics)}
+                            </p>
+                            {result.contextTransliteration && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {result.contextTransliteration}
+                              </p>
+                            )}
+                          </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -854,7 +798,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                         {item.contextArabic && (
                           <>
                             <p className="text-sm text-gray-600 dark:text-gray-300">
-                              {arabicTextToShow(item.contextArabic)}
+                              {formatArabicText(item.contextArabic, translationShowDiacritics)}
                             </p>
                             {item.contextTransliteration && (
                               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -867,7 +811,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{arabicTextToShow(item.arabic)}</p>
+                    <p className="font-bold">{formatArabicText(item.arabic, translationShowDiacritics)}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {item.transliteration}
                     </p>
@@ -982,7 +926,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             <div className="mb-4">
               <p className="text-gray-700 dark:text-gray-300 mb-2">Translation:</p>
               <p className="font-medium text-lg mb-1">{selectedTranslationForQuestion.english}</p>
-              <p className="font-bold text-lg mb-1">{arabicTextToShow(selectedTranslationForQuestion.arabic)}</p>
+              <p className="font-bold text-lg mb-1">{formatArabicText(selectedTranslationForQuestion.arabic, translationShowDiacritics)}</p>
               {selectedTranslationForQuestion.transliteration && (
                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{selectedTranslationForQuestion.transliteration}</p>
               )}
@@ -1041,7 +985,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             </div>
 
             <p className="text-gray-700 dark:text-gray-300 mb-4">
-              Translation: <strong>{translationItemToAdd.english}</strong> - <strong>{arabicTextToShow(translationItemToAdd.arabic)}</strong>
+              Translation: <strong>{translationItemToAdd.english}</strong> - <strong>{formatArabicText(translationItemToAdd.arabic, translationShowDiacritics)}</strong>
             </p>
 
             {/* Existing Decks */}

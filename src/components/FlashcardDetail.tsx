@@ -5,6 +5,8 @@ import { Loader2, Volume2, Edit2, Trash2, XCircle, CheckCircle2, Plus, ArrowUpDo
 import { useNavigate, useLocation } from 'react-router-dom';
 import FlashcardForm from './FlashcardForm';
 import SingleFlashcardView from './SingleFlashcardView';
+import { useSettings } from '../contexts/SettingsContext';
+import { formatArabicText } from '../utils/arabicUtils';
 
 interface Flashcard {
   id: string;
@@ -46,6 +48,8 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const deckType = (location.state as { deckType?: 'user' | 'default' })?.deckType || 'user';
+
+  const { flashcardShowDiacritics } = useSettings();
 
   // State for Flashcard Edit Modal (now using FlashcardForm)
   const [flashcardToEdit, setFlashcardToEdit] = useState<Flashcard | null>(null);
@@ -522,7 +526,7 @@ const FlashcardDetail: React.FC<FlashcardDetailProps> = () => {
             >
               <div className="col-span-5 flex flex-col items-start md:flex-row md:items-baseline md:space-x-3">
                 <span className="font-semibold text-gray-800 dark:text-gray-100 text-left md:w-1/2 break-words">{displayData.english}</span>
-                <span className="text-sm text-gray-600 dark:text-gray-300 text-left md:w-1/4 md:text-center break-words">{displayData.arabic}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300 text-left md:w-1/4 md:text-center break-words">{formatArabicText(displayData.arabic, flashcardShowDiacritics)}</span>
                 {displayData.transliteration && (
                   <span className="text-xs italic text-gray-500 dark:text-gray-400 text-left md:w-1/4 md:text-right break-words">{displayData.transliteration}</span>
                 )}

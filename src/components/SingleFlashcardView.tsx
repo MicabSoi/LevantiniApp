@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Loader2, Volume2, Trash2 } from 'lucide-react';
 import FlashcardForm from './FlashcardForm';
+import { useSettings } from '../contexts/SettingsContext';
+import { formatArabicText } from '../utils/arabicUtils';
 
 interface Flashcard {
   id: string;
@@ -59,6 +61,7 @@ const pronounLabels = [
 
 const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: propFlashcard, onClose }) => {
   const { deckId, cardId } = useParams<{ deckId: string; cardId: string }>();
+  const { flashcardShowDiacritics } = useSettings();
   const [flashcard, setFlashcard] = useState<Flashcard | null>(propFlashcard || null);
   const [deckName, setDeckName] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(!propFlashcard);
@@ -546,7 +549,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                      allConjugations[0]?.fields?.present_tense?.arabic;
                     return arabicText ? (
                       <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
-                        {arabicText}
+                        {formatArabicText(arabicText, flashcardShowDiacritics)}
                       </p>
                     ) : null;
                   })()}
@@ -620,7 +623,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                     className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
                                     dir="rtl"
                                   />
-                                ) : (fields.past_tense?.arabic || '-')}
+                                ) : (formatArabicText(fields.past_tense?.arabic || '-', flashcardShowDiacritics))}
                               </td>
                               <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
                                 {isEditingConjugations ? (
@@ -653,7 +656,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                     className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
                                     dir="rtl"
                                   />
-                                ) : (fields.present_tense?.arabic || '-')}
+                                ) : (formatArabicText(fields.present_tense?.arabic || '-', flashcardShowDiacritics))}
                               </td>
                               <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
                                 {isEditingConjugations ? (
@@ -687,7 +690,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                     className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
                                     dir="rtl"
                                   />
-                                ) : (impArb)}
+                                ) : (formatArabicText(impArb, flashcardShowDiacritics))}
                               </td>
                               <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
                                 {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
@@ -752,7 +755,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                       className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
                                       dir="rtl"
                                     />
-                                  ) : (fields.past_tense?.arabic || '-')}
+                                  ) : (formatArabicText(fields.past_tense?.arabic || '-', flashcardShowDiacritics))}
                                 </td>
                                 <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
                                   {isEditingConjugations ? (
@@ -815,7 +818,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                       className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
                                       dir="rtl"
                                     />
-                                  ) : (fields.present_tense?.arabic || '-')}
+                                  ) : (formatArabicText(fields.present_tense?.arabic || '-', flashcardShowDiacritics))}
                                 </td>
                                 <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
                                   {isEditingConjugations ? (
@@ -881,7 +884,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                                       className="w-full p-1 bg-white dark:bg-dark-200 border border-gray-300 dark:border-gray-500 rounded"
                                       dir="rtl"
                                     />
-                                  ) : (impArb)}
+                                  ) : (formatArabicText(impArb, flashcardShowDiacritics))}
                                 </td>
                                 <td className="px-2 py-2 border dark:border-gray-600 text-gray-600 dark:text-gray-400 italic">
                                   {isEditingConjugations && (fields.imperative_tense || pronounLabels[idx]?.key.startsWith('intu') || pronounLabels[idx]?.key.startsWith('inta') || pronounLabels[idx]?.key.startsWith('inti') || pronounLabels[idx]?.key.startsWith('kuli')) ? (
@@ -912,7 +915,7 @@ const SingleFlashcardView: React.FC<SingleFlashcardViewProps> = ({ flashcard: pr
                   {flashcard.english}
                 </h1>
                 <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
-                  {flashcard.arabic}
+                  {formatArabicText(flashcard.arabic, flashcardShowDiacritics)}
                 </p>
                 {flashcard.transliteration && (
                   <p className="text-lg italic text-gray-500 dark:text-gray-400 mb-4">

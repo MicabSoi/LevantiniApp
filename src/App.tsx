@@ -51,6 +51,7 @@ import Quiz from './components/Quiz';
 import { LearnedWordsProvider } from './context/LearnedWordsContext';
 import { ProgressProvider, useProgress } from './context/ProgressContext';
 import { LessonProvider, useLessonContext, Lesson } from './context/LessonContext'; // Import Lesson type
+import { SettingsProvider } from './contexts/SettingsContext';
 
 interface AppContentProps {
   isDarkMode: boolean;
@@ -639,7 +640,9 @@ function App() {
           <LearnedWordsProvider>
             <ProgressProvider>
               <LessonProvider>
-                <AppContent isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+                <SettingsProvider>
+                  <AppContent isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+                </SettingsProvider>
               </LessonProvider>
             </ProgressProvider>
           </LearnedWordsProvider>

@@ -13,11 +13,15 @@ import {
   XCircle,
   LibraryBig,
   CalendarDays,
+  Settings,
+  X,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import FlashcardForm from './FlashcardForm';
 import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import { CreateDeckModal } from './CreateDeckModal'; // Import CreateDeckModal as a named import
+import { useSettings } from '../contexts/SettingsContext';
+import { formatArabicText } from '../utils/arabicUtils';
 
 // Define types for flashcards and decks
 interface Flashcard {
@@ -155,6 +159,10 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   const [isDeletingDeck, setIsDeletingDeck] = useState(false);
   const [deletionProgress, setDeletionProgress] = useState({ deleted: 0, total: 0 });
   const [deletionStatus, setDeletionStatus] = useState<string>('');
+
+  // State for settings modal and diacritics visibility
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { flashcardShowDiacritics, setFlashcardShowDiacritics } = useSettings();
 
   // Function to calculate correct card count for verb decks by grouping conjugations
   const getVerbCardCount = (cards: Flashcard[], deckName: string): number => {
@@ -805,7 +813,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
               >
                 {/* Display flashcard front (english) and back (arabic) */}
                 <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">{card.english}</h3>
-                <p className="text-gray-600 dark:text-gray-300">{card.arabic}</p>
+                <p className="text-gray-600 dark:text-gray-300">{formatArabicText(card.arabic, flashcardShowDiacritics)}</p>
                 {card.transliteration && (
                   <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">{card.transliteration}</p>
                 )}
@@ -909,6 +917,24 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   title={isDeletingDeck ? 'Cannot delete while deleting deck' : 'Delete Decks'}
                 >
                   <Trash2 size={20} />
+                </button>
+                {/* Settings Button */}
+                <button
+                  disabled={isDeletingDeck}
+                  className={`p-1 rounded-md ${
+                    isDeletingDeck
+                      ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                  onClick={(e) => {
+                    if (!isDeletingDeck) {
+                      console.log('Settings button clicked');
+                      setShowSettingsModal(true);
+                    }
+                  }}
+                  title={isDeletingDeck ? 'Cannot access settings while deleting deck' : 'Settings'}
+                >
+                  <Settings size={20} />
                 </button>
               </div>
 
@@ -1160,6 +1186,72 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
                   <strong>Please wait:</strong> Do not close this window or navigate away until deletion is complete.
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowSettingsModal(false);
+            }
+          }}
+        >
+          <div
+            className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Display Settings</h3>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Close settings"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-2">
+                <label htmlFor="flashcard-diacritics-toggle-label" className="text-gray-700 dark:text-gray-300">
+                  Show Diacritics (Tashkeel) <span className="text-sm text-gray-500 dark:text-gray-400">(recommended for beginners)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    id="flashcard-diacritics-toggle"
+                    className="sr-only"
+                    checked={flashcardShowDiacritics}
+                    onChange={() => setFlashcardShowDiacritics(!flashcardShowDiacritics)}
+                    aria-labelledby="flashcard-diacritics-toggle-label"
+                  />
+                  {/* Track */}
+                  <div className={`block w-14 h-8 rounded-full cursor-pointer transition-colors duration-300 ease-in-out ${flashcardShowDiacritics ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                       onClick={() => setFlashcardShowDiacritics(!flashcardShowDiacritics)}
+                  ></div>
+                  {/* Dot */}
+                  <div className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full shadow-md transition-transform duration-300 ease-in-out transform ${flashcardShowDiacritics ? 'translate-x-6' : 'translate-x-0'}`}
+                       onClick={() => setFlashcardShowDiacritics(!flashcardShowDiacritics)}
+                  ></div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 pt-1">
+                Controls whether vowel marks (e.g., fatha, damma, kasra) and other diacritics are shown on Arabic text.
+              </p>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-6 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
+              >
+                Save changes
+              </button>
             </div>
           </div>
         </div>

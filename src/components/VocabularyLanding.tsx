@@ -62,7 +62,7 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
 
       {/* Supplementary Tools Section */}
       <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100"> Tools</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {supplementaryOptions.map((option) => (
           <div
             key={option.id}

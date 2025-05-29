@@ -51,7 +51,7 @@ const StudySelection: React.FC = () => {
           Study Session Setup
         </h2>
         <button
-          className="p-2 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           onClick={() => setIsSettingsModalOpen(true)}
           aria-label="Settings"
         >
