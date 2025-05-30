@@ -1,10 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Volume2, Settings, X, Check, Loader2, FolderPlus, Plus, HelpCircle } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useSupabase } from '../context/SupabaseContext';
 import { supabase } from '../lib/supabaseClient';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatArabicText } from '../utils/arabicUtils';
+import TranslationCache from '../utils/translationCache';
+
+// Advanced cache instance for translations
+const translationCache = new TranslationCache<TranslationResult>(200, 1000 * 60 * 60); // 200 items, 1 hour TTL
 
 // Define the translation result type
 interface TranslationResult {
@@ -12,12 +16,16 @@ interface TranslationResult {
   english: string;
   context: string;
   arabic: string;
-  arabicSentence: string;
+  arabicSentence: string; // This might be empty if Gemini doesn't provide sentence context directly
   transliteration: string;
-  transliterationSentence: string;
+  transliterationSentence: string; // Similarly, might be empty
   audioUrl: string;
   contextArabic?: string;
   contextTransliteration?: string;
+  // Fields for the hybrid service
+  geminiOriginalArabic?: string; 
+  hasReplacements?: boolean;
+  model_version?: string;
 }
 
 // Define the structure of a row from user_translation_history table
@@ -89,6 +97,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   const [newDeckIcon, setNewDeckIcon] = useState('');
   const [newDeckDescription, setNewDeckDescription] = useState('');
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
+  const [selectedDialect, setSelectedDialect] = useState<'apc_Arab' | 'ajp_Arab' | 'ar'>('apc_Arab'); // COMMENTED OUT - Using Gemini
 
   // State for asking a question about a translation
   const [showQuestionInput, setShowQuestionInput] = useState(false);
@@ -99,211 +108,253 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
 
   const { user } = useSupabase();
   const saveSettingsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const requestTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const activeRequestRef = useRef<Promise<TranslationResult | null> | null>(null);
 
+  // Restore Gemini API Key and genAI state
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const [genAI, setGenAI] = useState<GoogleGenerativeAI | null>(null);
 
-  const translateWithGemini = async (text: string, contextText: string) => {
-    console.log('translateWithGemini called with text:', text, 'and context:', contextText);
-    console.log('Attempting to read VITE_GEMINI_API_KEY...');
-    if (!geminiApiKey) {
-      console.error('Google API key not found in environment variables.');
-      setError('Google API key is not configured. Please check your .env.local file.');
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('Google API key is not set in .env.local');
+      // setError('Google API key is not configured. Please check your .env.local file.');
+      return;
+    }
+    import('@google/generative-ai').then(({ GoogleGenerativeAI }) => {
+      setGenAI(new GoogleGenerativeAI(apiKey));
+    });
+  }, []);
+
+  // Generate cache key for translation requests
+  const getCacheKey = useCallback((text: string, contextText: string) => {
+    return `${text.toLowerCase().trim()}|${contextText.toLowerCase().trim()}`;
+  }, []);
+
+  // Async function to save to database (non-blocking) - Reverted for direct Gemini
+  const saveTranslationToHistory = useCallback(async (
+    // text: string, // No longer passing text and contextText separately
+    // contextText: string,
+    parsedResponse: TranslationResult // Expects the full result object
+  ): Promise<TranslationResult | null> => {
+    if (!user) return null;
+
+    try {
+      // Adapt to what's available directly from Gemini parsing
+      const insertData: Partial<UserTranslationHistoryRow> & { user_id: string, english_text: string, arabic_text: string } = {
+        user_id: user.id,
+        english_text: parsedResponse.english, 
+        context_text: parsedResponse.context, 
+        arabic_text: parsedResponse.arabic || 'مش موجود', 
+        transliteration_text: parsedResponse.transliteration || '', 
+        context_arabic: parsedResponse.contextArabic || null, 
+        context_transliteration: parsedResponse.contextTransliteration || null,
+        // Fields like geminiOriginalArabic, hasReplacements, model_version are not directly from Gemini in this flow
+      };
+
+      const { data, error: insertError } = await supabase
+        .from('user_translation_history')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error saving translation to history:', insertError);
+        return null;
+      }
+
+      if (data) {
+        const newHistoryItem: TranslationResult = {
+          id: data.id,
+          english: data.english_text || '',
+          context: data.context_text || '',
+          arabic: data.arabic_text || '',
+          arabicSentence: parsedResponse.arabicSentence || '', 
+          transliteration: data.transliteration_text || '', 
+          transliterationSentence: parsedResponse.transliterationSentence || '', 
+          audioUrl: parsedResponse.audioUrl || '', 
+          contextArabic: data.context_arabic || '',
+          contextTransliteration: data.context_transliteration || '',
+        };
+        
+        setSupabaseHistory(currentHistory => [newHistoryItem, ...currentHistory].slice(0, 20));
+        return newHistoryItem;
+      }
+    } catch (error) {
+      console.error('Database save error:', error);
+    }
+    return null;
+  }, [user]);
+
+  // Restore original translateWithGemini function
+  const translateWithGemini = useCallback(async (text: string, contextText: string): Promise<TranslationResult | null> => {
+    const startTime = performance.now();
+    console.log('translateWithGemini (direct) called with text:', text, 'and context:', contextText);
+    
+    if (!genAI) {
+      console.error('Google Generative AI SDK not initialized.');
+      setError('Translation service is not ready. Please ensure API key is set and SDK is loaded.');
       return null;
     }
-    console.log('API key found. Proceeding with translation.');
+
+    const cacheKey = getCacheKey(text, contextText);
+    const cachedResult = translationCache.get(cacheKey);
+    if (cachedResult) {
+      const cacheTime = performance.now() - startTime;
+      console.log(`Using cached translation (${cacheTime.toFixed(2)}ms)`);
+      return cachedResult;
+    }
 
     setIsLoading(true);
     setError('');
 
+    if (requestTimeoutRef.current) {
+      clearTimeout(requestTimeoutRef.current);
+    }
+    
+    requestTimeoutRef.current = setTimeout(() => {
+      setError('Translation request timed out. Please try again.');
+      setIsLoading(false);
+      activeRequestRef.current = null; 
+    }, 30000); 
+
     try {
-      const genAI = new GoogleGenerativeAI(geminiApiKey as string);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17"});
-
       const prompt = `
-        Translate the following English text to Levantine Arabic (specifically the dialect spoken in Lebanon, Syria, Jordan, and Palestine).
-        
-        IMPORTANT INSTRUCTIONS:
-        1. Provide the translation in Arabic script, including all necessary diacritics (tashkeel) like fatha, damma, kasra, sukon, shadda, etc.
-        2. If the English word/phrase is a noun or adjective and the context provided implies a specific grammatical gender (male or female), translate it using the appropriate gendered form. In the JSON output for the word/phrase translation, add " (m)" after the Arabic translation if it's masculine or " (f)" if it's feminine.
-        3. Provide a transliteration using Arabic chat alphabet according to the following rules:
-           - د: d
-           - ش: sh
-           - ض: D
-           - ط: T
-           - غ: gh
-           - ى: a
-           - و: w or uu
-           - ة: a/eh
-           - ء: 2
-           - ت: t
-           - ج: j
-           - ح: 7
-           - خ: kh
-           - ث: th
-           - س: s
-           - ن: n
-           - ه: h
-           - ب: b
-           - ز: z
-           - ف: f
-           - ك: k
-           - ا: a
-           - ع: 3
-           - ي: y or ii
-           - ص: S
-           - ذ: d or z
-           - ر: r
-           - ل: l
-           - م: m
-           - ظ: z or D
-           - ق: 2
-        4. Also include short vowels and sukon in the transliteration using the following:
-           - Fatha (َ): a
-           - Damma (ُ): u
-           - Kasra (ِ): i
-           - Sukon (ْ): represented by the absence of a vowel after the consonant.
-        5. If context is provided, also translate a full sentence using the word in that context.
-        6. Use authentic Levantine dialect vocabulary and grammar, NOT Modern Standard Arabic.
-        7. Format your response as a valid JSON object with these exact fields:
-           - "arabic": string (the translated word/phrase in Arabic script)
-           - "transliteration": string (transliteration using Arabic chat alphabet)
-           - "arabicSentence": string (if context provided, a sentence using the word in Arabic script, otherwise an empty string)
-           - "transliterationSentence": string (if context provided, transliteration of the sentence, otherwise an empty string)
-           ${contextText ? `           - "contextArabic": string (the Arabic translation of the context text)
-           - "contextTransliteration": string (transliteration of the context text using Arabic chat alphabet)` : ''}
-        
-        English word/phrase: "${text}"
-        ${contextText ? `Context or example: "${contextText}"` : ''}
-      `;
+Translate "${text}" to the MOST COMMON, NATURAL, and COLLOQUIAL Levantine Arabic (Lebanese/Syrian/Palestinian/Jordanian), not MSA${contextText ? `, context: "${contextText}"` : ''}.
+Imagine you are speaking to a friend on the street in Beirut, Damascus, Amman, or Jerusalem.
 
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const responseText = response.text();
-      
-      if (responseText) {
-        try {
-          // Gemini might return the JSON within a markdown block, so we need to extract it.
-          const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-          let parsableText = responseText;
-          if (jsonMatch && jsonMatch[1]) {
-            parsableText = jsonMatch[1];
+-- Example of desired Levantine translation and vocabulary (this is a guide, translate the user's actual text below): --
+-- English input: "the boy kicked the ball"
+-- Arabic: الوَلَد شاط الطابِة
+-- Transliteration: il-walad shaaT iT-Taabeh
+-- ArabicSentence: الوَلَد شاط الطابِة بِقُوِّة
+-- TransliterationSentence: il-walad shaaT iT-Taabeh b2uwweh
+-- ContextArabic: N/A
+-- ContextTransliteration: N/A
+-- END OF EXAMPLE --
+
+CRITICAL: Use everyday vocabulary and sentence structures. For "ball" or "balls", ALWAYS use the word "طابة" (Taabeh) or its appropriate Levantine plural forms (e.g., "طابات" - Taabaat, "طابتين" - Taabteen). NEVER use the word "كُرة" (kura) or any of its derivatives.
+
+DIACRITICS REQUIREMENT: **ALL Arabic text MUST include FULL diacritics (tashkeel)** - fatha (َ), damma (ُ), kasra (ِ), sukun (ْ), shadda (ّ), tanween, etc. This is essential for pronunciation guidance.
+
+TRANSLITERATION STANDARD: For ALL transliterations, use ONLY the following Levantine Chat Alphabet rules:
+- Consonants: a, b, t, th (for ث), j (for ج), 7 (for ح), kh (for خ), d, dh (for ذ), r, z, s, sh (for ش), S (for ص), D (for ض), T (for ط), Z (for ظ), 3 (for ع), gh (for غ), f, q (for ق - can be q, k, or 2 based on regional pronunciation, choose most common for the word), k, l, m, n, h, w, y.
+- Hamza (ء): Use '2' (e.g., su2al for سؤال).
+- Vowels: Short vowels: a (fatha e.g. daras), i (kasra e.g. sirib), u (damma e.g. rukob). Long vowels: aa (e.g. baab), ii (e.g. kbiir), uu (e.g. nuur).
+- Shadda (ّ): Represent by doubling the consonant (e.g., halla2 for هلّأ, sakkara for سكّر).
+- Ensure "al-" (ال) assimilation is reflected if natural (e.g., "ish-shams" not "il-shams").
+
+Essential Levantine patterns (examples):
+• "بِدّي" (biddi) for "I want" - NEVER "أريد" (ureed)
+• "لازِم" (laazim) for "need to/must" - NEVER "أنا بحاجة" (ana bi 7aja)  
+• "عَم + verb" for present continuous: "عَم بآكُل" (3am beekol) = "I'm eating"
+• Common words: "كتير" (kteer) for "very/a lot", "هَلَّأ" (halla2) for "now", "هون" (hon) for "here", "شو" (shu) for "what", "وين" (wen) for "where", "كيف" (kif) for "how", "ليش" (lesh) for "why", "إيمتى" (emta) for "when".
+• Negation: Use "مش" (mish) or "مو" (mo) - avoid formal "لا" or "لم".
+
+IMPORTANT: Respond ONLY with this exact multi-line format. Ensure all requested fields are present. If a field is not applicable for the given input (e.g., ContextArabic when no context is provided), leave it blank or state "N/A".
+Arabic: [your Arabic translation of "${text}" with full diacritics]
+Transliteration: [your transliteration of "${text}" following the rules above]
+ArabicSentence: [your Arabic translation of "${contextText || text}" as a full sentence with diacritics, ensuring it's the most natural Levantine phrasing AND USES "طابة" FOR BALL]
+TransliterationSentence: [your transliteration of the ArabicSentence following the rules above AND REFLECTING "طابة" FOR BALL]
+${contextText ? `ContextArabic: [Arabic translation of the original context phrase "${contextText}" with diacritics. This might be the same as ArabicSentence or a more direct translation of the isolated context phrase. If it involves "ball", use "طابة".]
+ContextTransliteration: [Transliteration of ContextArabic following the rules above. If it involves "ball", use "طابة".]` : 'ContextArabic: N/A\nContextTransliteration: N/A'}
+`;
+
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); 
+      activeRequestRef.current = model.generateContent(prompt).then(geminiResult => {
+          if (requestTimeoutRef.current) { 
+            clearTimeout(requestTimeoutRef.current);
+            requestTimeoutRef.current = null;
           }
-          
-          const parsedResponse = JSON.parse(parsableText);
+          const responseText = geminiResult.response.text();
+          console.log('Raw Gemini Response:', responseText);
 
-          const translationResult: TranslationResult = {
-            id: '',
+          // Parsing logic (simplified, ensure robust parsing based on your actual prompt output)
+          const parsed: Partial<TranslationResult> = {};
+          const lines = responseText.split('\n').map(l => l.trim());
+          
+          lines.forEach(line => {
+            if (line.startsWith('Arabic:')) parsed.arabic = line.substring('Arabic:'.length).trim();
+            else if (line.startsWith('Transliteration:')) parsed.transliteration = line.substring('Transliteration:'.length).trim();
+            else if (line.startsWith('ArabicSentence:')) parsed.arabicSentence = line.substring('ArabicSentence:'.length).trim();
+            else if (line.startsWith('TransliterationSentence:')) parsed.transliterationSentence = line.substring('TransliterationSentence:'.length).trim();
+            else if (line.startsWith('ContextArabic:')) parsed.contextArabic = line.substring('ContextArabic:'.length).trim();
+            else if (line.startsWith('ContextTransliteration:')) parsed.contextTransliteration = line.substring('ContextTransliteration:'.length).trim();
+          });
+
+          if (!parsed.arabic || !parsed.transliteration) {
+            console.error("Failed to parse critical fields (Arabic/Transliteration) from Gemini response:", responseText);
+            // Fallback or use the whole responseText for Arabic if parsing fails completely
+            parsed.arabic = parsed.arabic || responseText;
+            parsed.transliteration = parsed.transliteration || "(transliteration unavailable)";
+          }
+
+          const result: TranslationResult = {
+            id: new Date().toISOString(),
             english: text,
             context: contextText,
-            arabic: parsedResponse.arabic || 'مش موجود',
-            arabicSentence: parsedResponse.arabicSentence || '',
-            transliteration: parsedResponse.transliteration || '',
-            transliterationSentence: parsedResponse.transliterationSentence || '',
-            audioUrl: '', // No audio URL for Gemini translations yet
-            contextArabic: parsedResponse.contextArabic || '',
-            contextTransliteration: parsedResponse.contextTransliteration || '',
+            arabic: parsed.arabic || 'خطأ في التحليل', // "Parsing error"
+            transliteration: parsed.transliteration || '(error)',
+            arabicSentence: parsed.arabicSentence || parsed.arabic || '', // Fallback to main Arabic if sentence not found
+            transliterationSentence: parsed.transliterationSentence || parsed.transliteration || '', // Fallback
+            audioUrl: '', // No audio directly from Gemini text API
+            contextArabic: parsed.contextArabic || '',
+            contextTransliteration: parsed.contextTransliteration || '',
           };
 
-          // Insert the translation into the user_translation_history table
-          if (user) {
-            const { data, error: insertError } = await supabase
-              .from('user_translation_history')
-              .insert({
-                user_id: user.id,
-                english_text: text,
-                context_text: contextText,
-                arabic_text: parsedResponse.arabic || 'مش موجود',
-                transliteration_text: parsedResponse.transliteration || '',
-                context_arabic: parsedResponse.contextArabic || null,
-                context_transliteration: parsedResponse.contextTransliteration || null,
-                // created_at is automatically set by the database default value
-              });
+          translationCache.set(cacheKey, result);
+          const endTime = performance.now();
+          console.log(`Translation successful via Direct Gemini (${(endTime - startTime).toFixed(2)}ms)`);
+          saveTranslationToHistory(result);
+          return result;
+      });
 
-            if (insertError) {
-              console.error('Error saving translation to history:', insertError);
-              // Optionally, set an error state for the user
-            } else {
-              console.log('Translation saved to history:', data);
-              // After successful insertion, update the history state locally
-              // Explicitly type the data to resolve linter errors
-              const insertedData = data as UserTranslationHistoryRow[] | null;
-              if (insertedData && insertedData.length > 0) {
-                const newHistoryItem: TranslationResult = {
-                  id: insertedData[0].id,
-                  english: insertedData[0].english_text || '',
-                  context: insertedData[0].context_text || '',
-                  arabic: insertedData[0].arabic_text || '',
-                  arabicSentence: '', // Not stored in this table yet
-                  transliteration: insertedData[0].transliteration_text || '',
-                  transliterationSentence: '', // Not stored in this table yet
-                  audioUrl: '', // Not stored in this table yet
-                  contextArabic: insertedData[0].context_arabic || '',
-                  contextTransliteration: insertedData[0].context_transliteration || '',
-                };
-                // Prepend the new item to the history, keeping the limit if necessary
-                setSupabaseHistory(currentHistory => [newHistoryItem, ...currentHistory].slice(0, 20)); // Assuming a limit of 20 as in fetchHistory
-              }
-            }
-          }
-
-          return translationResult;
-        } catch (parseError) {
-          console.error('Failed to parse Gemini response:', parseError, 'Raw response:', responseText);
-          setError('Failed to parse translation response. Check console for details.');
-          return null;
-        }
-      } else {
-        setError('No translation received from Gemini');
-        return null;
-      }
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      setError('Translation failed. Please check your API key and network. Check console for details.');
-      return null;
-    } finally {
+      const result = await activeRequestRef.current;
       setIsLoading(false);
-    }
-  };
+      activeRequestRef.current = null;
+      return result;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!word.trim()) return;
-
-    // Try to translate with Gemini
-    const geminiResult = await translateWithGemini(word, context);
-
-    if (geminiResult) {
-      setResult(geminiResult);
-    } else if (!error.includes('API key')) { // Avoid fallback if API key is the issue
-      // Fallback to sample data if Gemini fails for other reasons
-      const lowerWord = word.toLowerCase().trim();
-      const match = sampleTranslations.find(
-        (item) => item.english.toLowerCase() === lowerWord
-      );
-
-      if (match) {
-        setResult(match);
-      } else {
-        const fallbackResult: TranslationResult = {
-          id: Date.now().toString(),
-          english: word,
-          context: context,
-          arabic: 'مش موجود', 
-          arabicSentence: 'هاي الكلمة مش موجودة بالقاموس', 
-          transliteration: 'mish mawjood',
-          transliterationSentence: 'hay il-kilme mish mawjoode bil-2amoos',
-          audioUrl: '',
-          contextArabic: '',
-          contextTransliteration: '',
-        };
-
-        setResult(fallbackResult);
+    } catch (err: any) {
+      if (requestTimeoutRef.current) {
+        clearTimeout(requestTimeoutRef.current);
+        requestTimeoutRef.current = null;
       }
+      console.error('Error calling Google Generative AI or parsing response:', err);
+      setError(err.message || 'Failed to translate. Please try again.');
+      setIsLoading(false);
+      activeRequestRef.current = null;
+      return null;
+    }
+  }, [genAI, getCacheKey, saveTranslationToHistory]); // Added genAI and removed user from dependencies
+
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    if (event) {
+      event.preventDefault();
+    }
+    if (!word.trim()) {
+      setError('Please enter a word or phrase to translate.');
+      return;
     }
 
-    setWord('');
-    setContext('');
+    console.log('handleSubmit triggered with word:', word, 'context:', context);
+    setIsLoading(true);
+    setError('');
+    setResult(null); 
+
+    // Call the direct Gemini function
+    const translationResult = await translateWithGemini(word, context);
+    
+    setIsLoading(false);
+    if (translationResult) {
+      console.log('Setting result in UI: ', translationResult);
+      setResult(translationResult);
+    } else {
+      if (!error) { 
+        setError('Translation failed. Please check the console for details.');
+      }
+      console.error('Translation failed, result is null');
+    }
   };
 
   const playAudio = (audioUrl: string) => {
@@ -559,47 +610,49 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
   };
 
   const handleSendQuestion = async () => {
-    if (!questionText || !selectedTranslationForQuestion || !geminiApiKey) {
-      setError('Missing question, translation, or API key.');
+    if (!questionText || !selectedTranslationForQuestion) {
+      setError('Missing question or translation.');
       return;
     }
 
     setIsAnsweringQuestion(true);
     setAnswerText('');
-    setError('');
+    
+    if (!geminiApiKey) { // Restore API key check
+        setError('API Key is not available for sending question.');
+        setIsAnsweringQuestion(false);
+        return;
+    }
+    if (!genAI) { // Restore genAI check
+        setError('Generative AI service not initialized for sending question.');
+        setIsAnsweringQuestion(false);
+        return;
+    }
 
     try {
-      const genAI = new GoogleGenerativeAI(geminiApiKey as string);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17"});
-
+      // Restore direct Gemini call for question answering
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // Or your preferred model for Q&A
       const prompt = `
-        You are a professional tutor in Arabic, specializing ONLY in the Levantine dialect (Lebanon, Syria, Jordan, and Palestine).
-        Your responses should be helpful, informative, and focused on explaining the provided English-Levantine Arabic translation.
-
-        Here is the translation the user is asking about:
+        You are a helpful tutor for Levantine Arabic.
+        The user has the following translation:
         English: "${selectedTranslationForQuestion.english}"
         Arabic: "${selectedTranslationForQuestion.arabic}"
         ${selectedTranslationForQuestion.context ? `Context: "${selectedTranslationForQuestion.context}"` : ''}
 
         The user's question is: "${questionText}"
 
-        Please answer the user's question based on the provided translation, acting as a Levantine Arabic tutor.
+        Provide a concise answer to the user's question. If you use Arabic text, also provide a simple chat-alphabet transliteration (e.g., 7 for ح, 3 for ع).
       `;
-
+      
       const result = await model.generateContent(prompt);
-      const response = result.response;
-      const responseText = response.text();
+      const response = await result.response;
+      const textResponse = response.text();
+      setAnswerText(textResponse);
 
-      if (responseText) {
-        setAnswerText(responseText);
-      } else {
-        setAnswerText('Could not get an answer from the tutor.');
-      }
-
-    } catch (apiError) {
-      console.error('Error calling Gemini API for question:', apiError);
-      setError('Failed to get an answer. Please try again.');
-      setAnswerText('Error getting answer.');
+    } catch (e: any) {
+      console.error('Error sending question or getting answer via Gemini:', e);
+      setError(e.message || 'Failed to get an answer from Gemini.');
+      setAnswerText('Sorry, an error occurred while trying to get an answer.');
     } finally {
       setIsAnsweringQuestion(false);
     }
@@ -617,6 +670,18 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
       {/* Header and Settings Icon for the Translate page */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Translate</h2>
+        
+        <div className="flex items-center space-x-2">
+          {/* COMMENTED OUT - Clear Cache not needed for NLLB-200
+          <button
+            onClick={clearTranslationCache}
+            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+            aria-label="Clear Translation Cache"
+            title="Clear cached translations to get fresh results with improved Levantine Arabic"
+          >
+            Clear Cache
+          </button>
+          */}
         <button
           onClick={handleOpenSettingsModal}
           className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -624,14 +689,19 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
         >
           <Settings size={22} />
         </button>
+        </div>
       </div>
 
       {/* Note Section with Dark Mode Classes */}
       <div className="mb-4 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-md border border-emerald-100 dark:border-emerald-800">
         <p className="text-sm text-emerald-800 dark:text-emerald-200">
           <strong>Note:</strong> This translator provides words and phrases in
-          Levantine Arabic dialect (spoken in Lebanon, Syria, Jordan, and
-          Palestine), not Modern Standard Arabic.
+          authentic colloquial Levantine Arabic dialect (spoken in Lebanon, Syria, Jordan, and
+          Palestine), not Modern Standard Arabic. Using Google Gemini AI with enhanced prompts optimized 
+          for natural, everyday vocabulary like "لازم" (lazim) instead of formal "أنا بحاجة" (ana bi 7aja).
+        </p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+          💡 If you see formal Arabic (MSA) results, please clear the cache using the button above to get fresh results with the updated Levantine prompts.
         </p>
       </div>
 
@@ -655,7 +725,11 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             type="text"
             id="word"
             value={word}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWord(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setWord(e.target.value);
+              // When the main word/phrase changes, clear the context to avoid staleness
+              setContext(''); 
+            }}
             className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100"
             placeholder="e.g. Throw"
             required
@@ -678,6 +752,26 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             rows={2}
           />
         </div>
+
+        {/* COMMENTED OUT - Dialect Selector (Using Gemini instead of NLLB-200)
+          <div className="mb-4">
+            <label
+              htmlFor="dialect"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              Arabic Dialect
+            </label>
+            <select
+              id="dialect"
+              value={selectedDialect}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedDialect(e.target.value as 'apc_Arab' | 'ajp_Arab' | 'ar')}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-dark-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 dark:text-gray-100"
+            >
+              <option value="apc_Arab">North Levantine Arabic (Syrian/Lebanese)</option>
+              <option value="ajp_Arab">South Levantine Arabic (Palestinian/Jordanian)</option>
+            </select>
+          </div>
+          */}
 
         <button
           type="submit"
@@ -905,14 +999,15 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
       {/* Question and Answer Section/Modal */}
       {showQuestionInput && selectedTranslationForQuestion && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out"
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out overflow-hidden"
           onClick={() => setShowQuestionInput(false)}
         >
           <div
-            className="bg-white dark:bg-dark-200 p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100"
+            className="bg-white dark:bg-dark-200 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col transform transition-all duration-300 ease-in-out scale-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
+            {/* Fixed Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Ask a Question about Translation</h3>
               <button
                 onClick={() => setShowQuestionInput(false)}
@@ -923,6 +1018,8 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
               </button>
             </div>
 
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6">
             <div className="mb-4">
               <p className="text-gray-700 dark:text-gray-300 mb-2">Translation:</p>
               <p className="font-medium text-lg mb-1">{selectedTranslationForQuestion.english}</p>
@@ -945,7 +1042,7 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
 
             <button
               onClick={handleSendQuestion}
-              className="w-full px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 flex items-center justify-center disabled:opacity-50"
+                className="w-full px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 flex items-center justify-center disabled:opacity-50 mb-4"
               disabled={!questionText || isAnsweringQuestion}
             >
               {isAnsweringQuestion ? <Loader2 className="animate-spin mr-2" size={20} /> : <Send size={20} className="mr-2" />}
@@ -953,12 +1050,12 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
             </button>
 
             {answerText && (
-              <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-800">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-800">
                 <h4 className="font-semibold mb-2 text-gray-800 dark:text-gray-100">Answer:</h4>
-                <p className="text-gray-700 dark:text-gray-300">{answerText}</p>
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{answerText}</p>
               </div>
             )}
-
+            </div>
           </div>
         </div>
       )}
@@ -1069,6 +1166,3 @@ const Translate: React.FC<TranslateProps> = ({ setSubTab }: TranslateProps) => {
 };
 
 export default Translate;
-
-
-
