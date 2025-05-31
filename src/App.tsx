@@ -46,6 +46,8 @@ import StudySelection from './components/StudySelection';
 import ReviewCalendar from './components/ReviewCalendar'; // Import ReviewCalendar
 import LessonDetailPage from './components/LessonDetailPage';
 import Quiz from './components/Quiz';
+import TimePractice from './components/TimePractice';
+import NumberPractice from './components/NumberPractice';
 
 // Context for learned words
 import { LearnedWordsProvider } from './context/LearnedWordsContext';
@@ -408,8 +410,11 @@ const AppContent: React.FC<AppContentProps> = ({ isDarkMode, setIsDarkMode }) =>
                     {subTab === 'grammar' && (
                       <Grammar setSubTab={handleSetLearnSubTab} />
                     )}
-                    {subTab === 'typing' && (
-                      <TypingPractice setSubTab={handleSetLearnSubTab} />
+                    {subTab === 'comprehension' && (
+                      <Comprehension setSubTab={handleSetLearnSubTab} />
+                    )}
+                    {subTab === 'tutor' && (
+                      <FindTutor setSubTab={handleSetLearnSubTab} />
                     )}
                     {subTab === 'lessons' && (
                       <Lessons setSubTab={handleSetLearnSubTab} />
@@ -470,8 +475,14 @@ const AppContent: React.FC<AppContentProps> = ({ isDarkMode, setIsDarkMode }) =>
                     {subTab === 'translate' && (
                       <Translate setSubTab={handleSetFluencySubTab} />
                     )}
-                    {subTab === 'comprehension' && (
-                      <Comprehension setSubTab={handleSetFluencySubTab} />
+                    {subTab === 'typing' && (
+                      <TypingPractice setSubTab={handleSetFluencySubTab} />
+                    )}
+                    {subTab === 'time' && (
+                      <TimePractice setSubTab={handleSetFluencySubTab} />
+                    )}
+                    {subTab === 'numbers' && (
+                      <NumberPractice setSubTab={handleSetFluencySubTab} />
                     )}
                     {subTab === 'conversation' && (
                       <ConversationPractice setSubTab={handleSetFluencySubTab} />
@@ -481,9 +492,6 @@ const AppContent: React.FC<AppContentProps> = ({ isDarkMode, setIsDarkMode }) =>
                     )}
                     {subTab === 'community' && (
                       <Community setSubTab={handleSetFluencySubTab} />
-                    )}
-                    {subTab === 'tutor' && (
-                      <FindTutor setSubTab={handleSetFluencySubTab} />
                     )}
                   </div>
                 )}

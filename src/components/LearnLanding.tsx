@@ -1,5 +1,27 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, AlignLeft, Volume2, GraduationCap, Keyboard } from 'lucide-react';
+import {
+  BookOpen,
+  AlignLeft,
+  Volume2,
+  GraduationCap,
+  Keyboard,
+  Clock,
+  Hash,
+  Badge,
+  Target,
+  ArrowRight,
+  Award,
+  Star,
+  FileText,
+  Lightbulb,
+  CheckCircle,
+  PlusCircle,
+  AlertCircle,
+  Trophy,
+  ChevronRight,
+  ChevronDown,
+  User
+} from 'lucide-react';
 import { useProgress } from '../context/ProgressContext';
 import { useLessonContext } from '../context/LessonContext';
 import { useSupabase } from '../context/SupabaseContext';
@@ -168,10 +190,16 @@ const LearnLanding: React.FC<LearnLandingProps> = ({ setSubTab, handleNavigateTo
       icon: <GraduationCap size={24} className="text-emerald-600" />,
     },
     {
-      id: 'typing',
-      label: 'Typing Practice',
-      description: 'Learn Arabic keyboard and typing',
-      icon: <Keyboard size={24} className="text-emerald-600" />,
+      id: 'comprehension',
+      label: 'Comprehension',
+      description: 'Improve reading and listening comprehension',
+      icon: <Lightbulb size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'tutor',
+      label: 'Find a Tutor',
+      description: 'Connect with native Arabic speakers',
+      icon: <User size={24} className="text-emerald-600" />,
     },
   ];
 

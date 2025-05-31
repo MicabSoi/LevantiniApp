@@ -1,0 +1,19 @@
+{
+  "name": "figma-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Figma integration",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
+  },
+  "keywords": ["mcp", "figma", "design", "ai"],
+  "author": "",
+  "license": "MIT"
+} 

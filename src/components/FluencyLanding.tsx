@@ -6,6 +6,9 @@ import {
   GraduationCap,
   MessageCircle,
   Headphones,
+  Keyboard,
+  Clock,
+  Hash
 } from 'lucide-react';
 
 interface FluencyLandingProps {
@@ -24,14 +27,26 @@ const FluencyLanding: React.FC<FluencyLandingProps> = ({ setSubTab }) => {
   // Supplementary options
   const supplementaryOptions = [
     {
-      id: 'comprehension',
-      label: 'Comprehension',
-      description: 'Practice reading and listening',
-      icon: <BookOpen size={24} className="text-emerald-600" />,
+      id: 'typing',
+      label: 'Typing',
+      description: 'Learn Arabic keyboard and typing',
+      icon: <Keyboard size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'time',
+      label: 'Time',
+      description: 'Learn to tell time in Arabic',
+      icon: <Clock size={24} className="text-emerald-600" />,
+    },
+    {
+      id: 'numbers',
+      label: 'Numbers',
+      description: 'Practice Arabic numbers and digits',
+      icon: <Hash size={24} className="text-emerald-600" />,
     },
     {
       id: 'conversation',
-      label: 'Conversation Practice',
+      label: 'Conversation',
       description: 'Role-play and dialogue exercises',
       icon: <MessageCircle size={24} className="text-emerald-600" />,
     },
@@ -46,12 +61,6 @@ const FluencyLanding: React.FC<FluencyLandingProps> = ({ setSubTab }) => {
       label: 'Community',
       description: 'Join language exchange groups',
       icon: <Users size={24} className="text-emerald-600" />,
-    },
-    {
-      id: 'tutor',
-      label: 'Find a Tutor',
-      description: 'Connect with native speakers',
-      icon: <GraduationCap size={24} className="text-emerald-600" />,
     },
   ];
 
