@@ -30,9 +30,21 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
   const [selectedDigits, setSelectedDigits] = useState<string[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [shuffledArabicDigits, setShuffledArabicDigits] = useState<string[]>([]);
+  const [isAnimatingDigits, setIsAnimatingDigits] = useState(false);
 
   // Arabic digits 0-9
   const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+  // Utility to shuffle an array
+  const shuffleArray = (array: string[]) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
 
   // Number words in Arabic (Levantine dialect)
   const numberWords = {
@@ -150,24 +162,38 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
 
   const startPractice = () => {
     setGamePhase('playing');
-    setCurrentNumber(generateRandomNumber());
+    const newNumber = generateRandomNumber();
+    setCurrentNumber(newNumber);
     setUserAnswer('');
     setSelectedDigits([]);
     setIsCorrect(null);
     setScore({ correct: 0, total: 0 });
+    if (settings.mode === 'digits') {
+      setShuffledArabicDigits(shuffleArray(arabicDigits));
+    }
   };
+
+  useEffect(() => {
+    if (gamePhase === 'playing' && settings.mode === 'digits' && isCorrect === null) {
+      if (selectedDigits.length === getCorrectDigitAnswer(currentNumber).length && selectedDigits.length > 0) {
+        // Automatically submit when all digits are selected
+        checkAnswer();
+      } else if (selectedDigits.length < getCorrectDigitAnswer(currentNumber).length) {
+        // This part is handled by handleDigitClick for animation sequencing
+      }
+    }
+  }, [selectedDigits, gamePhase, settings.mode, currentNumber, isCorrect]);
 
   const handleDigitClick = (digit: string) => {
-    if (isCorrect !== null) return;
+    if (isCorrect !== null || isAnimatingDigits) return;
+
     setSelectedDigits(prev => [...prev, digit]);
-  };
+    setIsAnimatingDigits(true); // Start shrinking animation
 
-  const removeLastDigit = () => {
-    setSelectedDigits(prev => prev.slice(0, -1));
-  };
-
-  const clearDigits = () => {
-    setSelectedDigits([]);
+    setTimeout(() => {
+      setIsAnimatingDigits(false); // End shrinking animation
+      setShuffledArabicDigits(shuffleArray(arabicDigits)); // Reshuffle and trigger growth
+    }, 100); // Short delay for shrinking animation
   };
 
   const checkAnswer = () => {
@@ -192,10 +218,14 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
       if (score.total >= 9) {
         setGamePhase('finished');
       } else {
-        setCurrentNumber(generateRandomNumber());
+        const newNumber = generateRandomNumber();
+        setCurrentNumber(newNumber);
         setUserAnswer('');
         setSelectedDigits([]);
         setIsCorrect(null);
+        if (settings.mode === 'digits') {
+          setShuffledArabicDigits(shuffleArray(arabicDigits));
+        }
       }
     }, 2000);
   };
@@ -206,6 +236,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
     setUserAnswer('');
     setSelectedDigits([]);
     setIsCorrect(null);
+    setShuffledArabicDigits([]);
   };
 
   if (gamePhase === 'settings') {
@@ -219,10 +250,10 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
         </button>
 
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">
-          Number Practice Settings
+          Numbers Practice Settings
         </h2>
 
-        <div className="bg-white dark:bg-dark-200 p-6 rounded-lg border border-gray-200 dark:border-dark-300 mb-6">
+        <div className="bg-white dark:bg-dark-100 p-6 rounded-lg border border-gray-200 dark:border-dark-300 mb-6">
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -234,7 +265,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
                   className={`w-full p-4 rounded-lg border text-left ${
                     settings.mode === 'digits'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   <div className="font-semibold">Digit Selection</div>
@@ -245,7 +276,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
                   className={`w-full p-4 rounded-lg border text-left ${
                     settings.mode === 'words'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   <div className="font-semibold">Word Typing</div>
@@ -264,7 +295,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.difficulty === 'easy'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Easy (1-99)
@@ -274,7 +305,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.difficulty === 'medium'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Medium (1-999)
@@ -284,7 +315,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.difficulty === 'hard'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Hard (1-9999)
@@ -347,40 +378,19 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
 
         {settings.mode === 'digits' ? (
           <div className="space-y-4">
-            {/* Selected digits display */}
-            <div className="bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-300">
-              <h3 className="text-lg font-bold mb-3 text-gray-800 dark:text-gray-100">Selected digits:</h3>
-              <div className="flex items-center space-x-2 mb-3">
-                <div className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-2xl font-arabic bg-gray-50 dark:bg-dark-100 min-h-[3rem] flex items-center">
-                  {selectedDigits.join('')}
-                </div>
-                <button
-                  onClick={removeLastDigit}
-                  className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
-                  disabled={selectedDigits.length === 0}
-                >
-                  ←
-                </button>
-                <button
-                  onClick={clearDigits}
-                  className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-                  disabled={selectedDigits.length === 0}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
             {/* Arabic digits grid */}
             <div className="bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-300">
               <h3 className="text-lg font-bold mb-3 text-gray-800 dark:text-gray-100">Arabic Digits</h3>
               <div className="grid grid-cols-5 gap-2">
-                {arabicDigits.map((digit, index) => (
+                {shuffledArabicDigits.map((digit) => (
                   <button
-                    key={index}
+                    key={digit} // Use digit as key because order changes
                     onClick={() => handleDigitClick(digit)}
-                    className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-600 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 active:bg-emerald-300 dark:active:bg-emerald-900/70 transition-colors text-2xl font-arabic flex items-center justify-center"
-                    disabled={isCorrect !== null}
+                    className={`w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-600 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 active:bg-emerald-300 dark:active:bg-emerald-900/70 transition-all duration-300 text-2xl font-arabic flex items-center justify-center
+                      ${isCorrect !== null || isAnimatingDigits ? 'opacity-0 scale-0 cursor-not-allowed' : ''}
+                      ${selectedDigits.includes(digit) ? 'opacity-0 scale-0' : 'scale-100 opacity-100'}
+                    `}
+                    disabled={isCorrect !== null || selectedDigits.includes(digit) || isAnimatingDigits}
                   >
                     {digit}
                   </button>
@@ -406,19 +416,17 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
           </div>
         )}
 
-        {isCorrect === null ? (
+        {settings.mode === 'words' && isCorrect === null && (
           <button
             onClick={checkAnswer}
-            disabled={
-              settings.mode === 'digits' 
-                ? selectedDigits.length === 0 
-                : !userAnswer.trim()
-            }
+            disabled={!userAnswer.trim()}
             className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
           >
             Check Answer
           </button>
-        ) : (
+        )}
+
+        {isCorrect !== null && (
           <div className={`p-4 rounded-lg border ${
             isCorrect 
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
@@ -461,7 +469,7 @@ const NumberPractice: React.FC<NumberPracticeProps> = ({ setSubTab }) => {
         </p>
         <button
           onClick={startPractice}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center justify-center text-md transition-colors mx-auto"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center justify-center text-md transition-colors mx-auto"
         >
           <RotateCcw size={18} className="mr-2" /> Practice Again
         </button>

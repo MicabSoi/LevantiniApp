@@ -224,7 +224,7 @@ const TimePractice: React.FC<TimePracticeProps> = ({ setSubTab }) => {
           Time Practice Settings
         </h2>
 
-        <div className="bg-white dark:bg-dark-200 p-6 rounded-lg border border-gray-200 dark:border-dark-300 mb-6">
+        <div className="bg-white dark:bg-dark-100 p-6 rounded-lg border border-gray-200 dark:border-dark-300 mb-6">
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -236,7 +236,7 @@ const TimePractice: React.FC<TimePracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.clockType === 'digital'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Digital
@@ -246,7 +246,7 @@ const TimePractice: React.FC<TimePracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.clockType === 'analog'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Analog
@@ -264,7 +264,7 @@ const TimePractice: React.FC<TimePracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.numeralType === 'western'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Western (1, 2, 3)
@@ -274,7 +274,7 @@ const TimePractice: React.FC<TimePracticeProps> = ({ setSubTab }) => {
                   className={`px-4 py-2 rounded-lg border ${
                     settings.numeralType === 'arabic'
                       ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
-                      : 'bg-gray-100 border-gray-300 text-gray-700'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-dark-300 dark:border-dark-400 dark:text-gray-200'
                   }`}
                 >
                   Arabic Eastern (١, ٢, ٣)
