@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   BookOpen,
   AlignLeft,
@@ -38,6 +38,7 @@ const LearnLanding: React.FC<LearnLandingProps> = ({ setSubTab, handleNavigateTo
   const { allLessons, getLessonById } = useLessonContext();
   const { user } = useSupabase();
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Debug logging
   console.log('LearnLanding - lessonProgress:', lessonProgress);
@@ -212,208 +213,124 @@ const LearnLanding: React.FC<LearnLandingProps> = ({ setSubTab, handleNavigateTo
         Master Levantine Arabic step by step
       </p>
 
-      {/* Main Focus: Lessons */}
-      <div
-        key={mainOption.id}
-        onClick={() => setSubTab(mainOption.id)}
-        className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 mb-8"
-      >
-        <div className="flex items-center justify-center mb-3">
-          <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
-            {mainOption.icon}
-          </div>
-        </div>
-        <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
-          {mainOption.label}
-        </h3>
-        <p className="text-sm text-center text-gray-600 dark:text-gray-300">
-          {mainOption.description}
-        </p>
-      </div>
-
-
-      {/* Supplementary Materials Section */}
-      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-        Materials
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        {supplementaryOptions.map((option) => (
-          <div
-            key={option.id}
-            onClick={() => setSubTab(option.id)}
-            className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500"
-          >
-            <div className="flex items-center justify-center mb-3">
-              <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
-                {option.icon}
-              </div>
+      {/* Emerald wrapper div for all content */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-900/10 dark:via-dark-200 dark:to-emerald-900/5 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30">
+        {/* Main Focus: Lessons */}
+        <div
+          key={mainOption.id}
+          onClick={() => setSubTab(mainOption.id)}
+          className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-white dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 mb-8 shadow-sm"
+        >
+          <div className="flex items-center justify-center mb-3">
+            <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+              {mainOption.icon}
             </div>
-            <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
-              {option.label}
-            </h3>
-            <p className="text-sm text-center text-gray-600 dark:text-gray-300">
-              {option.description}
-            </p>
           </div>
-        ))}
-      </div>
+          <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
+            {mainOption.label}
+          </h3>
+          <p className="text-sm text-center text-gray-600 dark:text-gray-300">
+            {mainOption.description}
+          </p>
+        </div>
 
-
-      {/* Progress Section (optional) */}
-      <div className="mb-4 bg-gray-50 dark:bg-dark-100 rounded-lg p-4 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 transition-colors duration-200">
-        <h3 className="text-sm font-medium mb-2 text-gray-600 dark:text-gray-300">
-          Pick up where you left off
+        {/* Supplementary Materials Section */}
+        <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+          Materials
         </h3>
-        {nextLessonToWorkOn ? (
-          <>
-            <div className="mb-2">
-              <p className="font-medium text-gray-600 dark:text-gray-300">
-                Lesson {nextLessonToWorkOn.level}: {nextLessonToWorkOn.title}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+          {supplementaryOptions.map((option) => (
+            <div
+              key={option.id}
+              onClick={() => setSubTab(option.id)}
+              className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-white dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 shadow-sm"
+            >
+              <div className="flex items-center justify-center mb-3">
+                <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+                  {option.icon}
+                </div>
+              </div>
+              <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">
+                {option.label}
+              </h3>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-300">
+                {option.description}
               </p>
             </div>
-            {/* Show overall progress based on completed lessons */}
-            <div className="relative">
-              <div className="flex mb-2 items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold inline-block text-emerald-600">
-                    {completedLessonsForQuiz.length} lesson{completedLessonsForQuiz.length !== 1 ? 's' : ''} completed
-                  </span>
+          ))}
+        </div>
+
+        {/* Progress Section */}
+        <div className="mb-4 bg-white dark:bg-dark-100 rounded-lg p-4 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 transition-colors duration-200 shadow-sm">
+          <h3 className="text-sm font-medium mb-2 text-gray-600 dark:text-gray-300">
+            Pick up where you left off
+          </h3>
+          {nextLessonToWorkOn ? (
+            <>
+              <div className="mb-2">
+                <p className="font-medium text-gray-600 dark:text-gray-300">
+                  Lesson {nextLessonToWorkOn.level}: {nextLessonToWorkOn.title}
+                </p>
+              </div>
+              {/* Show overall progress based on completed lessons */}
+              <div className="relative">
+                <div className="flex mb-2 items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold inline-block text-emerald-600">
+                      {completedLessonsForQuiz.length} lesson{completedLessonsForQuiz.length !== 1 ? 's' : ''} completed
+                    </span>
+                  </div>
+                </div>
+                <div className="overflow-hidden h-2 text-xs flex rounded bg-emerald-100 dark:bg-emerald-900/20">
+                  <div
+                    style={{ width: `${allLessons.length > 0 ? Math.round((completedLessonsForQuiz.length / allLessons.length) * 100) : 0}%` }}
+                    className="flex flex-col text-center whitespace-nowrap text-white justify-center bg-emerald-500 dark:bg-emerald-500"
+                  ></div>
                 </div>
               </div>
-              <div className="overflow-hidden h-2 text-xs flex rounded bg-emerald-100 dark:bg-emerald-900/20">
-                <div
-                  style={{ width: `${allLessons.length > 0 ? Math.round((completedLessonsForQuiz.length / allLessons.length) * 100) : 0}%` }}
-                  className="flex flex-col text-center whitespace-nowrap text-white justify-center bg-emerald-500 dark:bg-emerald-500"
-                ></div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <p className="text-gray-600 dark:text-gray-300">Start your first lesson!</p>
-        )}
-      </div>
+            </>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-300">Start your first lesson!</p>
+          )}
+        </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-3">
-        <button
-          className="w-full py-3 px-4 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-colors"
-          onClick={() => {
-            console.log('Continue Learning button clicked');
-            console.log('nextLessonToWorkOn:', nextLessonToWorkOn);
-            if (nextLessonToWorkOn) {
-              console.log('Calling handleNavigateToLesson with:', nextLessonToWorkOn.id);
-              handleNavigateToLesson(nextLessonToWorkOn.id);
-            }
-          }}
-          disabled={!nextLessonToWorkOn}
-        >
-          Continue Learning
-        </button>
-        <button 
-          className="w-full py-3 px-4 bg-white dark:bg-dark-100 border border-emerald-600 text-emerald-600 font-bold rounded-lg hover:bg-emerald-50 dark:hover:bg-dark-200 transition-colors"
-          onClick={handleQuizMeClick}
-          disabled={completedLessonsForQuiz.length === 0}
-        >
-          Quiz Me ({completedLessonsForQuiz.length} lesson{completedLessonsForQuiz.length !== 1 ? 's' : ''})
-        </button>
-
-        {/* Debug Information (temporary) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-2">Debug Info:</h4>
-            <div className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
-              <div>Lesson Progress Length: {lessonProgress?.length || 0}</div>
-              <div>All Lessons Length: {allLessons.length}</div>
-              <div>Completed Lessons: {completedLessonsForQuiz.length}</div>
-              <div>Latest Completed: {latestCompletedLesson?.title || 'None'}</div>
-              <div>Next Lesson: {nextLessonToWorkOn?.title || 'None'}</div>
-              {lessonProgress && lessonProgress.length > 0 && (
-                <div>
-                  <div className="font-semibold">Progress Details:</div>
-                  {lessonProgress.map(progress => (
-                    <div key={progress.id} className="ml-2">
-                      Lesson {progress.lesson_id.substring(0, 8)}... - Completed: {progress.completed ? 'Yes' : 'No'}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {/* Test Button to create sample progress */}
-            <button
-              onClick={async () => {
-                if (!user) {
-                  console.log('Test Button Error: No user logged in');
-                  return;
-                }
-                
-                if (!allLessons || allLessons.length === 0) {
-                   console.log('Test Button Error: Lessons not loaded yet.', allLessons);
-                   console.log('Lessons are not loaded yet. Please wait a moment and try again.');
-                   return;
-                }
-
-                try {
-                  // Get the first two lessons (1.1 and 1.2)
-                  const lesson1 = allLessons.find(l => l.title.includes('1.1'));
-                  const lesson2 = allLessons.find(l => l.title.includes('1.2'));
-                  
-                  if (!lesson1 || !lesson2) {
-                    console.log('Test Button Error: Could not find lessons 1.1 and 1.2 in allLessons', allLessons);
-                    console.log('Could not find lessons 1.1 and 1.2. Check console for loaded lessons.');
-                    return;
-                  }
-                  
-                  console.log('Creating progress for user:', user.id);
-                  console.log('Lesson 1.1:', lesson1);
-                  console.log('Lesson 1.2:', lesson2);
-                  
-                  // Create lesson progress records
-                  const { error: error1 } = await supabase
-                    .from('lesson_progress')
-                    .upsert({
-                      user_id: user.id,
-                      lesson_id: lesson1.id,
-                      completed: true,
-                      score: 100,
-                      completed_at: new Date().toISOString()
-                    });
-                    
-                  const { error: error2 } = await supabase
-                    .from('lesson_progress')
-                    .upsert({
-                      user_id: user.id,
-                      lesson_id: lesson2.id,
-                      completed: true,
-                      score: 100,
-                      completed_at: new Date().toISOString()
-                    });
-                  
-                  if (error1 || error2) {
-                    console.error('Error creating progress:', error1, error2);
-                    console.log('Error creating progress - check console');
-                  } else {
-                    console.log('✅ Test progress created! Refreshing page...');
-                    // Optionally refresh the progress data
-                    window.location.reload();
-                  }
-                } catch (error) {
-                  console.error('Error creating test progress:', error);
-                  console.log('Error: ' + (error as Error).message);
-                }
-              }}
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs"
-            >
-              Test: Create Progress for Lessons 1.1 & 1.2
-            </button>
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <button
+            className="w-full py-3 px-4 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+            onClick={() => {
+              console.log('Continue Learning button clicked');
+              console.log('nextLessonToWorkOn:', nextLessonToWorkOn);
+              if (nextLessonToWorkOn) {
+                console.log('Calling handleNavigateToLesson with:', nextLessonToWorkOn.id);
+                handleNavigateToLesson(nextLessonToWorkOn.id);
+              }
+            }}
+            disabled={!nextLessonToWorkOn}
+          >
+            Continue Learning
+          </button>
+          <button 
+            className="w-full py-3 px-4 bg-white dark:bg-dark-100 border border-emerald-600 text-emerald-600 font-bold rounded-lg hover:bg-emerald-50 dark:hover:bg-dark-200 transition-colors shadow-sm"
+            onClick={handleQuizMeClick}
+            disabled={completedLessonsForQuiz.length === 0}
+          >
+            Quiz Me ({completedLessonsForQuiz.length} lesson{completedLessonsForQuiz.length !== 1 ? 's' : ''})
+          </button>
+        </div>
       </div>
 
       {/* Quiz Question Count Modal */}
       {isQuizModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-dark-200 rounded-lg p-6 max-w-sm w-full mx-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={(e) => {
+            if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+              setIsQuizModalOpen(false);
+            }
+          }}
+        >
+          <div className="bg-white dark:bg-dark-200 rounded-lg p-6 max-w-sm w-full mx-4" ref={modalRef}>
             <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
               Choose Quiz Length
             </h3>

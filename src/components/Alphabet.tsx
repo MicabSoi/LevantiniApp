@@ -190,159 +190,169 @@ const Alphabet: React.FC<AlphabetProps> = ({ setSubTab }) => {
 
   return (
     <div className="p-4">
-      <button
-        onClick={() => setSubTab?.('landing')}
-        className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
-      >
-        ← Back to Learn
-      </button>
+      {/* Break out of parent container for wider layout using viewport width */}
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[95vw]">
+          <button
+            onClick={() => setSubTab?.('landing')}
+            className="mb-6 text-emerald-600 dark:text-emerald-400 flex items-center"
+          >
+            ← Back to Learn
+          </button>
 
-      <h2 className="text-xl font-bold mb-4">Arabic Alphabet</h2>
-
-      {/* Main Alphabet */}
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {alphabetData.map((letter) => (
-            <div
-              key={letter.letter}
-              className="bg-white dark:bg-dark-100 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-dark-300 flex flex-col"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="text-3xl font-bold ml-1">{letter.letter}</div>
-                  <div className="text-xl text-gray-600 dark:text-gray-400 ml-3">
-                    {letter.name} - {letter.transliteration}
-                  </div>
-                </div>
-                <button
-                  onClick={() => playAudio(letter.id)}
-                  className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
-                >
-                  <Volume2 size={16} />
-                </button>
-              </div>
-
-              {/* Use the new pronunciation_description from the database */}
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                {letter.pronunciation_description}
-              </p>
-
-              <div className="grid grid-cols-3 gap-4">
-                {/* End Position */}
-                <div className="text-center">
-                  <div className="font-medium text-sm mb-2">End:</div>
-                  <div className="text-2xl mb-2">{letter.forms.end}</div>
-                  <div className="text-lg">{letter.examples.end.word}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {letter.examples.end.transliteration}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {letter.examples.end.translation}
-                  </div>
-                </div>
-
-                {/* Middle Position */}
-                <div className="text-center">
-                  <div className="font-medium text-sm mb-2">Middle:</div>
-                  <div className="text-2xl mb-2">{letter.forms.middle}</div>
-                  <div className="text-lg">{letter.examples.middle.word}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {letter.examples.middle.transliteration}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {letter.examples.middle.translation}
-                  </div>
-                </div>
-
-                {/* Start Position */}
-                <div className="text-center">
-                  <div className="font-medium text-sm mb-2">Start:</div>
-                  <div className="text-2xl mb-2">{letter.forms.start}</div>
-                  <div className="text-lg">{letter.examples.start.word}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {letter.examples.start.transliteration}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {letter.examples.start.translation}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+          <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">Arabic Alphabet</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Learn Arabic letters and pronunciation</p>
         </div>
-      </div>
+        
+        {/* Emerald gradient wrapper div for all content */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-900/10 dark:via-dark-200 dark:to-emerald-900/5 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30 mx-auto max-w-[95vw]">
 
-      {/* Special Letters Section */}
-      <h2 className="text-xl font-bold mb-4 mt-8">Special Letters</h2>
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {specialLettersData.map((letter) => (
-            <div
-              key={letter.letter}
-              className="bg-white dark:bg-dark-100 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-dark-300 flex flex-col"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="text-3xl font-bold ml-1">{letter.letter}</div>
-                  <div className="text-xl text-gray-600 dark:text-gray-400 ml-3">
-                    {letter.name} - {letter.transliteration}
-                  </div>
-                </div>
-                <button
-                  onClick={() => playAudio(letter.id)}
-                  className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200"
+          {/* Main Alphabet */}
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {alphabetData.map((letter) => (
+                <div
+                  key={letter.letter}
+                  className="bg-white dark:bg-dark-100 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-300 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors duration-200 flex flex-col min-h-[400px]"
                 >
-                  <Volume2 size={16} />
-                </button>
-              </div>
-
-              {/* Use the new pronunciation_description here too */}
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                {letter.pronunciation_description}
-              </p>
-
-              <div className="grid grid-cols-3 gap-4">
-                {/* End Position */}
-                <div className="text-center">
-                  <div className="font-medium text-sm mb-2">End:</div>
-                  <div className="text-2xl mb-2">{letter.forms.end}</div>
-                  <div className="text-lg">{letter.examples.end.word}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {letter.examples.end.transliteration}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center flex-wrap">
+                      <div className="text-4xl font-bold ml-1 mb-2">{letter.letter}</div>
+                      <div className="text-lg text-gray-600 dark:text-gray-400 ml-3 break-words">
+                        {letter.name} - {letter.transliteration}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => playAudio(letter.id)}
+                      className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors duration-200 flex-shrink-0"
+                    >
+                      <Volume2 size={20} />
+                    </button>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {letter.examples.end.translation}
+
+                  {/* Use the new pronunciation_description from the database */}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                    {letter.pronunciation_description}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-3 flex-grow">
+                    {/* End Position */}
+                    <div className="text-center flex flex-col">
+                      <div className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">End:</div>
+                      <div className="text-3xl mb-3">{letter.forms.end}</div>
+                      <div className="text-lg mb-1 text-gray-800 dark:text-gray-200">{letter.examples.end.word}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {letter.examples.end.transliteration}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {letter.examples.end.translation}
+                      </div>
+                    </div>
+
+                    {/* Middle Position */}
+                    <div className="text-center flex flex-col">
+                      <div className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">Middle:</div>
+                      <div className="text-3xl mb-3">{letter.forms.middle}</div>
+                      <div className="text-lg mb-1 text-gray-800 dark:text-gray-200">{letter.examples.middle.word}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {letter.examples.middle.transliteration}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {letter.examples.middle.translation}
+                      </div>
+                    </div>
+
+                    {/* Start Position */}
+                    <div className="text-center flex flex-col">
+                      <div className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">Start:</div>
+                      <div className="text-3xl mb-3">{letter.forms.start}</div>
+                      <div className="text-lg mb-1 text-gray-800 dark:text-gray-200">{letter.examples.start.word}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {letter.examples.start.transliteration}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {letter.examples.start.translation}
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                {/* Middle Position */}
-                <div className="text-center">
-                  <div className="font-medium text-sm mb-2">Middle:</div>
-                  <div className="text-2xl mb-2">{letter.forms.middle}</div>
-                  <div className="text-lg">{letter.examples.middle.word}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {letter.examples.middle.transliteration}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {letter.examples.middle.translation}
-                  </div>
-                </div>
-
-                {/* Start Position */}
-                <div className="text-center">
-                  <div className="font-medium text-sm mb-2">Start:</div>
-                  <div className="text-2xl mb-2">{letter.forms.start}</div>
-                  <div className="text-lg">{letter.examples.start.word}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {letter.examples.start.transliteration}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {letter.examples.start.translation}
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Special Letters Section */}
+          <h2 className="text-xl font-bold mb-4 mt-8 text-gray-800 dark:text-gray-100">Special Letters</h2>
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {specialLettersData.map((letter) => (
+                <div
+                  key={letter.letter}
+                  className="bg-white dark:bg-dark-100 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-300 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors duration-200 flex flex-col min-h-[400px]"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center flex-wrap">
+                      <div className="text-4xl font-bold ml-1 mb-2">{letter.letter}</div>
+                      <div className="text-lg text-gray-600 dark:text-gray-400 ml-3 break-words">
+                        {letter.name} - {letter.transliteration}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => playAudio(letter.id)}
+                      className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors duration-200 flex-shrink-0"
+                    >
+                      <Volume2 size={20} />
+                    </button>
+                  </div>
+
+                  {/* Use the new pronunciation_description here too */}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                    {letter.pronunciation_description}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-3 flex-grow">
+                    {/* End Position */}
+                    <div className="text-center flex flex-col">
+                      <div className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">End:</div>
+                      <div className="text-3xl mb-3">{letter.forms.end}</div>
+                      <div className="text-lg mb-1 text-gray-800 dark:text-gray-200">{letter.examples.end.word}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {letter.examples.end.transliteration}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {letter.examples.end.translation}
+                      </div>
+                    </div>
+
+                    {/* Middle Position */}
+                    <div className="text-center flex flex-col">
+                      <div className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">Middle:</div>
+                      <div className="text-3xl mb-3">{letter.forms.middle}</div>
+                      <div className="text-lg mb-1 text-gray-800 dark:text-gray-200">{letter.examples.middle.word}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {letter.examples.middle.transliteration}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {letter.examples.middle.translation}
+                      </div>
+                    </div>
+
+                    {/* Start Position */}
+                    <div className="text-center flex flex-col">
+                      <div className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">Start:</div>
+                      <div className="text-3xl mb-3">{letter.forms.start}</div>
+                      <div className="text-lg mb-1 text-gray-800 dark:text-gray-200">{letter.examples.start.word}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {letter.examples.start.transliteration}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {letter.examples.start.translation}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

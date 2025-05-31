@@ -181,40 +181,44 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
             <p>No topics available. Check console for errors.</p>
         )}
 
-        <div className="grid grid-cols-1 gap-4">
-          {topics.map((topic) => (
-            <div
-              key={topic.id}
-              onClick={() => setSelectedTopic(topic.id)}
-              className="
-                p-4 rounded-lg cursor-pointer transition-colors
-                bg-gray-50 dark:bg-[#2D2D2D]
-                border border-gray-200 dark:border-[#121212]
-                hover:!border-emerald-500 dark:hover:!border-emerald-500
-              "
-            >
-              <div className="flex items-center mb-2">
-                <div className="mr-3">{topic.icon}</div>
-                <div>
-                    <h3 className="font-bold text-gray-800 dark:text-white">
-                        {topic.label}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {topic.description}
-                    </p>
+        {/* Emerald gradient wrapper div for topics list */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-900/10 dark:via-dark-200 dark:to-emerald-900/5 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30">
+          <div className="grid grid-cols-1 gap-4">
+            {topics.map((topic) => (
+              <div
+                key={topic.id}
+                onClick={() => setSelectedTopic(topic.id)}
+                className="
+                  p-4 rounded-lg cursor-pointer transition-colors
+                  bg-white dark:bg-dark-100
+                  border border-gray-200 dark:border-dark-300
+                  hover:!border-emerald-500 dark:hover:!border-emerald-500
+                  shadow-sm
+                "
+              >
+                <div className="flex items-center mb-2">
+                  <div className="mr-3">{topic.icon}</div>
+                  <div>
+                      <h3 className="font-bold text-gray-800 dark:text-white">
+                          {topic.label}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {topic.description}
+                      </p>
+                  </div>
                 </div>
+                <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded">
+                  <div
+                    className="absolute top-0 left-0 h-full rounded bg-emerald-500 dark:bg-emerald-400 transition-all duration-300"
+                    style={{ width: `${topic.progress}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs mt-1 text-gray-800 dark:text-white">
+                  {topic.progress}% Complete
+                </p>
               </div>
-              <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded">
-                <div
-                  className="absolute top-0 left-0 h-full rounded bg-emerald-500 dark:bg-emerald-400 transition-all duration-300"
-                  style={{ width: `${topic.progress}%` }}
-                ></div>
-              </div>
-              <p className="text-xs mt-1 text-gray-800 dark:text-white">
-                {topic.progress}% Complete
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -243,61 +247,64 @@ const LessonsTopics: React.FC<LessonsTopicsProps> = ({
       {!loading && currentTopicLessons.length === 0 && !error && (
           <p>No lessons found for this topic.</p>
       )}
-
-      <div className="grid grid-cols-1 gap-4">
-        {currentTopicLessons.map((lesson) => {
-          const completed = isLessonCompleted(lesson.id);
-          const score = getLessonScore(lesson.id);
-          
-          return (
-            <div
-              key={lesson.id}
-              onClick={() => setSelectedLessonId(String(lesson.id))}
-              className={`
-                p-4 rounded-lg cursor-pointer transition-colors border relative
-                ${completed 
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-600 shadow-emerald-100 dark:shadow-emerald-900/30 shadow-md' 
-                  : 'bg-gray-50 dark:bg-[#2D2D2D] border-gray-200 dark:border-[#121212]'
-                }
-                hover:!border-emerald-500 dark:hover:!border-emerald-500
-              `}
-            >
-              <div className="flex items-center justify-between group">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className={`font-bold ${completed ? 'text-emerald-800 dark:text-emerald-200' : 'text-gray-800 dark:text-white'}`}>
-                      {lesson.title}
-                    </h4>
-                    {completed && (
-                      <span className="text-emerald-600 dark:text-emerald-400 text-sm">
-                        ✓
-                      </span>
+      
+      {/* Emerald gradient wrapper div for lessons list */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-900/10 dark:via-dark-200 dark:to-emerald-900/5 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30">
+        <div className="grid grid-cols-1 gap-4">
+          {currentTopicLessons.map((lesson) => {
+            const completed = isLessonCompleted(lesson.id);
+            const score = getLessonScore(lesson.id);
+            
+            return (
+              <div
+                key={lesson.id}
+                onClick={() => setSelectedLessonId(String(lesson.id))}
+                className={`
+                  p-4 rounded-lg cursor-pointer transition-colors border relative
+                  ${completed 
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-600 shadow-emerald-100 dark:shadow-emerald-900/30 shadow-md' 
+                    : 'bg-gray-50 dark:bg-[#2D2D2D] border-gray-200 dark:border-[#121212]'
+                  }
+                  hover:!border-emerald-500 dark:hover:!border-emerald-500
+                `}
+              >
+                <div className="flex items-center justify-between group">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className={`font-bold ${completed ? 'text-emerald-800 dark:text-emerald-200' : 'text-gray-800 dark:text-white'}`}>
+                        {lesson.title}
+                      </h4>
+                      {completed && (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-sm">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm ${completed ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {lesson.preview_text || lesson.description}
+                    </p>
+                    {score !== null && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                        Best Score: {score}%
+                      </p>
                     )}
                   </div>
-                  <p className={`text-sm ${completed ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-400'}`}>
-                    {lesson.preview_text || lesson.description}
-                  </p>
-                  {score !== null && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-                      Best Score: {score}%
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {completed && (
-                    <div className="bg-emerald-600 dark:bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      Complete
-                    </div>
-                  )}
-                  <ChevronRight
-                    className={`transform transition-transform group-hover:translate-x-1 ${completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}
-                    size={20}
-                  />
+                  <div className="flex items-center gap-2">
+                    {completed && (
+                      <div className="bg-emerald-600 dark:bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                        Complete
+                      </div>
+                    )}
+                    <ChevronRight
+                      className={`transform transition-transform group-hover:translate-x-1 ${completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}
+                      size={20}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

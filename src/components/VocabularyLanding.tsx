@@ -45,39 +45,43 @@ const VocabularyLanding: React.FC<VocabularyLandingProps> = ({ setWordBankSubTab
       <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">Vocabulary</h2>
       <p className="text-gray-600 dark:text-gray-400 mb-6">Build your Levantine Arabic vocabulary</p>
 
-      {/* Main Focus: Flashcards */}
-      <div
-        key={mainOption.id}
-        onClick={() => setWordBankSubTab(mainOption.id)}
-        className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500 mb-8"
-      >
-        <div className="flex items-center justify-center mb-3">
-          <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
-            {mainOption.icon}
-          </div>
-        </div>
-        <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">{mainOption.label}</h3>
-        <p className="text-sm text-center text-gray-600 dark:text-gray-300">{mainOption.description}</p>
-      </div>
+      {/* Emerald wrapper div for all content */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-900/10 dark:via-dark-200 dark:to-emerald-900/5 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30">
 
-      {/* Supplementary Tools Section */}
-      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100"> Tools</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        {supplementaryOptions.map((option) => (
-          <div
-            key={option.id}
-            onClick={() => setWordBankSubTab(option.id)}
-            className="p-4 rounded-lg cursor-pointer transition-colors duration-200 bg-gray-50 dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:!border-emerald-500 dark:hover:!border-emerald-500"
-          >
-            <div className="flex items-center justify-center mb-3">
-              <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
-                {option.icon}
-              </div>
+        {/* Main Focus: Flashcards */}
+        <div
+          key={mainOption.id}
+          onClick={() => setWordBankSubTab(mainOption.id)}
+          className="p-6 rounded-lg cursor-pointer transition-colors duration-200 bg-white dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:border-emerald-500 dark:hover:border-emerald-500 mb-8 shadow-sm"
+        >
+          <div className="flex items-center justify-center mb-3">
+            <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+              {mainOption.icon}
             </div>
-            <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">{option.label}</h3>
-            <p className="text-sm text-center text-gray-600 dark:text-gray-300">{option.description}</p>
           </div>
-        ))}
+          <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">{mainOption.label}</h3>
+          <p className="text-sm text-center text-gray-600 dark:text-gray-300">{mainOption.description}</p>
+        </div>
+
+        {/* Supplementary Tools Section */}
+        <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100"> Tools</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+          {supplementaryOptions.map((option) => (
+            <div
+              key={option.id}
+              onClick={() => setWordBankSubTab(option.id)}
+              className="p-6 rounded-lg cursor-pointer transition-colors duration-200 bg-white dark:bg-dark-100 border border-gray-200 dark:border-dark-300 hover:border-emerald-500 dark:hover:border-emerald-500 shadow-sm"
+            >
+              <div className="flex items-center justify-center mb-3">
+                <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+                  {option.icon}
+                </div>
+              </div>
+              <h3 className="font-bold text-center mb-1 text-gray-800 dark:text-gray-100">{option.label}</h3>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-300">{option.description}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
